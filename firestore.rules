@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownerClaim() {
+      return signedIn() && request.auth.token.owner is string
+        ? request.auth.token.owner
+        : "";
+    }
+
+    function isSuperMaster() {
+      return signedIn() && request.auth.token.superMaster == true;
+    }
+
+    // Usuarios maestros: lectura solo para super master o dueño.
+    match /owners/{ownerId} {
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    // Usuarios del equipo: lectura solo para super master o dueño de la cuenta.
+    match /autorizaciones/{docId} {
+      allow read: if signedIn() && (
+        isSuperMaster() ||
+        (resource.data.owner is string && resource.data.owner == ownerClaim())
+      );
+      allow create, update, delete: if false;
+    }
+
+    // Base de datos por owner.
+    match /datos_del_propietario/{ownerId} {
+      allow read: if signedIn() && (isSuperMaster() || ownerClaim() == ownerId);
+      allow create, update, delete: if false;
+    }
+
+    // Bloqueo por defecto: toda lógica crítica debe pasar por Cloud Functions.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
