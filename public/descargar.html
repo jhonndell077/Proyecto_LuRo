@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Descargar LuRo Control</title>
+  <meta name="theme-color" content="#0f1419">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <style>
+    body { font-family: Segoe UI, Arial, sans-serif; margin: 0; background: #0f1419; color: #fff; display: grid; place-items: center; min-height: 100vh; padding: 16px; }
+    .card { width: min(560px, 96vw); background: #1e272e; border-radius: 14px; border-top: 6px solid #05c46b; padding: 20px; }
+    h1 { margin-top: 0; }
+    p { color: #d2dae2; line-height: 1.4; }
+    .btn { display: inline-block; margin-top: 8px; background: #05c46b; color: #fff; padding: 10px 14px; border-radius: 8px; text-decoration: none; font-weight: 700; border: 0; cursor: pointer; }
+    .btn.secondary { background: #3498db; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    #install-status { margin-top: 8px; color: #d2dae2; font-size: 13px; }
+    .list { margin: 8px 0 0 16px; color: #d2dae2; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📲 Descargar LuRo Control</h1>
+    <p>Instálala como app móvil desde este enlace:</p>
+    <div class="row">
+      <a class="btn" href="/">ABRIR LURO CONTROL</a>
+      <button id="btn-instalar" class="btn secondary" type="button" style="display:none;">INSTALAR APP</button>
+    </div>
+    <div id="install-status">Si no ves "Instalar app", abre primero la app principal y vuelve aquí.</div>
+    <ul class="list">
+      <li>Android (Chrome): menú ⋮ → Instalar app</li>
+      <li>iPhone (Safari): Compartir → Añadir a pantalla de inicio</li>
+    </ul>
+  </div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/service-worker.js').catch(function () {});
+      });
+    }
+
+    (function () {
+      var deferredPrompt = null;
+      var btn = document.getElementById('btn-instalar');
+      var status = document.getElementById('install-status');
+      if (!btn || !status) return;
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        btn.style.display = 'inline-block';
+        status.textContent = 'Listo: puedes pulsar "INSTALAR APP".';
+      });
+
+      btn.addEventListener('click', async function () {
+        if (!deferredPrompt) {
+          status.textContent = 'Tu navegador no mostró el instalador automático. Usa menú ⋮ → Instalar app.';
+          return;
+        }
+        deferredPrompt.prompt();
+        try {
+          await deferredPrompt.userChoice;
+        } catch (_) {}
+        deferredPrompt = null;
+        btn.style.display = 'none';
+        status.textContent = 'Si aceptaste, la app ya quedó instalada.';
+      });
+
+      window.addEventListener('appinstalled', function () {
+        btn.style.display = 'none';
+        status.textContent = 'LuRo Control instalada correctamente.';
+      });
+    })();
+  </script>
+</body>
+</html>

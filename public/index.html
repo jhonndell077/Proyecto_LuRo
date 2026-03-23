@@ -1,89 +1,187 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
-
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.10.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.10.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.10.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.10.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.10.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.10.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.10.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.10.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.10.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.10.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
-
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LuRo Control SaaS | Gestión Gastronómica</title>
+  <meta name="description" content="Plataforma SaaS para restaurantes y negocios gastronómicos.">
+  <link rel="stylesheet" href="assets/saas/css/landing.css?v=20260318-1140">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <strong class="site-brand" aria-label="LuRo Control SaaS">
+        <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo luro-logo-toned">
+      </strong>
+      <button id="navToggle" class="nav-toggle" type="button" aria-label="Abrir menú" aria-expanded="false">☰</button>
+      <nav id="topNav">
+        <a href="#inicio">Inicio</a>
+        <a href="#funciones">Funciones</a>
+        <a href="#modulos">Módulos</a>
+        <a href="#beneficios">Beneficios</a>
+        <a href="#planes">Planes</a>
+        <a href="#contacto">Contacto</a>
+        <a class="btn-link" href="acceder.html">Iniciar sesión</a>
+      </nav>
     </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
+  </header>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+  <main class="carousel-shell">
+    <div class="carousel-track" id="carouselTrack">
+      <section id="inicio" class="panel hero">
+        <div class="container hero-grid">
+          <div>
+            <a class="hero-logo-button" aria-label="Instagram LuRo Control" href="https://www.instagram.com/lurocontrol?igsh=eWFza3NzN3RoODl2" target="_blank" rel="noopener">
+              <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo hero-logo luro-logo-toned">
+            </a>
+            <div class="code-brand" aria-label="LuRo Control">
+              <span class="code-brand-dots"><i></i><i></i><i></i></span>
+              <span class="code-brand-text">&lt;LuRo Control /&gt;</span>
+            </div>
+            <h1 class="hero-code-title">Control total de tu negocio gastronómico en la nube</h1>
+            <p class="hero-code-sub">LuRo Control ahora como plataforma web SaaS multiempresa: inventario, producción, ventas, clientes, reportes y más, en tiempo real.</p>
+            <a class="btn motion-btn" href="acceder.html">Acceder al sistema</a>
+          </div>
+          <div class="card">
+            <h3>Incluye</h3>
+            <ul class="include-list">
+              <li>Registro de negocio y acceso SaaS</li>
+              <li>Usuarios maestros y colaboradores</li>
+              <li>Control Total Master / Bóveda del sistema</li>
+              <li>Planes y suscripciones con PayPal</li>
+              <li>Inventario, costos y decomisos</li>
+              <li>Producción interna y semielaborados</li>
+              <li>Disponibilidad básica y completa</li>
+              <li>Registrar salida, ventas y cierre de mesa</li>
+              <li>Facturación y resumen de facturas</li>
+              <li>Entradas de almacén y compras a distribuidores</li>
+              <li>Clientes, puntos, membresías y QR</li>
+              <li>Comandas, procedimientos y entrenamientos</li>
+              <li>Autorizaciones, permisos y estados de usuario</li>
+              <li>Historial de producción y de ventas</li>
+              <li>Sincronización cloud con Firebase/Firestore</li>
+              <li>Soporte móvil, tablet y escritorio</li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
-        }
-      });
-    </script>
-  </body>
+      <section id="funciones" class="panel section">
+        <div class="container">
+          <h2>Funciones</h2>
+          <div class="grid3">
+            <article class="card reveal"><h3>Inventario inteligente</h3><p>Control de almacén, entradas, costos, decomisos, trazabilidad y disponibilidad en tiempo real.</p></article>
+            <article class="card reveal"><h3>Caja y facturación</h3><p>Registrar salidas, tickets, facturas, historial de ventas, cierre de mesas y resumen administrativo.</p></article>
+            <article class="card reveal"><h3>Producción operativa</h3><p>Producción interna, semielaborados, recetas, consumo de insumos y control por departamentos A-B-C.</p></article>
+            <article class="card reveal"><h3>Clientes y fidelización</h3><p>Gestión de clientes, puntos, membresías, QR, canje y seguimiento de comportamiento de compra.</p></article>
+            <article class="card reveal"><h3>Distribuidores y compras</h3><p>Catálogo de distribuidores, compras, entradas por proveedor y control de abastecimiento.</p></article>
+            <article class="card reveal"><h3>Equipo y permisos</h3><p>Usuarios maestros, colaboradores, renglones por módulo, entradas asignadas y control de acceso por rol.</p></article>
+            <article class="card reveal"><h3>Entrenamientos y procedimientos</h3><p>Capacitación interna, procedimientos operativos y estandarización de tareas por área.</p></article>
+            <article class="card reveal"><h3>Sincronización cloud</h3><p>Datos en Firebase, actualización entre dispositivos y respaldo de información en la nube.</p></article>
+            <article class="card reveal"><h3>Configuración avanzada</h3><p>Cierres totales, limpieza de base de datos, seguridad por contraseña y gestión centralizada.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="modulos" class="panel section">
+        <div class="container">
+          <h2>Módulos del sistema</h2>
+          <div class="card reveal checklist">
+            <p>Todos los módulos del sistema están incluidos y activos:</p>
+            <ul>
+              <li><span class="module-item" data-tip="Panel principal con vista general del sistema y acceso rápido a módulos.">✅ Inicio</span></li>
+              <li><span class="module-item" data-tip="Creación y edición de platos con costos, receta y vínculo de ingredientes.">✅ Agregar Plato</span></li>
+              <li><span class="module-item" data-tip="Control de costos por plato, insumo, producción y variaciones operativas.">✅ Costos</span></li>
+              <li><span class="module-item" data-tip="Gestión de inventario, existencias, ajustes, consumos y reposición de insumos.">✅ Almacén de Suministros</span></li>
+              <li><span class="module-item" data-tip="Registro y administración de proveedores para compras y abastecimiento.">✅ Distribuidores</span></li>
+              <li><span class="module-item" data-tip="Producción de semielaborados y control de lotes con consumo de materia prima.">✅ Producción Interna</span></li>
+              <li><span class="module-item" data-tip="Control de disponibilidad por plato, con vista básica y completa de composición.">✅ Disponibilidad (básica y completa)</span></li>
+              <li><span class="module-item" data-tip="Cierre de mesas, generación de ventas, cobro y salida de productos.">✅ Registrar Salida / Ventas</span></li>
+              <li><span class="module-item" data-tip="Ingreso de mercancía al almacén por compra, ajuste o carga manual.">✅ Entradas de Almacén</span></li>
+              <li><span class="module-item" data-tip="Bitácora de producción con fechas, cantidades y responsables.">✅ Historial de Producción</span></li>
+              <li><span class="module-item" data-tip="Historial detallado de ventas realizadas por fecha, módulo y usuario.">✅ Historial de Ventas</span></li>
+              <li><span class="module-item" data-tip="Registro de pérdidas/decomisos con motivo, cantidad y trazabilidad.">✅ Historial Decomiso</span></li>
+              <li><span class="module-item" data-tip="Consolidado de facturas emitidas con resumen y consulta rápida.">✅ Resumen de Facturas</span></li>
+              <li><span class="module-item" data-tip="Administración de clientes, puntos acumulados y beneficios por fidelidad.">✅ Clientes y Puntos</span></li>
+              <li><span class="module-item" data-tip="Gestión de comandas activas e historial para operación de cocina/caja.">✅ Comandas</span></li>
+              <li><span class="module-item" data-tip="Biblioteca de procedimientos operativos para estandarizar tareas.">✅ Procedimientos</span></li>
+              <li><span class="module-item" data-tip="Módulo de entrenamiento para formación del equipo en procesos internos.">✅ Entrenamientos</span></li>
+              <li><span class="module-item" data-tip="Permisos por usuario y control de accesos por casilla/módulo.">✅ Autorizaciones y control de equipo</span></li>
+              <li><span class="module-item" data-tip="Clasificación operativa por departamentos A-B-C para priorizar gestión.">✅ Departamentos A-B-C</span></li>
+              <li><span class="module-item" data-tip="Ajustes globales del sistema, seguridad, limpieza y mantenimiento.">✅ Configuración general</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="beneficios" class="panel section">
+        <div class="container">
+          <h2>Beneficios</h2>
+          <div class="grid3">
+            <article class="card reveal"><h3>Multiempresa</h3><p>Cada negocio opera con datos aislados y seguros.</p></article>
+            <article class="card reveal"><h3>Tiempo real</h3><p>Cocina, caja e inventario sincronizados entre dispositivos.</p></article>
+            <article class="card reveal"><h3>Escalable</h3><p>Preparado para crecimiento de usuarios, sucursales y módulos.</p></article>
+            <article class="card reveal"><h3>Control total operativo</h3><p>Visión completa de costos, producción, inventario y ventas en un solo sistema.</p></article>
+            <article class="card reveal"><h3>Reducción de pérdidas</h3><p>Control de decomisos, existencias y consumos para disminuir desperdicios.</p></article>
+            <article class="card reveal"><h3>Facturación y trazabilidad</h3><p>Historiales claros por módulo para auditoría y toma de decisiones.</p></article>
+            <article class="card reveal"><h3>Gestión de personal</h3><p>Permisos por colaborador y control granular de renglones permitidos.</p></article>
+            <article class="card reveal"><h3>Acceso desde cualquier dispositivo</h3><p>Compatible con PC, tablet y móvil sin perder funcionalidad.</p></article>
+            <article class="card reveal"><h3>Seguridad de datos</h3><p>Autenticación, control de estado de usuarios y sincronización cloud segura.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="planes" class="panel section">
+        <div class="container">
+          <h2>Planes de suscripción</h2>
+          <div class="grid3">
+            <article class="card reveal">
+              <h3>Básico</h3>
+              <p>USD$20.00 / mes</p>
+              <p>Incluye: Inventario, Gestión de Platos, Ventas/Comandas, Clientes, Reportes básicos, Configuración básica, Salidas de inventario. 1 sucursal.</p>
+              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/20.00">Pagar Plan Básico</a>
+              <div class="paypal-button-slot" data-plan="basico" data-amount="20.00"></div>
+            </article>
+            <article class="card reveal">
+              <h3>Profesional</h3>
+              <p>USD$99.99 / mes</p>
+              <p>Todos los módulos del sistema: Inventario, Gestión de Platos, Ventas/Comandas, Clientes, Reportes avanzados, Configuración completa, Producción, Control de costos, Control de desperdicios, Usuarios y permisos, Dashboard en tiempo real, Proveedores, Auditoría, Notificaciones, Control de caja, Bóveda del sistema. Hasta 2 sucursales.</p>
+              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/99.99">Pagar Plan Profesional</a>
+              <div class="paypal-button-slot" data-plan="profesional" data-amount="99.99"></div>
+            </article>
+            <article class="card reveal">
+              <h3>Empresarial</h3>
+              <p>USD$349.99 / mes</p>
+              <p>Mismos módulos que Profesional (todo incluido). Hasta 10 sucursales.</p>
+              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/349.99">Pagar Plan Empresarial</a>
+              <div class="paypal-button-slot" data-plan="empresarial" data-amount="349.99"></div>
+            </article>
+          </div>
+          <a class="btn motion-btn" href="acceder.html">Crear cuenta</a>
+        </div>
+      </section>
+
+      <section id="contacto" class="panel section">
+        <div class="container">
+          <h2>Contacto</h2>
+          <p>Correo: <a href="mailto:Lurocontrol@gmail.com">Lurocontrol@gmail.com</a></p>
+          <p>Soporte técnico: <a href="tel:+18297749000">8297749000</a></p>
+          <p>Instagram: <a href="https://www.instagram.com/lurocontrol?igsh=eWFza3NzN3RoODl2" target="_blank" rel="noopener">@lurocontrol</a></p>
+        </div>
+        <footer class="footer">
+          <div class="container">© 2026 LuRo Control SaaS</div>
+        </footer>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/saas/js/landing.js?v=20260306-0041"></script>
+  <script src="assets/saas/js/paypal-buttons.js?v=20260305-2305"></script>
+</body>
 </html>
+
+
+
+
+
+

@@ -1,1859 +1,4 @@
-﻿<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LuRo Control - El control en tus manos</title>
-  <style>
-
-  /* Efecto de resaltado para el producto buscado */
-.resaltado-temporal {
-    background-color: #fff9c4 !important; /* Color crema suave */
-    transition: background-color 0.5s ease;
-    border: 2px solid var(--accent) !important;
-}
-
-/* Estilos para el modal de información de producto */
-#modal-info-producto {
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7);
-    z-index: 2000;
-    justify-content: center;
-    align-items: center;
-}
-
-/* Estilos para las carpetas del menú */
-.menu-folder {
-  background: #1e272e;
-  cursor: pointer;
-  border-left: 15px solid var(--accent) !important;
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.folder-content {
-  display: none; /* Oculto por defecto */
-  background: #161d23;
-  padding-left: 10px;
-}
-
-.folder-content a {
-  font-size: 13px;
-  border-left: 5px solid var(--secondary) !important;
-  padding: 10px 25px;
-}
-
-.folder-active .folder-content {
-  display: block;
-}
-
-.folder-active .folder-arrow {
-  transform: rotate(90deg);
-}
-
-.folder-arrow {
-  transition: transform 0.3s;
-  font-size: 10px;
-}
-    :root {
-      --primary: #1e272e;
-      --secondary: #485460; --accent: #05c46b;
-      --success: #2ecc71; --danger: #ff5e57; --warning: #ffa801;
-      --purple: #ef5777; --light: #f1f2f6; --dark: #0f1419;
-      --blue: #3498db;
-    }
-    html, body { max-width: 100%; overflow-x: hidden; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      background: var(--light);
-      color: #333;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
-    
-    #login-overlay { 
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background:
-        radial-gradient(circle at top left, rgba(5, 196, 107, 0.18), transparent 24%),
-        radial-gradient(circle at top right, rgba(52, 152, 219, 0.14), transparent 22%),
-        linear-gradient(135deg, rgba(255,255,255,0.035) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.035) 50%, rgba(255,255,255,0.035) 75%, transparent 75%, transparent),
-        linear-gradient(135deg, #1e272e 0%, #0f1419 100%);
-      background-size: auto, auto, 18px 18px, auto;
-      z-index: 2000; display: flex; justify-content: center; align-items: center;
-      padding: 18px; box-sizing: border-box;
-      overflow-y: auto; overscroll-behavior: contain;
-    }
-    .login-box { 
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(15px);
-      padding: 40px; border-radius: 20px; 
-      box-shadow: 0 15px 35px rgba(0,0,0,0.5); 
-      width: 350px; text-align: center; 
-      border: 1px solid rgba(255,255,255,0.1);
-      color: white;
-    }
-    .login-shell .login-box {
-      width: 100%;
-      border: none;
-      box-shadow: none;
-      border-radius: 0;
-      background: rgba(255,255,255,0.02);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    /* Contenedor SaaS para el login */
-.login-shell {
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  gap: 0;
-  width: min(1020px, 96vw);
-  margin: 0 auto;
-  max-height: none;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 22px;
-  overflow: visible;
-  box-shadow: 0 18px 45px rgba(0,0,0,0.5);
-  backdrop-filter: blur(18px);
-  align-items: stretch;
-  position: relative;
-  isolation: isolate;
-      animation: loginFloat .45s ease;
-    }
-    .login-shell::before,
-    .login-shell::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 20% 20%, rgba(5,196,107,0.13), transparent 32%),
-                  radial-gradient(circle at 80% 80%, rgba(52,152,219,0.12), transparent 30%);
-      z-index: -1;
-      filter: blur(18px);
-    }
-    @keyframes loginFloat {
-      from { transform: translateY(14px) scale(.97); opacity: 0; }
-      to { transform: translateY(0) scale(1); opacity: 1; }
-    }
-    .login-aside {
-      background: linear-gradient(145deg, rgba(5,196,107,0.18), rgba(52,152,219,0.16)), #0f1419;
-      border-right: 1px solid rgba(255,255,255,0.04);
-      padding: 34px;
-      color: #e8f5ff;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      justify-content: space-between;
-    }
-    .login-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      background: rgba(5,196,107,0.12);
-      border: 1px solid rgba(5,196,107,0.35);
-      color: #a0f2c5;
-      border-radius: 999px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      font-size: 11px;
-    }
-    .login-aside h3 {
-      margin: 4px 0 6px;
-      color: #fff;
-      font-size: 24px;
-      letter-spacing: 0.4px;
-    }
-    .login-aside p {
-      margin: 0;
-      color: #d2dae2;
-      line-height: 1.45;
-      font-size: 13px;
-    }
-    .login-aside ul {
-      list-style: none;
-      padding: 0;
-      margin: 6px 0 0;
-      display: grid;
-      gap: 8px;
-    }
-    .login-aside li {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255,255,255,0.03);
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.06);
-      font-weight: 700;
-      color: #f1f2f6;
-      font-size: 13px;
-    }
-    .login-aside li span {
-      width: 22px; height: 22px;
-      display: grid; place-items: center;
-      border-radius: 8px;
-      background: rgba(5,196,107,0.18);
-      color: #a0f2c5;
-      font-weight: 900;
-      font-size: 13px;
-    }
-    .login-meta {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .login-meta div {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 10px 12px;
-      color: #e4f7ff;
-      font-size: 12px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .login-meta strong { font-size: 16px; }
-
-    .login-box h4 {
-      margin: 0 0 4px;
-      color: #dfe6eb;
-      letter-spacing: .4px;
-      font-weight: 800;
-    }
-    .login-shell .form-group input {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.16);
-      color: #f6f8fb;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-    }
-    .login-shell .form-group input:focus {
-      outline: 2px solid rgba(5,196,107,0.45);
-      border-color: rgba(5,196,107,0.55);
-      box-shadow: 0 10px 25px rgba(5,196,107,0.14);
-      background: rgba(255,255,255,0.1);
-    }
-    .login-shell .btn {
-      box-shadow: 0 12px 24px rgba(0,0,0,0.25);
-    }
-    .login-shell .btn.btn-save { box-shadow: 0 14px 32px rgba(5,196,107,0.28); }
-    .login-remember {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin: 8px 0 4px;
-      color: #cfd8dc;
-      font-size: 12px;
-    }
-    .login-remember label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-
-    #module-selector {
-      position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%; 
-      background: var(--dark); z-index: 1500; display: none;
-      justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap;
-      padding: 28px;
-    }
-    #module-cards-grid {
-      width: min(1100px, 96vw);
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-      align-items: stretch;
-    }
-    .module-card {
-      width: 250px; height: 300px; background: rgba(255,255,255,0.05);
-      border: 2px solid var(--secondary); border-radius: 20px;
-      display: flex; flex-direction: column; justify-content: center;
-      align-items: center; cursor: pointer; transition: 0.3s; color: white;
-      width: 100%;
-    }
-    .module-card:hover { border-color: var(--accent); transform: scale(1.05); background: rgba(255,255,255,0.1); }
-    .module-delete-btn {
-      margin-top: 10px;
-      background: var(--danger);
-      border: none;
-      color: #fff;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .module-delete-btn:hover { opacity: .9; }
-    .btn-add-module-float {
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      z-index: 1510;
-      border-radius: 999px;
-      padding: 12px 18px;
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 10px 25px rgba(0,0,0,.35);
-    }
-
-    .login-box h2 { border: none; font-size: 28px; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px;}
-    .brand-title-animated {
-      display: block !important;
-      width: 100%;
-      margin-left: auto;
-      margin-right: auto;
-      text-align: center;
-      animation: brandGlow 2s ease-in-out infinite;
-      text-shadow: 0 0 0 rgba(5,196,107,0.0);
-    }
-    .brand-slogan {
-      margin-top: -18px;
-      margin-bottom: 12px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #d2dae2;
-      letter-spacing: 0.5px;
-    }
-    .brand-motion-text {
-      margin: 0 0 16px;
-      padding: 10px 12px;
-      border: 1px solid rgba(5, 196, 107, 0.35);
-      border-radius: 10px;
-      background: rgba(5, 196, 107, 0.08);
-      color: #f1f2f6;
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: 0.6px;
-      text-transform: uppercase;
-      animation: haloPulse 2.2s infinite;
-      text-align: center;
-    }
-    .sidebar-brand {
-      text-align: center;
-      margin: 0 14px 14px;
-      padding: 10px;
-      border-radius: 10px;
-      color: #d2dae2;
-      font-size: 12px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.04);
-      animation: haloPulse 2.5s infinite;
-    }
-    .sidebar-brand strong { color: var(--accent); display: block; margin-bottom: 3px; }
-    .sidebar-brand .active-module-tag {
-      margin-top: 6px;
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.12);
-      color: #f1f2f6;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .main.module-switching {
-      opacity: .35;
-      transform: translateY(4px) scale(.995);
-      transition: opacity .2s ease, transform .2s ease;
-    }
-    @keyframes haloPulse {
-      0%, 100% { box-shadow: 0 0 0 rgba(5,196,107,0.0); transform: translateY(0); }
-      50% { box-shadow: 0 0 14px rgba(5,196,107,0.28); transform: translateY(-1px); }
-    }
-    @keyframes iconFloat {
-      0%, 100% { transform: translateY(0) scale(1); }
-      50% { transform: translateY(-2px) scale(1.08); }
-    }
-    @keyframes brandGlow {
-      0%, 100% { transform: scale(1); text-shadow: 0 0 0 rgba(5,196,107,0.0); }
-      50% { transform: scale(1.03); text-shadow: 0 0 14px rgba(5,196,107,0.45); }
-    }
-    .login-box input { 
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.2); 
-        color: white; width: 100%; margin-bottom: 15px; padding: 12px;
-    }
-
-    .sidebar { height: 100%; width: 250px; position: fixed; background: var(--dark); padding-top: 20px; z-index: 10; overflow-y: auto; display: none; box-shadow: 2px 0 10px rgba(0,0,0,0.3); overscroll-behavior: contain; }
-    .sidebar a { padding: 14px 25px; color: #d2dae2; display: block; text-decoration: none; border-bottom: 1px solid #1e272e; cursor: pointer; font-size: 14px; transition: 0.2s; }
-    .sidebar a:hover, .sidebar a.active { background: var(--accent); color: white; padding-left: 35px; }
-    
-    .main { margin-left: 250px; padding: 30px; display: none; min-height: 100vh; }
-    .content-section { display: none; animation: fadeIn 0.4s; }
-    .content-section.active { display: block; }
-    
-    .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); border-top: 5px solid var(--accent); margin-bottom: 20px; }
-    h2 { color: var(--primary); margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
-    
-    input, select, textarea { padding: 12px; border: 1px solid #dfe6e9; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-    .form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; }
-    
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border-radius: 8px; overflow: hidden; }
-    th, td { padding: 15px; border-bottom: 1px solid #f1f2f6; text-align: left; }
-    th { background: #f8f9fa; color: var(--secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
-    
-    .btn { padding: 12px 18px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 13px; text-transform: uppercase; min-height: 42px; }
-    .btn-dynamic-ready { animation: pulseReady 1.35s infinite; }
-    @keyframes pulseReady {
-      0% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.45); transform: translateY(0); }
-      70% { box-shadow: 0 0 0 10px rgba(46, 213, 115, 0); transform: translateY(-1px); }
-      100% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); transform: translateY(0); }
-    }
-    .btn-save { background: var(--success); }
-    .btn-danger { background: var(--danger); }
-    .btn-warning { background: var(--warning); }
-    .btn-purple { background: var(--purple); }
-    .btn-blue { background: var(--blue); }
-    
-    .resumen-caja { margin-top: 20px; padding: 15px; border-radius: 8px; text-align: right; font-size: 1.2em; font-weight: bold; }
-    .resumen-ganancia { background: #e8f5e9; color: var(--success); border: 1px solid var(--success); }
-    .resumen-perdida { background: #ffebee; color: var(--danger); border: 1px solid var(--danger); }
-
-    .ingrediente-row { display: grid; grid-template-columns: 2fr 1fr 1fr 50px; gap: 10px; margin-bottom: 10px; background: #fdfdfd; padding: 10px; border-radius: 8px; border: 1px dashed #ccc; }
-    .tax-container { display: flex; gap: 15px; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 15px; align-items: center; border: 1px solid #eee; }
-    .tax-option { font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
-
-    .negativo { color: var(--danger) !important; font-weight: bold; }
-    .detalles-receta { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 5px; border-left: 4px solid var(--accent); animation: fadeIn 0.3s; }
-
-    @keyframes parpadeoRojo {
-  0% { background-color: transparent; }
-  50% { background-color: #ff5e57; color: white; }
-  100% { background-color: transparent; }
-}
-.alerta-parpadeo {
-  animation: parpadeoRojo 1s infinite;
-  border-radius: 5px;
-  padding: 2px 5px;
-}
-/* Parpadeo Rojo para productos en 0 */
-.alerta-critica-roja {
-    animation: parpadeoRojo 0.8s infinite;
-    color: #ff5e57;
-    font-weight: 900;
-    text-decoration: underline;
-}
-
-/* Parpadeo Naranja para stock al 20% */
-.alerta-aviso-naranja {
-    animation: parpadeoNaranja 1.5s infinite;
-    color: #ffa801;
-    font-weight: bold;
-}
-
-@keyframes parpadeoRojo {
-    0% { opacity: 1; }
-    50% { opacity: 0.2; }
-    100% { opacity: 1; }
-}
-
-@keyframes parpadeoNaranja {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-}
-
-.mobile-nav-toggle {
-  display: none;
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 2300;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #1e272e, #2f3542);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(0,0,0,.28);
-  transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease, background .3s ease;
-}
-
-#mobile-nav-backdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 2200;
-  background: rgba(0,0,0,.45);
-  backdrop-filter: blur(2px);
-}
-
-body.mobile-nav-open .mobile-nav-toggle {
-  background: linear-gradient(135deg, var(--accent), #00b894);
-  transform: rotate(90deg) scale(1.08);
-  box-shadow: 0 14px 26px rgba(5,196,107,.35);
-}
-
-#mobile-topbar {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 2240;
-  height: 48px;
-  padding: 0 10px 0 54px;
-  background: linear-gradient(135deg, #0f1419, #1e272e);
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  color: #f1f2f6;
-  align-items: center;
-  box-sizing: border-box;
-  backdrop-filter: blur(8px);
-}
-#mobile-topbar-title {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-
-@media (max-width: 900px) {
-  :root { --touch-size: 38px; }
-  body { background: #eef2f7; }
-  body.mobile-app { overscroll-behavior-y: contain; }
-  .mobile-nav-toggle { display: block; }
-  #mobile-topbar { display: flex; }
-  .login-shell { grid-template-columns: 1fr; width: min(96vw, 480px); }
-  .login-aside { display: none; }
-  .login-shell { max-height: none; }
-  .login-shell .login-box { border-radius: 16px; }
-  .main {
-    margin-left: auto;
-    margin-right: auto;
-    width: min(100%, 460px);
-    max-width: 460px;
-    box-sizing: border-box;
-    padding: calc(env(safe-area-inset-top, 0px) + 62px) 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
-    min-height: 100dvh;
-  }
-  .sidebar {
-    width: min(82vw, 290px);
-    z-index: 2250;
-    transform: translateX(-110%);
-    transition: transform .32s cubic-bezier(.22,1,.36,1);
-    box-shadow: 10px 0 26px rgba(0,0,0,.35);
-    border-right: 1px solid rgba(255,255,255,.12);
-  }
-  .sidebar.mobile-open { transform: translateX(0); }
-  body.mobile-nav-open #mobile-nav-backdrop { display: block; }
-  .card { padding: 10px; margin-bottom: 8px; border-radius: 10px; }
-  h2 { font-size: 15px; }
-  h3 { font-size: 13px; }
-  p, label, span, strong, td, th, a, li, div, input, select, textarea, button { font-size: 12px; }
-  .btn { padding: 8px 10px; font-size: 11px; min-height: var(--touch-size); }
-  input, select, textarea { padding: 8px; font-size: 13px; min-height: var(--touch-size); }
-  #module-selector {
-    padding: 12px 0 18px;
-    display: flex;
-    flex-direction: column;
-    align-items: center !important;
-    justify-content: flex-start;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-bottom: 20px;
-    gap: 12px;
-  }
-  .btn-add-module-float {
-    position: static;
-    right: auto;
-    left: auto;
-    transform: none;
-    bottom: auto;
-    width: 90vw;
-    max-width: 420px;
-    min-width: 0;
-    text-align: center;
-    margin: 10px auto 0;
-  }
-  #module-cards-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    align-items: stretch;
-    grid-auto-rows: 1fr;
-    width: 90vw;
-    max-width: 420px;
-    margin: 0 auto;
-    justify-items: stretch;
-  }
-  .module-card { width: 100% !important; min-height: 130px; height: 100%; padding: 8px; border-radius: 12px; display: flex; justify-content: center; align-items: center; }
-  .module-card h3 { font-size: 12px; margin-top: 6px; }
-  .module-card span { font-size: 34px !important; }
-  table { width: 100%; border-collapse: separate; border-spacing: 0; background: transparent; }
-  table thead { display: none; }
-  table tbody, table tr, table td { display: block; width: 100%; box-sizing: border-box; }
-  table tr {
-    background: #fff;
-    border: 1px solid #e6ebf1;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.04);
-    padding: 6px 8px;
-  }
-  table td {
-    border: none !important;
-    border-bottom: 1px dashed #eef2f6 !important;
-    padding: 8px 8px 8px 44%;
-    min-height: 36px;
-    text-align: left !important;
-    position: relative;
-    font-size: 12px;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  table td:last-child { border-bottom: none !important; }
-  table td::before {
-    content: attr(data-label);
-    position: absolute;
-    left: 8px;
-    top: 8px;
-    width: 40%;
-    color: #57606f;
-    font-weight: 700;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .35px;
-  }
-  #tabla-disponibilidad-full td:first-child,
-  #tabla-clientes-puntos td:first-child,
-  #tabla-rnc-dgii td:first-child { padding-top: 10px; }
-  #mesas-grid { grid-template-columns: repeat(4, minmax(60px,1fr)) !important; }
-  #login-overlay { padding: 12px; box-sizing: border-box; min-height: 100dvh; }
-  .login-box { width: min(96vw, 360px); padding: 14px 12px; border-radius: 14px; }
-  #module-selector { overflow-y: auto; }
-  [id^="modal-"] { padding: 10px !important; box-sizing: border-box; }
-  [id^="modal-"] > div { width: min(96vw, 520px) !important; max-height: 88dvh !important; overflow: auto !important; }
-  .ingrediente-row { grid-template-columns: 1fr; }
-  .tax-container { flex-direction: column; align-items: stretch; gap: 8px; }
-  #salida .card [style*="display:grid"] { grid-template-columns: 1fr !important; }
-  #section-user-colaboradores [style*="display:grid"] { grid-template-columns: 1fr !important; }
-  #colab-permisos-grid,
-  #section-user-colaboradores [style*="repeat(2, minmax(220px, 1fr))"],
-  #section-user-colaboradores [style*="repeat(3, minmax(170px, 1fr))"],
-  #produccion-interna [style*="grid-template-columns: 2fr 1fr 1fr auto"] {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-
-@media (max-width: 560px) {
-  #module-cards-grid { grid-template-columns: 1fr; width: 90vw; max-width: 380px; }
-  .btn-add-module-float { width: 90vw; max-width: 380px; margin-top: 8px; }
-  #mesas-grid { grid-template-columns: repeat(3, minmax(58px,1fr)) !important; }
-  .login-box { width: min(96vw, 340px); padding: 12px 10px; }
-  .mobile-nav-toggle { width: 44px; height: 44px; top: 6px; left: 8px; }
-  .sidebar a { padding: 10px 12px; font-size: 12px; }
-  .sidebar a:hover, .sidebar a.active { padding-left: 18px; }
-  h2 { font-size: 14px; }
-  table td { padding-left: 46%; font-size: 11px; }
-  table td::before { width: 42%; font-size: 10px; }
-}
-
-@media (max-width: 420px) {
-  .main { padding-left: 8px; padding-right: 8px; }
-  .card { padding: 12px 10px; }
-  .btn { font-size: 11px; padding: 9px 10px; }
-  #mesas-grid { grid-template-columns: repeat(3, minmax(64px,1fr)) !important; gap: 6px !important; }
-  .module-card h3 { font-size: 13px; }
-  .module-card span { font-size: 40px !important; }
-  table td { padding-left: 48%; }
-}
-
-@media (max-width: 360px) {
-  .login-box { width: 96vw; padding: 14px 10px; }
-  .btn { min-height: 40px; }
-  .sidebar { width: 88vw; }
-}
-
-@media (max-height: 760px) {
-  .login-shell { max-height: none; }
-  .login-aside { padding: 20px; }
-  .login-box { padding: 24px 20px; }
-}
-
-@media (max-width: 900px) {
-  body.mobile-web-like #inventario .card,
-  body.mobile-web-like #distribuidores .card,
-  body.mobile-web-like #produccion-interna .card,
-  body.mobile-web-like #disponibilidad .card,
-  body.mobile-web-like #salida .card,
-  body.mobile-web-like #procedimientos .card {
-    overflow: hidden;
-  }
-
-  body.mobile-web-like table {
-    display: block !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    border-collapse: collapse !important;
-    background: #fff;
-  }
-  body.mobile-web-like table thead { display: table-header-group !important; }
-  body.mobile-web-like table tbody { display: table-row-group !important; }
-  body.mobile-web-like table tr { display: table-row !important; background: transparent !important; border: none !important; margin: 0 !important; box-shadow: none !important; padding: 0 !important; }
-  body.mobile-web-like table th,
-  body.mobile-web-like table td {
-    display: table-cell !important;
-    position: static !important;
-    min-height: 0 !important;
-    padding: 9px !important;
-    font-size: 12px !important;
-    white-space: nowrap !important;
-    border-bottom: 1px solid #f1f2f6 !important;
-    text-align: left !important;
-  }
-  body.mobile-web-like table td::before { content: none !important; display: none !important; }
-
-  body.mobile-web-like #inventario .card > div[style*="grid-template-columns: 1fr 1fr 1fr"] {
-    grid-template-columns: 1fr 1fr !important;
-  }
-  body.mobile-web-like #inventario #inv_nombre {
-    grid-column: 1 / -1;
-  }
-  body.mobile-web-like #distribuidores .card > div[style*="grid-template-columns: 2fr 1fr auto"] {
-    grid-template-columns: 1fr 1fr auto !important;
-  }
-  body.mobile-web-like #distribuidores .card > div[style*="grid-template-columns: 1fr 1fr 1fr"],
-  body.mobile-web-like #distribuidores .card > div[style*="grid-template-columns: 1fr auto auto"] {
-    grid-template-columns: 1fr 1fr !important;
-  }
-  body.mobile-web-like #distribuidores #dist_direccion {
-    grid-column: 1 / -1;
-  }
-  body.mobile-web-like #produccion-interna .card [style*="grid-template-columns: 2fr 1fr 1fr auto"],
-  body.mobile-web-like #salida .card [style*="grid-template-columns: 1fr 1fr"],
-  body.mobile-web-like #procedimientos .card [style*="grid-template-columns: 1fr 1fr"] {
-    grid-template-columns: 1fr !important;
-  }
-
-  body.mobile-web-like #entrenamientos .card [style*="grid-template-columns: 1fr 1fr"],
-  body.mobile-web-like #configuracion .card [style*="grid-template-columns: 1fr 1fr"],
-  body.mobile-web-like #configuracion .card [style*="grid-template-columns: 1fr 1fr auto"],
-  body.mobile-web-like #configuracion .card [style*="grid-template-columns: 1fr 1fr 1fr auto"] {
-    grid-template-columns: 1fr !important;
-  }
-
-  body.mobile-web-like #salida #btn-registrar-salida {
-    position: sticky;
-    bottom: 8px;
-    z-index: 6;
-    width: 100%;
-    box-shadow: 0 8px 20px rgba(0,0,0,.14);
-  }
-
-  body.mobile-web-like #salida .card {
-    overflow: visible;
-  }
-
-  body.mobile-web-like #configuracion table {
-    display: block !important;
-    overflow-x: auto !important;
-    width: 100% !important;
-  }
-  body.mobile-web-like #configuracion table th,
-  body.mobile-web-like #configuracion table td {
-    font-size: 11px !important;
-    padding: 7px !important;
-  }
-}
-
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  </style>
-</head>
-<body>
-
-<div id="modal-factura" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
-    <div style="background:white; width:400px; padding:20px; border-radius:10px; position:relative; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
-        <button onclick="cerrarFactura()" style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
-        
-        <div id="ticket-imprimible" style="font-family: 'Courier New', Courier, monospace; color: black;">
-            <div style="text-align:center; border-bottom: 1px dashed #000; padding-bottom:10px; margin-bottom:10px;">
-                <h2 id="factura-negocio" style="margin:0;">LuRo Control</h2>
-                <p style="margin:2px; font-size:12px;">Gestión de Ventas</p>
-                <p id="factura-fecha" style="margin:2px; font-size:11px;"></p>
-            </div>
-
-            <table style="width:100%; font-size:13px; border-collapse: collapse;">
-                <thead>
-                    <tr style="border-bottom: 1px solid #000;">
-                        <th style="text-align:left;">Cant.</th>
-                        <th style="text-align:left;">Producto</th>
-                        <th style="text-align:right;">Total</th>
-                    </tr>
-                </thead>
-                <tbody id="cuerpo-factura"></tbody>
-            </table>
-
-            <div style="border-top: 1px dashed #000; margin-top:15px; padding-top:10px;">
-                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
-                    <span>TOTAL:</span>
-                    <span id="factura-total">RD$0.00</span>
-                </div>
-            </div>
-
-            <div style="text-align:center; margin-top:20px; font-size:11px;">
-                <p>*** Gracias por su compra ***</p>
-                <p>Usuario: <span id="factura-usuario"></span></p>
-            </div>
-        </div>
-
-        <button class="btn" onclick="imprimirTicket()" style="width:100%; margin-top:20px; background:var(--accent); color:white;">🖨️ IMPRIMIR FACTURA</button>
-        
-        <button onclick="document.getElementById('modal-factura').style.display='none'" 
-                style="margin-top:10px; width:100%; padding:12px; background:var(--secondary); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; text-transform: uppercase;">
-            CERRAR VENTANA
-        ></button>
-
-        <button class="btn" id="btn-whatsapp-factura" onclick="enviarFacturaWhatsapp()" style="width:100%; margin-top:10px; background:#25D366; color:white;">
-            💬 ENVIAR POR WHATSAPP
-        ></button>
-    </div>
-</div>
-
-<div id="modal-cierre-total" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:3205; justify-content:center; align-items:center; padding:16px;">
-    <div style="background:#fff; width:min(760px,96vw); max-height:92vh; overflow:auto; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--danger);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
-            <strong>📌 Cierre Total del Turno</strong>
-            <button class="btn btn-danger" onclick="cerrarModalCierreTotal()">X</button>
-        </div>
-        <div id="cierre-total-contenido" style="padding:14px;"></div>
-        <div style="display:flex; gap:8px; justify-content:flex-end; padding:12px 14px; border-top:1px solid #eee;">
-            <button class="btn btn-blue" onclick="imprimirCierreTotal()">🖨️ IMPRIMIR CIERRE</button>
-            <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalCierreTotal()">CERRAR</button>
-        </div>
-    </div>
-</div>
-
-  <div id="login-overlay">
-    <div class="login-shell">
-      <div class="login-aside">
-        <div>
-          <span class="login-pill">Suite SaaS</span>
-          <h3>Acceso centralizado</h3>
-          <p>Autentica y gestiona todos los módulos de LuRo Control con la misma experiencia fluida, segura y responsive.</p>
-          <ul>
-            <li><span>⚡</span>Sincronización cloud y offline</li>
-            <li><span>🔒</span>Roles, permisos y auditoría</li>
-            <li><span>📊</span>Inventario, ventas y producción</li>
-            <li><span>🤝</span>Soporte directo con el equipo</li>
-          </ul>
-        </div>
-        <div class="login-meta">
-          <div>⚙️ <div><strong>99.9%</strong><div style="font-weight:600; font-size:11px; opacity:.78;">Uptime estimado</div></div></div>
-          <div>🛡️ <div><strong>Sesión segura</strong><div style="font-weight:600; font-size:11px; opacity:.78;">Cifrado local</div></div></div>
-        </div>
-      </div>
-      <div class="login-box" style="text-align:left;">
-        <h2 class="brand-title-animated" style="text-align:center;">LuRo Control</h2>
-        <div class="brand-motion-text" style="text-align:center;">El control en tus manos</div>
-        <h4>Bienvenido de nuevo</h4>
-        <p id="login-subtitle" style="margin:0 0 12px; color: #cfd8dc; font-size: 0.9em;">Accede con tu usuario maestro o colaborador.</p>
-        <div class="form-group"><input type="text" id="log_user" placeholder="Nombre de Usuario" value="Green" autocomplete="username"></div>
-        <div class="form-group"><input type="password" id="log_pass" placeholder="Contraseña" value="151515" autocomplete="current-password"></div>
-        <div class="login-remember">
-          <label><input type="checkbox" id="login-recordar"> Recordar este dispositivo</label>
-          <span style="color:#a5b1c2; font-weight:700;">Soporte: +1 829 366 6947</span>
-        </div>
-        <button id="btn-login-acceder" class="btn btn-save" style="width:100%; padding: 15px; margin-top:6px;" onclick="intentarLogin()">ACCEDER AL PANEL</button>
-        <button id="btn-olvido-login" class="btn btn-warning" style="width:100%; padding: 10px; margin-top:10px;" onclick="olvidastePassword()">¿Olvidaste tu contraseña?</button>
-        <button id="btn-contacto-dev-login" class="btn btn-blue" style="width:100%; padding:10px; margin-top:10px;" onclick="abrirModalContactoDesarrollador()">CONTACTAR CON EL DESARROLLADOR</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modal-contacto-desarrollador" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:3300; align-items:center; justify-content:center; padding:16px;">
-    <div style="width:min(560px,96vw); background:#fff; border-radius:12px; border-top:6px solid var(--blue); box-shadow:0 20px 45px rgba(0,0,0,.35);">
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
-        <strong style="font-size:16px;">Contactar con el desarrollador</strong>
-        <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalContactoDesarrollador()">X</button>
-      </div>
-      <div style="padding:14px;">
-        <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:10px; margin-bottom:10px;">
-          <div><strong>Teléfono:</strong> <span id="dev-contact-phone">+18293666947</span></div>
-          <div style="margin-top:6px;"><strong>Correo:</strong> <span id="dev-contact-email">Jssantana077@gmail.com</span></div>
-        </div>
-        <label style="font-size:12px; color:#666; font-weight:700;">Mensaje predeterminado</label>
-        <textarea id="dev-contact-message" rows="5" style="width:100%; margin-top:6px;"></textarea>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-          <button class="btn btn-blue" onclick="enviarMensajeDesarrolladorWhatsapp()">WHATSAPP</button>
-          <button class="btn btn-warning" onclick="enviarMensajeDesarrolladorEmail()">CORREO</button>
-          <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalContactoDesarrollador()">CERRAR</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="registro-inicial-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:2100; justify-content:center; align-items:center; padding:16px;">
-    <div class="login-box" style="width:min(620px, 96vw); text-align:left;">
-      <h2 style="margin-bottom:6px;">Registro Inicial</h2>
-      <p style="margin:0 0 16px; color:#d2dae2; font-size:13px;">Complete estos datos antes de ingresar al sistema.</p>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div class="form-group"><input type="text" id="reg_user" placeholder="Usuario"></div>
-        <div class="form-group"><input type="password" id="reg_pass" placeholder="Contraseña"></div>
-      </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div class="form-group"><input type="text" id="reg_phone" placeholder="Número telefónico (WhatsApp)"></div>
-        <div class="form-group"><input type="text" id="reg_business" placeholder="Nombre del negocio"></div>
-      </div>
-      <div class="form-group">
-        <label style="font-size:12px; color:#d2dae2;">Foto/Logo del negocio</label>
-        <input type="file" id="reg_logo" accept="image/*" style="color:#d2dae2;">
-      </div>
-      <div class="form-group">
-        <textarea id="reg_reason" placeholder="Motivo por el que utiliza el sistema" rows="3" style="width:100%;"></textarea>
-      </div>
-      <button class="btn btn-save" style="width:100%; padding:12px;" onclick="completarRegistroInicial()">GUARDAR REGISTRO E INGRESAR</button>
-    </div>
-  </div>
-
-  <div id="module-selector">
-    <div id="module-cards-grid"></div>
-    <button class="btn btn-add-module-float" onclick="agregarNuevoModulo()">✨ AÑADIR NUEVO MÓDULO</button>
-  </div>
-  <button id="mobile-nav-toggle" class="mobile-nav-toggle" onclick="toggleSidebarMovil(event)" aria-label="Abrir menú">☰</button>
-  <div id="mobile-topbar"><span id="mobile-topbar-title">LuRo Control</span></div>
-  <div id="mobile-nav-backdrop" onclick="cerrarSidebarMovil('backdrop')"></div>
-
- <div class="sidebar" id="sidebar">
-    <div id="sidebar-title" style="color:var(--accent); text-align:center; padding: 20px 0; font-size: 22px; font-weight: bold; letter-spacing: 1px;">COCINA</div>
-    <div class="sidebar-brand"><strong>LuRo Control</strong><span id="sidebar-brand-sub">El control en tus manos</span><div id="sidebar-brand-module" class="active-module-tag">Módulo: COCINA</div></div>
-    <div id="admin-module-links" style="display:none; margin:0 12px 12px; padding:10px; border:1px dashed rgba(255,255,255,.2); border-radius:10px; background:rgba(255,255,255,.04);">
-      <div style="font-size:11px; color:#b2bec3; margin-bottom:6px; font-weight:700;">ENLACES DE MÓDULOS</div>
-      <div id="admin-module-links-list" style="display:grid; gap:6px;"></div>
-    </div>
-    
-    <a onclick="showPage('home')" style="border-left: 15px solid var(--warning);" class="active">🏠 Inicio</a>
-    <a id="nav-item-plato" onclick="showPage('agregar')" style="border-left: 15px solid var(--warning);">🧪 Agregar Plato</a>
-
-    <div class="folder-container">
-        <a class="menu-folder" onclick="toggleFolder(this)">
-            <span>💰 COSTOS</span>
-            <span class="folder-arrow">▶</span>
-        </a>
-        <div class="folder-content">
-            <a onclick="showPage('inventario')">📦 Almacén</a>
-            <a onclick="showPage('distribuidores')">🚚 Distribuidores</a>
-            <a onclick="showPage('produccion-interna')">🏭 Producción Interna</a>
-            <a onclick="showPage('disponibilidad')">👁️ Disponibilidad</a>
-            <a onclick="showPage('salida')">📤 Registrar Salida</a>
-            <a onclick="showPage('entrenamientos')">🎓 Entrenamientos</a>
-            <a onclick="showPage('procedimientos')">📘 Procedimientos</a>
-            <a onclick="showPage('clientes-puntos')">👥 Clientes y Puntos</a>
-        </div>
-    </div>
-
-<div class="folder-container">
-    <a class="menu-folder" onclick="toggleFolder(this)">
-        <span>🕙 HISTORIAL</span>
-        <span class="folder-arrow">▶</span>
-    </a>
-    <div class="folder-content">
-        <a onclick="showPage('historial-produccion')">📜 Historial Producción</a>
-        <a onclick="showPage('entradas-almacen')">📥 Entradas Almacén</a>
-        <a onclick="showPage('ventas')">📊 Historial de Ventas</a>
-        <a onclick="showPage('reporte-compras-distribuidor')">📑 Reporte Compras Distribuidor</a>
-        <a onclick="showPage('rnc-dgii')">🧾 Resumen de facturas</a> 
-        <a onclick="showPage('autorizaciones')">✅ Autorizaciones</a>
-        <a onclick="showPage('historial-decomiso')">📑 Historial Decomiso</a>
-    </div>
-</div>
-
-    <a onclick="showPage('decomiso')" style="border-left: 15px solid var(--warning);">🗑️ Registrar Decomiso</a>
-    <a onclick="showPage('produccion')" style="border-left: 15px solid var(--warning);">📊 Departamentos A-B-C</a>
-    
-    <a id="btn-config-nav" onclick="showPage('configuracion')" style="background: #1e272e; margin-top: 10px;">⚙️ Configuración</a>
-    <a onclick="cerrarSesion()" style="background:var(--danger); margin-top:20px; text-align:center;">Cerrar Sesión</a>
-    <a onclick="regresarAModulos()" style="background:var(--secondary); text-align:center; border-top: 1px solid rgba(255,255,255,0.1);">🔄 Cambiar Módulo</a>
-    <a onclick="cambiarUsuario()" style="background:var(--primary); text-align:center; border-top: 1px solid rgba(255,255,255,0.1);">👤 Cambiar de Usuario</a>
-</div>
-
-  <div class="main" id="main-content">
-    <div id="home" class="content-section active">
-        <div class="card">
-            <h2>Panel de Control General</h2>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div style="background:#f8f9fa; padding:15px; border-radius:10px;">
-                    <span style="color:gray; font-size:12px;">USUARIO ACTIVO</span><br>
-                    <strong id="session-user" style="font-size:18px;"></strong>
-                </div>
-                <div style="background:#f8f9fa; padding:15px; border-radius:10px;">
-                    <span style="color:gray; font-size:12px;">MODO ACTUAL</span><br>
-                    <strong id="current-module-display" style="font-size:18px;"></strong>
-                </div>
-            </div>
-
-            <div style="margin-top:18px; background:#f8f9fa; padding:15px; border-radius:10px; border-left:5px solid var(--accent);">
-                <span style="color:gray; font-size:12px;">DATOS DEL REGISTRO INICIAL</span>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px;">
-                    <div>
-                        <span style="color:gray; font-size:11px;">USUARIO REGISTRADO</span><br>
-                        <strong id="home-reg-user">-</strong>
-                    </div>
-                    <div>
-                        <span style="color:gray; font-size:11px;">NEGOCIO</span><br>
-                        <strong id="home-reg-business">-</strong>
-                    </div>
-                    <div>
-                        <span style="color:gray; font-size:11px;">WHATSAPP DEL NEGOCIO</span><br>
-                        <strong id="home-reg-phone">-</strong>
-                    </div>
-                    <div>
-                        <span style="color:gray; font-size:11px;">FECHA DE REGISTRO</span><br>
-                        <strong id="home-reg-created">-</strong>
-                    </div>
-                </div>
-                <div style="margin-top:12px;">
-                    <span style="color:gray; font-size:11px;">MOTIVO DE USO</span><br>
-                    <span id="home-reg-reason" style="font-weight:600;">-</span>
-                </div>
-                <div style="margin-top:12px;">
-                    <span style="color:gray; font-size:11px;">PERFIL DEL NEGOCIO</span><br>
-                    <img id="home-reg-logo" src="" alt="Perfil negocio" style="display:none; width:88px; height:88px; object-fit:cover; border-radius:10px; border:1px solid #ddd; margin-top:6px;">
-                </div>
-                <div style="margin-top:12px; display:flex; justify-content:flex-end;">
-                    <button id="home-btn-eliminar-registro" class="btn btn-danger" onclick="eliminarRegistroInicialDesdeInicio()">🧨 ELIMINAR REGISTRO INICIAL</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="agregar" class="content-section">
-      <div class="card">
-        <h2 id="titulo-receta">🧪 Crear Receta Nueva</h2>
-        <div id="alerta-existente" style="display:none; background:#fff3cd; color:#856404; padding:10px; border-radius:8px; margin-bottom:15px; font-size:13px;">
-            ⚠️ Este plato ya existe. Si continúa, se actualizará la receta actual.
-        </div>
-        <div class="form-group">
-          <label id="label-nombre-item">Nombre del Plato</label>
-          <input type="text" id="p_nombre" onkeyup="verificarPlatoExistente()" placeholder="Ej. Pollo a la Plancha">
-        </div>
-        <div class="tax-container">
-          <span style="font-size: 12px; color: var(--secondary);">IMPUESTOS:</span>
-          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.13" onclick="recalcularCostoReceta()"> Cobertura 13%</label>
-          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.10" onclick="recalcularCostoReceta()"> Añadir 10%</label>
-          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.16" onclick="recalcularCostoReceta()"> Añadir 16%</label>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div class="form-group"><label>Costo Producción (RD$)</label><input type="number" id="p_costo" value="0.00" readonly style="background: #f1f2f6;"></div>
-          <div class="form-group" id="row-tax-visual" style="display:none;">
-            <label style="color: var(--purple); font-weight: bold;">Costo con Impuestos (RD$)</label>
-            <input type="number" id="p_costo_tax" value="0.00" readonly style="background: #fff0f3; border: 1px solid var(--purple);">
-          </div>
-        </div>
-        <div class="form-group">
-          <label style="color: var(--success); font-weight: bold;">Venta Recomendada (x3) (RD$)</label>
-          <input type="number" id="p_recom" value="0.00" readonly style="background: #e8f5e9; border: 1px solid var(--success);">
-        </div>
-        <div class="form-group">
-          <label>Precio de Venta Final (RD$)</label>
-          <input type="number" id="p_precio" placeholder="Ingrese el precio final">
-        </div>
-        <div id="contenedor-ingredientes"></div>
-        <button class="btn btn-warning" onclick="agregarFilaIngrediente()" style="width:100%; margin-top:10px;">+ VINCULAR INGREDIENTE (ALMACÉN / PROD)</button>
-        <button class="btn btn-save" id="btn-guardar-plato" onclick="guardarPlatoNuevo()" style="width:100%; margin-top:15px;">GUARDAR EN EL MENÚ</button>
-      </div>
-    </div>
-
-<div id="inventario" class="content-section">
-      <div class="card">
-        <h2>📦 Almacén de Suministros</h2>
-        
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="text" id="inv_nombre" placeholder="Nombre del Producto (ej. Yuca)">
-          <select id="inv_dist_select">
-            <option value="">Distribuidor / Proveedor</option>
-          </select>
-          <select id="inv_unidad">
-            <option value="" disabled selected>Unidad de Medida</option>
-            <option value="Lb">Libras (Lb)</option>
-            <option value="Oz">Onzas (Oz)</option>
-            <option value="g">Gramos (g)</option>
-            <option value="mL">Mililitros (mL)</option>
-            <option value="Litros">Litros</option>
-            <option value="Unidad">Unidad</option>
-          </select>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:15px;">
-          <div title="Cantidad que está entrando físicamente">
-             <label style="font-size: 10px; color: #666;">CANT. ENTRADA</label>
-             <input type="number" id="inv_actual" placeholder="0.00">
-          </div>
-          <div title="Nivel de stock que siempre deberías tener">
-             <label style="font-size: 10px; color: #666;">STOCK IDEAL (META)</label>
-             <input type="number" id="inv_ideal" placeholder="0.00">
-          </div>
-          <div title="Precio total pagado por esta entrada">
-             <label style="font-size: 10px; color: #666;">COSTO TOTAL (RD$)</label>
-             <input type="number" id="inv_costo_total" placeholder="0.00">
-          </div>
-        </div>
-
-        <button class="btn btn-save" style="width:100%" onclick="agregarAlmacen()">REGISTRAR ENTRADA</button>
-        <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; margin-top:10px;">
-            <div style="font-size:12px; color:#666; align-self:center;">Puede seleccionar el mejor proveedor desde el comparador de distribuidores.</div>
-            <button class="btn btn-purple" onclick="buscarMejorProveedorEnAlmacen()">🏆 MEJOR PROVEEDOR</button>
-        </div>
-        
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button class="btn" style="flex: 1; background-color: #3498db;" onclick="entradaAutomaticaMasiva()">
-                🧮 RELLENAR STOCK IDEAL
-            ></button>
-            <button class="btn btn-blue" style="flex: 1; background-color: #25D366;" onclick="enviarPedidoWhatsapp()">
-                🛒 LISTA DE COMPRAS (WA)
-            ></button>
-        </div>
-
-        <button class="btn btn-danger" style="width: 100%; margin-top: 10px; background-color: #ff5e57;" onclick="borrarTodoElAlmacen()">
-    🗑️ ELIMINAR TODO EL ALMACÉN
-></button>
-
-        <div style="margin-top: 20px; position: relative;">
-            <input type="text" id="buscarProductoAlmacen" placeholder="🔎 Buscar producto en inventario..." 
-                   onkeyup="resaltarProducto()" 
-                   style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; background-color: #f9f9f9;">
-        </div>
-
-        <div style="overflow-x: auto; margin-top: 15px;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Producto (Existencia Ideal)</th>
-                        <th>Disponible</th>
-                        <th>Costo Unit. (RD$)</th>
-                        <th>Faltante</th>
-                        <th>Costo p/ Faltante</th> 
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-inventario">
-                    </tbody>
-            </table>
-        </div>
-      </div>
-    </div>
-
-    <div id="distribuidores" class="content-section">
-      <div class="card">
-        <h2>🚚 Gestión de Distribuidores</h2>
-        <div style="display:grid; grid-template-columns: 2fr 1fr auto; gap:10px; margin-bottom:10px;">
-          <input type="text" id="dist_nombre" placeholder="Nombre del distribuidor (ej. Pricesmart)">
-          <select id="dist_estado">
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-          </select>
-          <button class="btn btn-save" onclick="guardarDistribuidor()">GUARDAR</button>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="text" id="dist_contacto" placeholder="Contacto">
-          <input type="text" id="dist_telefono" placeholder="Teléfono">
-          <input type="email" id="dist_email" placeholder="Email">
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr auto auto; gap:10px; margin-bottom:10px;">
-          <input type="text" id="dist_direccion" placeholder="Dirección">
-          <button class="btn btn-warning" onclick="limpiarFormularioDistribuidor()">LIMPIAR</button>
-          <button class="btn btn-danger" onclick="eliminarDistribuidorSeleccionado()">ELIMINAR</button>
-        </div>
-        <input type="hidden" id="dist_edit_id">
-        <table>
-          <thead><tr><th>Distribuidor</th><th>Estado</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th>Alerta Producto</th><th>Productos</th><th>Acción</th></tr></thead>
-          <tbody id="tabla-distribuidores"></tbody>
-        </table>
-      </div>
-
-    </div>
-
-    <div id="modal-catalogo-distribuidor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2700; align-items:center; justify-content:center; padding:14px;">
-      <div style="width:min(900px, 97vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--purple); box-shadow:0 18px 40px rgba(0,0,0,.35);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
-          <strong id="modal-catalogo-titulo" style="font-size:18px; color:var(--primary);">Productos del Distribuidor</strong>
-          <button class="btn btn-danger" onclick="cerrarModalCatalogoDistribuidor()">X</button>
-        </div>
-        <div style="padding:14px;">
-          <input type="hidden" id="modal-catalogo-dist-id" value="">
-          <table>
-            <thead><tr><th>Producto</th><th>Unidad</th><th>Precio</th><th>Disponible</th><th>Actualizado</th><th>Acción</th></tr></thead>
-            <tbody id="modal-catalogo-productos-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div id="modal-gestion-productos-distribuidor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2750; align-items:center; justify-content:center; padding:14px;">
-      <div style="width:min(980px, 98vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--accent); box-shadow:0 18px 40px rgba(0,0,0,.35);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
-          <strong id="dist-productos-titulo" style="font-size:18px; color:var(--primary);">Productos del distribuidor seleccionado</strong>
-          <button class="btn btn-danger" onclick="cerrarModalProductosDistribuidor()">X</button>
-        </div>
-        <div style="padding:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
-            <div style="font-size:12px; color:#666;">Seleccione productos para pedir por WhatsApp.</div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <label style="font-size:12px; color:#555; display:flex; align-items:center; gap:5px;">
-                <input type="checkbox" id="dist-prod-select-all" onchange="seleccionarTodosProductosDistribuidor(this.checked)"> Seleccionar todos
-              </label>
-              <button class="btn btn-blue" onclick="pedirProductosDistribuidorSeleccionados()">PEDIR</button>
-            </div>
-          </div>
-          <input type="hidden" id="dist-productos-dist-id" value="">
-          <table>
-            <thead><tr><th></th><th>Producto</th><th>Unidad</th><th>Precio</th><th>Faltante</th><th>Disponible</th><th>Acción</th></tr></thead>
-            <tbody id="tabla-dist-productos"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div id="modal-detalle-compra-distribuidor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2760; align-items:center; justify-content:center; padding:14px;">
-      <div style="width:min(900px, 98vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--blue); box-shadow:0 18px 40px rgba(0,0,0,.35);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
-          <strong id="detalle-compra-dist-titulo" style="font-size:18px; color:var(--primary);">Detalle de Compra</strong>
-          <button class="btn btn-danger" onclick="cerrarModalDetalleCompraDistribuidor()">X</button>
-        </div>
-        <div style="padding:14px;">
-          <table>
-            <thead><tr><th>Producto</th><th>Cantidad</th><th>Medida</th><th>Monto Entrada</th></tr></thead>
-            <tbody id="tabla-detalle-compra-distribuidor"></tbody>
-          </table>
-          <div id="total-detalle-compra-distribuidor" class="resumen-caja resumen-ganancia" style="margin-top:10px;"></div>
-        </div>
-      </div>
-    </div>
-
-    <div id="produccion-interna" class="content-section">
-      <div class="card">
-        <h2>🏭 Gestión de Producción (Semielaborados)</h2>
-        <p style="font-size: 0.9em; color: #666;">Cree productos preparados a partir de insumos del almacén.</p>
-        
-        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; margin-bottom:15px;">
-          <input type="text" id="prod_nombre" placeholder="Nombre de la Producción (Ej: Salsa Boloñesa)">
-          <input type="number" id="prod_cantidad" placeholder="Cant. Producida">
-          <select id="prod_unidad">
-            <option value="g">g</option>
-            <option value="mL">mL</option>
-            <option value="Lb">Lb</option>
-            <option value="Lt">Litros</option>
-            <option value="Oz">Oz</option>
-            <option value="Unidad">Unidad</option>
-          </select>
-          <button class="btn btn-purple" onclick="agregarFilaIngredienteProduccion()">+ Insumo</button>
-        </div>
-
-        <div id="contenedor-insumos-produccion" style="margin-bottom: 15px;"></div>
-        
-        <button class="btn btn-save" style="width:100%" onclick="procesarNuevaProduccion()">FINALIZAR Y CARGAR A PRODUCCIÓN</button>
-        
-        <h3 style="margin-top:30px;">Inventario de Producción Actual</h3>
-        <table>
-          <thead>
-            <tr><th>Producto</th><th>Existencia Disponible</th><th>Costo Unit. (RD$)</th><th>Acciones</th></tr>
-          </thead>
-          <tbody id="tabla-stock-produccion"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="historial-produccion" class="content-section">
-      <div class="card">
-        <h2>📜 Historial de Producción <button class="btn btn-danger" onclick="limpiarHistorial('produccion')">BORRAR TODO</button></h2>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="date" id="filtro-prod-desde" onchange="renderHistorialProduccion()">
-          <input type="date" id="filtro-prod-hasta" onchange="renderHistorialProduccion()">
-        </div>
-        <table>
-          <thead>
-            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Costo Op.</th><th>Operador</th></tr>
-          </thead>
-          <tbody id="tabla-historial-produccion"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="entradas-almacen" class="content-section">
-      <div class="card">
-        <h2>📥 Registro de Entradas <button class="btn btn-danger" onclick="limpiarHistorial('entradas')">BORRAR TODO</button></h2>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="date" id="filtro-entradas-desde" onchange="renderEntradas()">
-          <input type="date" id="filtro-entradas-hasta" onchange="renderEntradas()">
-        </div>
-        <table><thead><tr><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Medida</th><th>Operador</th></tr></thead><tbody id="tabla-registro-entradas"></tbody></table>
-      </div>
-    </div>
-
-    <div id="rnc-dgii" class="content-section">
-      <div class="card">
-        <h2>🧾 Resumen de facturas <button class="btn btn-danger" onclick="limpiarHistorial('rnc')">BORRAR TODO</button></h2>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="date" id="filtro-rnc-desde" onchange="actualizarTablaRNC()">
-          <input type="date" id="filtro-rnc-hasta" onchange="actualizarTablaRNC()">
-        </div>
-        <input type="text" id="busqueda-rnc-clientes" onkeyup="actualizarTablaRNC()" placeholder="Buscar por cliente, RNC/Cédula, NCF, mesa, código o WhatsApp..." style="width:100%; margin-bottom:10px; padding:12px;">
-        <table>
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Operador</th>
-              <th>Mesa</th>
-              <th>Cliente</th>
-              <th>NCF</th>
-              <th>RNC / Cédula</th>
-              <th>Código</th>
-              <th>Total</th>
-              <th>WhatsApp</th>
-            </tr>
-          </thead>
-          <tbody id="tabla-rnc-dgii"></tbody>
-        </table>
-      </div>
-    </div>
-
-<div id="disponibilidad" class="content-section">
-    <div class="card">
-        <div class="card" style="border-top: 5px solid var(--blue); background: #f1f2f6;">
-            <h3 style="font-size: 14px; color: var(--secondary); margin-bottom: 10px;">💹 AJUSTE MASIVO DE PRECIOS (COSTO DE VENTA)</h3>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.05)">+5%</button>
-                <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.10)">+10%</button>
-                <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.15)">+15%</button>
-                <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.20)">+20%</button>
-                <button class="btn btn-purple" onclick="validarYEjecutarAjuste('manual')">MANUAL</button>
-                
-                <button class="btn btn-danger" onclick="borrarTodoElMenu()" style="margin-left: 10px;">🗑️ BORRAR TODO EL MENÚ</button>
-                
-                <button id="btn-revertir" class="btn btn-danger" style="display:none; margin-left: auto;" onclick="revertirCambioPrecio()">↩️ REVERTIR</button>
-            </div>
-        </div>
-
-        <h2>📋 Disponibilidad del Menú</h2>
-        <table>
-            <thead id="thead-disponibilidad-full">
-                <tr>
-                    <th>Plato / Receta</th>
-                    <th>Precio</th>
-                    <th>Existencia</th>
-                    <th>Nueva Existencia</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="tabla-disponibilidad-full"></tbody>
-        </table>
-    </div>
-</div>
-
-    <div id="ventas" class="content-section">
-      <div class="card">
-        <h2>📊 Historial Ventas <button class="btn btn-danger" onclick="limpiarHistorial('ventas')">BORRAR TODO</button></h2>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="date" id="filtro-ventas-desde" onchange="renderHistorialVentas()">
-          <input type="date" id="filtro-ventas-hasta" onchange="renderHistorialVentas()">
-        </div>
-        <table><thead><tr><th>Fecha</th><th>Ítem</th><th>Total</th><th>Ganancia</th><th>Operador</th></tr></thead><tbody id="tabla-historial-ventas"></tbody></table>
-        <div id="total-ganancias-cuadro" class="resumen-caja resumen-ganancia"></div>
-      </div>
-    </div>
-
-    <div id="autorizaciones" class="content-section">
-        <div class="card">
-          <h2>✅ Historial de Autorizaciones <button class="btn btn-danger" onclick="limpiarHistorial('autorizaciones')">BORRAR TODO</button></h2>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-            <input type="date" id="filtro-auth-desde" onchange="renderAutorizaciones()">
-            <input type="date" id="filtro-auth-hasta" onchange="renderAutorizaciones()">
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Operador</th>
-                <th>Ítem</th>
-                <th>Ingredientes en 0</th>
-                <th>Motivo</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-historial-autorizaciones"></tbody>
-          </table>
-        </div>
-    </div>
-
-    <div id="historial-decomiso" class="content-section">
-      <div class="card">
-        <h2>📑 Historial Decomiso <button class="btn btn-danger" onclick="limpiarHistorial('decomisos')">BORRAR TODO</button></h2>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="date" id="filtro-decomiso-desde" onchange="renderHistorialDecomiso()">
-          <input type="date" id="filtro-decomiso-hasta" onchange="renderHistorialDecomiso()">
-        </div>
-        <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Cant.</th><th>Medida</th><th>Pérdida (RD$)</th><th>Operador</th></tr></thead><tbody id="tabla-historial-decomiso"></tbody></table>
-        <div id="total-perdidas-cuadro" class="resumen-caja resumen-perdida"></div>
-      </div>
-    </div>
-
-    <div id="reporte-compras-distribuidor" class="content-section">
-      <div class="card">
-        <h2>📑 Reporte de Compras por Distribuidor</h2>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="date" id="filtro-compra-dist-desde" onchange="renderHistorialComprasDistribuidor()">
-          <input type="date" id="filtro-compra-dist-hasta" onchange="renderHistorialComprasDistribuidor()">
-        </div>
-        <table>
-          <thead><tr><th>Distribuidor</th><th>Entradas</th><th>Monto</th><th>Última Compra</th></tr></thead>
-          <tbody id="tabla-historial-compras-distribuidor"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="clientes-puntos" class="content-section">
-      <div class="card">
-        <h2>👥 Registro de Clientes y Puntos</h2>
-        <div style="margin-bottom:12px; padding:12px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
-          <strong style="display:block; margin-bottom:8px; color:var(--secondary);">📋 Tipos de Planes de Membresía</strong>
-          <div id="plan-membresia-resumen" style="font-size:17px; font-weight:800; color:#2f3542; margin:6px 0 10px; padding:10px; background:#fff; border-left:5px solid var(--blue); border-radius:8px;">Plan actual no configurado.</div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-            <button class="btn btn-danger" onclick="limpiarClientesPuntosMasivo()">ELIMINAR TODOS LOS CLIENTES</button>
-          </div>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
-          <input type="text" id="cliente_nombre_reg" placeholder="Nombre del cliente">
-          <input type="text" id="cliente_cedula_reg" placeholder="Cédula">
-          <input type="text" id="cliente_telefono_reg" placeholder="Teléfono">
-          <button class="btn btn-save" onclick="registrarClientePuntos()">REGISTRAR</button>
-        </div>
-        <input type="text" id="clientes-puntos-buscar" onkeyup="renderTablaClientesPuntos()" placeholder="Buscar por cédula o código generado (CLI-00001)..." style="width:100%; margin-bottom:10px; padding:12px;">
-        <div id="clientes-puntos-resumen" style="font-size:12px; color:#666; margin-bottom:8px;">Sin clientes registrados.</div>
-        <table>
-          <thead><tr><th>Nombre</th><th>Cédula</th><th>Código</th><th>Teléfono</th><th>Puntos</th><th>RD$ Acumulado</th><th>Membresía / Suscripción</th><th>QR</th><th>Acción</th></tr></thead>
-          <tbody id="tabla-clientes-puntos"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="configuracion" class="content-section">
-        <div class="card">
-            <h2>⚙️ Configuración</h2>
-            <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
-              <button class="btn btn-danger" onclick="realizarCierreTotalConCodigo()">CIERRE TOTAL</button>
-            </div>
-            <div id="section-cloud-masters" style="margin-bottom:20px; padding:12px; border:1px solid #dfe6e9; border-radius:10px; background:#f8fafc;">
-              <h3 style="margin:0 0 10px; color:var(--blue);">☁️ Usuarios Maestros en la Nube</h3>
-              <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
-                <input id="cloud-owner-username" type="text" placeholder="Username">
-                <input id="cloud-owner-pass" type="password" placeholder="Contraseña">
-                <input id="cloud-owner-empresa" type="text" placeholder="Empresa">
-                <button class="btn btn-blue" onclick="crearOwner()">GUARDAR EN FIRESTORE</button>
-              </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                <button class="btn btn-save" onclick="subirBaseActualAlCloud()">☁️ SUBIR BASE ACTUAL AL CLOUD</button>
-                <button class="btn btn-warning" onclick="descargarBaseDesdeCloud()">⬇️ DESCARGAR BASE DESDE CLOUD</button>
-              </div>
-              <div id="cloud-sync-status" style="font-size:12px; color:#666; margin-bottom:8px;">Sincronización manual disponible.</div>
-              <div id="cloud-owner-status" style="font-size:12px; color:#666; margin-bottom:8px;">Conectando a Firebase...</div>
-              <ul id="cloud-owner-lista" style="margin:0; padding-left:18px; max-height:180px; overflow:auto;"></ul>
-            </div>
-            <div id="section-my-security" style="margin-bottom:30px; padding:15px; border:1px solid #eee; border-radius:10px;">
-              <h3>🔒 Seguridad</h3>
-              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px;">
-                  <input type="password" id="my_old_pass" placeholder="Clave Actual">
-                  <input type="password" id="my_new_pass" placeholder="Clave Nueva">
-                  <input type="password" id="my_new_pass_confirm" placeholder="Confirmar Nueva">
-                  <button class="btn btn-warning" onclick="cambiarMiPassword()">ACTUALIZAR</button>
-              </div>
-            </div>
-            <div id="section-registro-backups" style="margin-bottom:30px; padding:15px; border:1px solid #eee; border-radius:10px;">
-                <h3 style="color: var(--blue);">🧾 Copias de Seguridad del Registro Inicial</h3>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-                    <button class="btn btn-warning" onclick="desbloquearCopiasRegistroConPassword()">📂 VER COPIAS (CONTRASEÑA)</button>
-                    <button class="btn btn-blue" onclick="crearCopiaRegistroManual()">🧾 CREAR COPIA</button>
-                </div>
-                <div id="config-registro-backups-status" style="font-size:12px; color:#666; margin-bottom:8px;">Copias bloqueadas. Ingrese contraseña para visualizar.</div>
-                <table>
-                    <thead><tr><th>Fecha Copia</th><th>Motivo</th><th>Fecha Eliminado</th><th>Eliminado Por</th><th>Acción</th></tr></thead>
-                    <tbody id="config-registro-backups-body"><tr><td colspan="5" style="text-align:center; color:#777;">Copias bloqueadas.</td></tr></tbody>
-                </table>
-            </div>            <div id="section-admin-master" style="display:none; margin-bottom:30px; padding:15px; border:2px solid var(--accent); border-radius:10px;">
-                <h3 style="color: var(--accent);">👑 Usuarios Maestros</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:10px;">
-                    <input type="text" id="new_u_name" placeholder="Nuevo Admin">
-                    <input type="password" id="new_u_pass" placeholder="Clave">
-                    <div style="display:flex; gap:8px;">
-                        <button class="btn btn-blue" onclick="abrirModalPagoUsuarioMaestro()">REGISTRAR PAGO</button>
-                        <button class="btn btn-save" onclick="crearUsuario()">AÑADIR</button>
-                    </div>
-                </div>
-                <div id="new_u_payment_status" style="font-size:12px; color:#666; margin-bottom:15px;">Debe registrar método de pago antes de añadir el usuario.</div>
-                <table><thead><tr><th>Usuario</th><th>Estado</th><th>Método de Pago</th><th>Cobro</th><th>Acción</th></tr></thead><tbody id="lista-usuarios-tabla"></tbody></table>
-            </div>
-            <div id="section-user-colaboradores" style="padding:15px; border:1px solid #eee; border-radius:10px;">
-                <h3 style="color: var(--purple);">👥 Gestión de Mi Equipo</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:10px;">
-                    <input type="text" id="colab_name" placeholder="Nombre Miembro">
-                    <input type="password" id="colab_pass" placeholder="Clave Acceso">
-                    <button class="btn btn-purple" onclick="crearColaborador()">AÑADIR</button>
-                </div>
-                <div style="margin-bottom:10px; font-size:12px; color: var(--secondary);">
-                    Se pedirá la clave de un <strong>Usuario Maestro</strong> para autorizar la creación del colaborador.
-                </div>
-                <div style="margin-bottom:15px; padding:10px; border:1px dashed #ccc; border-radius:8px;">
-                    <strong style="display:block; margin-bottom:8px; color: var(--secondary);">Renglones que utilizará el colaborador (módulos/casillas)</strong>
-                    <div style="margin-bottom:8px;">
-                        <label><input type="checkbox" id="colab-group-admin" class="colab-perm-group" onchange="togglePermisosGrupo('admin', this.checked)"> &#x1F4CB; ÁREAS GENERALES (marcar/desmarcar todo)</label>
-                    </div>
-                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="agregar"> 🧪 Agregar Plato</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="clientes-puntos"> &#x1F465; Clientes y Puntos</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="entrenamientos"> &#x1F393; Entrenamientos</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="procedimientos"> &#x1F4D8; Procedimientos</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="configuracion"> &#x2699;&#xFE0F; Configuración</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="comandas"> &#x1F9FE; Comandas</label>
-                    </div>
-                    <div style="margin-bottom:8px;">
-                        <label><input type="checkbox" id="colab-group-costos" class="colab-perm-group" onchange="togglePermisosGrupo('costos', this.checked)"> &#x1F4B0; COSTOS (marcar/desmarcar todo)</label>
-                    </div>
-                    <div id="colab-permisos-grid" style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="inventario"> &#x1F4E6; Almacén</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="distribuidores"> &#x1F69A; Distribuidores</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="produccion-interna"> &#x1F3ED; Producción Interna</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad"> 👁️ Disponibilidad (completa)</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad-lite"> 🔎 Disponibilidad (básica)</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="salida"> &#x1F4E4; Registrar Salida</label>
-                    </div>
-                    <div style="margin-bottom:8px;">
-                        <label><input type="checkbox" id="colab-group-historial" class="colab-perm-group" onchange="togglePermisosGrupo('historial', this.checked)"> &#x1F559; HISTORIAL (marcar/desmarcar todo)</label>
-                    </div>
-                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-produccion"> &#x1F4DC; Historial Producción</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="entradas-almacen"> &#x1F4E5; Entradas Almacén</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="ventas"> &#x1F4CA; Historial de Ventas</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="reporte-compras-distribuidor"> &#x1F4D1; Compras Distribuidor</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="rnc-dgii"> &#x1F9FE; Resumen de facturas</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="autorizaciones"> ✅ Autorizaciones</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-decomiso"> &#x1F5C2;&#xFE0F; Historial Decomiso</label>
-                    </div>
-                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px;">
-                        <label><input type="checkbox" class="colab-perm" value="decomiso"> &#x1F5D1;&#xFE0F; Registrar Decomiso</label>
-                        <label><input type="checkbox" class="colab-perm" value="produccion"> &#x1F4CA; Departamentos A-B-C</label>
-                    </div>
-                </div>
-                <div style="margin-bottom:15px; padding:10px; border:1px dashed #ccc; border-radius:8px;">
-                    <strong style="display:block; margin-bottom:8px; color: var(--secondary);">Asignaciones de Entradas</strong>
-                    <div style="display:grid; grid-template-columns: repeat(3, minmax(170px, 1fr)); gap:8px;">
-                        <label><input type="checkbox" class="colab-entry" value="manual"> Registrar entrada manual</label>
-                        <label><input type="checkbox" class="colab-entry" value="automatica"> Entrada automática masiva</label>
-                        <label><input type="checkbox" class="colab-entry" value="historial"> Ver historial de entradas</label>
-                    </div>
-                </div>
-                <table><thead><tr><th>Nombre</th><th>Dueño</th><th>Estado</th><th>Renglones</th><th>Entradas</th><th>Acción</th></tr></thead><tbody id="lista-colab-tabla"></tbody></table>
-            </div>
-        </div>
-    </div>
-
-<div id="salida" class="content-section">
-    <div id="salida-layout" style="display:grid; grid-template-columns:1fr; gap:14px;">
-        <div class="card" id="salida-selector-card">
-            <h2>🧪 Seleccionar Platos</h2>
-            <div style="margin-bottom:12px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
-                <strong id="mesas-total-label" style="display:block; margin-bottom:8px; color:var(--secondary);">Mesas (40)</strong>
-                <div id="mesas-grid" style="display:grid; grid-template-columns:repeat(8, minmax(72px, 1fr)); gap:6px; max-height:320px; overflow:auto;"></div>
-            </div>
-            <div style="position: relative;">
-                <input type="text" id="busqueda-plato" onkeyup="buscarPlatoVenta()" placeholder="Escriba nombre del plato..." style="width:100%; margin-bottom:10px; padding: 12px;">
-            </div>
-            <div id="contenedor-salidas-busqueda" style="max-height: 400px; overflow-y: auto; border-radius: 8px;">
-                </div>
-        </div>
-
-        <div class="card" id="salida-facturacion-card" style="border-left: 5px solid var(--accent); background: #fff;">
-            <h2 style="color: #333;">🧾 Detalle de Venta</h2>
-            <div style="margin:-6px 0 10px; font-weight:bold; color:var(--secondary);">Mesa activa: <span id="mesa-activa-label" style="color:var(--accent);">Mesa 1</span></div>
-            <div style="display:grid; grid-template-columns: 1fr auto; gap:8px; margin-bottom:10px;">
-                <input type="text" id="mesa-nombre-input" placeholder="Cambiar nombre de la mesa (cliente)">
-                <button class="btn btn-blue" onclick="renombrarMesaActiva()">RENOMBRAR</button>
-            </div>
-            <div style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
-                <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Datos del cliente</div>
-                <input type="hidden" id="venta-cliente-rnc">
-                <input type="hidden" id="venta-cliente-telefono">
-                <input type="hidden" id="venta-cliente-nombre">
-                <div id="venta-cliente-estado" style="display:none;">Cliente sin identificar.</div>
-                <button class="btn btn-blue" onclick="abrirModalRegistrarClienteVenta()">+ AÑADIR CLIENTE</button>
-            </div>
-            <div style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
-                <div style="font-size:12px; color:var(--secondary); margin-bottom:8px;">
-                    Tiempo en uso: <strong id="mesa-tiempo-uso">00:00</strong>
-                </div>
-                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
-                    <button class="btn btn-warning" onclick="abrirModalMesaAccion('mover')">MOVILIZAR PLATOS</button>
-                    <button class="btn btn-purple" onclick="abrirModalMesaAccion('unir')">UNIR MESAS</button>
-                    <button class="btn btn-danger" onclick="abrirModalMesaAccion('separar')">SEPARAR MESA</button>
-                </div>
-            </div>
-            <div id="lista-cobro" style="min-height: 250px; margin-bottom: 15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px;">
-                <p id="ticket-vacio" style="color: gray; text-align: center; margin-top: 100px;">🛒 Carrito vacío</p>
-            </div>
-            
-            <div style="background: #f1f2f6; padding: 15px; border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.3rem; color: #2f3542;">
-                    <span>TOTAL A COBRAR:</span>
-                    <span id="total-cobro">RD$0.00</span>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px;">
-                <button id="btn-registrar-salida" class="btn btn-save" onclick="finalizarVenta()" style="background: #2ed573;">
-                    📤 REGISTRAR SALIDA
-                ></button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="entrenamientos" class="content-section">
-  <div class="card">
-    <h2>🎓 Entrenamientos por Equipos</h2>
-    <div style="display:grid; grid-template-columns: 320px 1fr; gap:16px;">
-      <div style="border:1px solid #eee; border-radius:10px; padding:12px; background:#fafafa;">
-        <div style="font-weight:700; margin-bottom:8px;">Añadir Equipo</div>
-        <div style="display:grid; gap:8px;">
-          <input id="ent-equipo-area" type="text" placeholder="Área (Ej: Línea Caliente)">
-          <input id="ent-equipo-nombre" type="text" placeholder="Equipo (Ej: Freidora #1)">
-          <button class="btn btn-save" onclick="agregarEquipoEntrenamiento()">+ AÑADIR EQUIPO</button>
-        </div>
-        <div style="margin-top:12px; font-size:12px; color:#666;">Equipos creados</div>
-        <div id="ent-equipos-lista" style="margin-top:8px; max-height:460px; overflow:auto;"></div>
-      </div>
-      <div style="border:1px solid #eee; border-radius:10px; padding:12px;">
-        <div id="ent-detalle-vacio" style="color:#777;">Seleccione un equipo para comenzar.</div>
-        <div id="ent-detalle-equipo" style="display:none;">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
-            <strong id="ent-equipo-titulo">Equipo</strong>
-            <button class="btn btn-danger" onclick="eliminarEquipoEntrenamientoActivo()">ELIMINAR EQUIPO</button>
-          </div>
-          <div style="display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:10px;">
-            <select id="ent-plato-select"></select>
-            <button class="btn btn-blue" onclick="agregarPlatoAEquipoEntrenamiento()">AÑADIR PLATO</button>
-          </div>
-          <div id="ent-platos-equipo" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; margin-bottom:12px;"></div>
-          <div id="ent-procedimiento-box" style="display:none; border:1px dashed #ccc; border-radius:10px; padding:10px; background:#fcfcfc;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <strong id="ent-plato-titulo">Plato</strong>
-              <button class="btn btn-danger" onclick="eliminarPlatoEntrenamientoActivo()">ELIMINAR PLATO</button>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:8px;">
-              <input id="ent-proc-onzas" type="text" placeholder="Onzas / Cantidad">
-              <input id="ent-proc-medidas" type="text" placeholder="Medidas / Unidades">
-              <input id="ent-proc-tiempo" type="text" placeholder="Tiempo en fuego (Ej: 7 min)">
-            </div>
-            <textarea id="ent-proc-pasos" rows="5" style="width:100%; margin-bottom:8px;" placeholder="Procedimientos paso a paso (todo el proceso para lograr el plato)"></textarea>
-            <textarea id="ent-proc-protocolos" rows="4" style="width:100%; margin-bottom:8px;" placeholder="Protocolos (higiene, manipulación, temperatura, orden, seguridad)"></textarea>
-            <button class="btn btn-save" onclick="guardarProcedimientoEntrenamiento()">GUARDAR PROCEDIMIENTO Y PROTOCOLO</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="procedimientos" class="content-section">
-  <div class="card">
-    <h2>📘 Procedimientos (Solo Vista)</h2>
-    <div style="font-size:12px; color:#666; margin-bottom:10px;">Esta hoja muestra equipos, platos y protocolos creados en Entrenamientos. Aquí no se puede editar.</div>
-    <div id="procedimientos-view"></div>
-  </div>
-</div>
-
-<div id="mesa-accion-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2600; align-items:center; justify-content:center; padding:16px;">
-    <div style="width:min(760px, 96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--accent);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
-            <strong id="mesa-modal-titulo" style="font-size:18px; color:var(--primary);">Gestión de Mesas</strong>
-            <button class="btn btn-danger" onclick="cerrarModalMesaAccion()">X</button>
-        </div>
-        <div style="padding:16px;">
-            <input type="hidden" id="mesa-modal-accion" value="">
-
-            <div id="mesa-modal-seccion-mover" style="display:none;">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-                    <div class="form-group">
-                        <label>Mesa origen</label>
-                        <select id="mesa-modal-origen" onchange="renderListaPlatosMovilizar()"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Mesa destino</label>
-                        <select id="mesa-modal-destino"></select>
-                    </div>
-                </div>
-                <div style="font-size:12px; color:var(--secondary); margin-bottom:8px;">Seleccione los platos y cantidad que desea movilizar.</div>
-                <div id="mesa-modal-platos" style="max-height:300px; overflow:auto; border:1px dashed #ccc; border-radius:8px; padding:8px; background:#fafafa;"></div>
-            </div>
-
-            <div id="mesa-modal-seccion-unir" style="display:none;">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                    <div class="form-group">
-                        <label>Mesa A</label>
-                        <select id="mesa-modal-union-a"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Mesa B</label>
-                        <select id="mesa-modal-union-b"></select>
-                    </div>
-                </div>
-            </div>
-
-            <div id="mesa-modal-seccion-separar" style="display:none;">
-                <div class="form-group">
-                    <label>Mesa a separar</label>
-                    <select id="mesa-modal-separar"></select>
-                </div>
-            </div>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
-            <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalMesaAccion()">CANCELAR</button>
-            <button class="btn btn-save" onclick="confirmarAccionMesaModal()">CONFIRMAR</button>
-        </div>
-    </div>
-</div>
-<div id="modal-registrar-cliente-venta" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2665; align-items:center; justify-content:center; padding:16px;">
-    <div style="width:min(560px, 96vw); background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
-            <strong style="font-size:18px; color:var(--primary);">Registrar Cliente en Venta</strong>
-            <button class="btn btn-danger" onclick="cerrarModalRegistrarClienteVenta()">X</button>
-        </div>
-        <div style="padding:16px; display:grid; grid-template-columns:1fr; gap:10px;">
-            <div>
-                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Nombre / Razón Social</label>
-                <input type="text" id="venta-modal-cliente-nombre" placeholder="Nombre / Razón Social">
-            </div>
-            <div>
-                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Cédula / NRC</label>
-                <input type="text" id="venta-modal-cliente-rnc" placeholder="Cédula / NRC">
-            </div>
-            <div>
-                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Teléfono</label>
-                <input type="text" id="venta-modal-cliente-telefono" placeholder="Teléfono / WhatsApp">
-            </div>
-        </div>
-        <div style="display:flex; justify-content:space-between; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
-            <button class="btn btn-warning" onclick="seleccionarConsumidorFinalVenta()">CONSUMIDOR FINAL</button>
-            <div style="display:flex; gap:8px;">
-                <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalRegistrarClienteVenta()">CANCELAR</button>
-                <button class="btn btn-save" onclick="guardarClienteDesdeModalVenta()">GUARDAR CLIENTE</button>
-            </div>
-        </div>
-    </div>
-</div>
-<div id="modal-pago-usuario-maestro" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2668; align-items:center; justify-content:center; padding:16px;">
-    <div style="width:min(760px, 96vw); background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
-            <strong style="font-size:18px; color:var(--primary);">Datos de pago para nuevo Usuario Maestro</strong>
-            <button class="btn btn-danger" onclick="cerrarModalPagoUsuarioMaestro()">X</button>
-        </div>
-        <div style="padding:16px; display:grid; gap:10px;">
-            <input type="text" id="new_u_client_name" placeholder="Nombre del cliente completo">
-            <select id="new_u_payment_method">
-                <option value="TRANSFERENCIA">Método de Pago: Transferencia</option>
-            </select>
-            <input type="text" id="new_u_card" placeholder="Tarjeta">
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <input type="text" id="new_u_card_exp" placeholder="Fecha de vencimiento de tarjeta (MM/AA)">
-                <input type="password" id="new_u_card_cvv" placeholder="CVV">
-            </div>
-            <div>
-                <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">Fecha para próximo cobro</label>
-                <input type="date" id="new_u_next_charge">
-                <div style="font-size:11px; color:#666; margin-top:4px;">Se tomará el día del mes de esta fecha para los cobros recurrentes.</div>
-            </div>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
-            <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalPagoUsuarioMaestro()">CANCELAR</button>
-            <button class="btn btn-save" onclick="guardarPagoUsuarioMaestro()">GUARDAR MÉTODO DE PAGO</button>
-        </div>
-    </div>
-</div>
-<div id="modal-pago-suscripcion" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2650; align-items:center; justify-content:center; padding:16px;">
-    <div style="width:min(880px, 96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:14px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
-            <strong style="font-size:18px; color:var(--primary);">Datos de Transferencia de Suscripción</strong>
-            <button class="btn btn-danger" onclick="cerrarModalPagoSuscripcion()">X</button>
-        </div>
-        <div style="padding:16px; display:grid; grid-template-columns: minmax(280px, 360px) 1fr; gap:16px;">
-            <div>
-                <div style="background:linear-gradient(135deg,#1e3a5f,#2e86de); color:#fff; border-radius:14px; padding:16px; min-height:190px; box-shadow:0 10px 24px rgba(0,0,0,.2);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px;">
-                        <span style="font-size:12px; letter-spacing:1px; opacity:.9;">TARJETA</span>
-                        <strong id="pago-card-marca" style="font-size:12px;">TARJETA</strong>
-                    </div>
-                    <div id="pago-card-numero" style="font-size:22px; letter-spacing:2px; margin-bottom:20px;">**** **** **** ****</div>
-                    <div style="display:flex; justify-content:space-between; gap:10px;">
-                        <div>
-                            <div style="font-size:10px; opacity:.8;">TITULAR</div>
-                            <div id="pago-card-titular" style="font-size:13px; font-weight:bold;">NOMBRE APELLIDO</div>
-                        </div>
-                        <div>
-                            <div style="font-size:10px; opacity:.8;">VENCE</div>
-                            <div id="pago-card-exp" style="font-size:13px; font-weight:bold;">MM/AAAA</div>
-                        </div>
-                    </div>
-                </div>
-                <div style="font-size:12px; color:#666; margin-top:8px;">Tarjeta origen enmascarada. Transferencia mensual al receptor configurado.</div>
-            </div>
-            <div>
-                <input type="hidden" id="pago-cliente-id">
-                <div style="font-size:12px; color:#666; margin-bottom:8px;">Cliente: <strong id="pago-cliente-nombre">-</strong></div>
-                <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:6px;">Mi tarjeta (origen)</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
-                    <select id="pago-tarjeta-tipo" onchange="actualizarPreviewTarjetaPago()">
-                        <option value="credito">Tarjeta crédito</option>
-                        <option value="debito">Tarjeta débito</option>
-                    </select>
-                    <input type="text" id="pago-tarjeta-numero" placeholder="Número de tarjeta" oninput="actualizarPreviewTarjetaPago()">
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 90px 110px; gap:8px; margin-bottom:8px;">
-                    <input type="text" id="pago-tarjeta-titular" placeholder="Titular de tarjeta" oninput="actualizarPreviewTarjetaPago()">
-                    <input type="text" id="pago-tarjeta-exp-mes" placeholder="MM" maxlength="2" oninput="actualizarPreviewTarjetaPago()">
-                    <input type="text" id="pago-tarjeta-exp-ano" placeholder="AAAA" maxlength="4" oninput="actualizarPreviewTarjetaPago()">
-                </div>
-                <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin:8px 0 6px;">Receptor de transferencia</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
-                    <input type="text" id="pago-receptor-banco" placeholder="Banco receptor">
-                    <input type="text" id="pago-receptor-cuenta" placeholder="Cuenta receptor">
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
-                    <input type="text" id="pago-receptor-nombre" placeholder="Nombre receptor">
-                    <input type="text" id="pago-receptor-apellido" placeholder="Apellido receptor">
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
-                    <input type="text" id="pago-receptor-cedula" placeholder="Cédula receptor">
-                    <input type="text" id="pago-receptor-telefono" placeholder="Teléfono receptor">
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                    <input type="text" id="pago-periodo" value="MENSUAL" readonly>
-                    <input type="date" id="pago-fecha-cobro">
-                </div>
-            </div>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
-            <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalPagoSuscripcion()">CANCELAR</button>
-            <button class="btn btn-save" onclick="guardarDatosPagoSuscripcionDesdeModal()">GUARDAR TRANSFERENCIA</button>
-        </div>
-    </div>
-</div>
-    <div id="decomiso" class="content-section"><div class="card"><h2>🗑️ Registrar Decomiso</h2><select id="tipo-decomiso" onchange="actualizarListaDecomiso()" style="width:100%; margin-bottom:10px;"><option value="plato">Producto Terminado</option><option value="almacen">Ingrediente</option></select><input type="text" id="busqueda-decomiso" onkeyup="actualizarListaDecomiso()" placeholder="Buscar..." style="width:100%; margin-bottom:15px;"><div id="lista-decomiso-items"></div></div></div>
-    <div id="produccion" class="content-section"><div class="card"><h2>📊 Departamentos A-B-C</h2><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;"><button class="btn btn-danger" onclick="filtrarPlatosABC('rojo')">SIN STOCK (0)</button><button class="btn btn-warning" onclick="filtrarPlatosABC('amarillo')">POCO STOCK (1-5)</button><button class="btn btn-save" onclick="filtrarPlatosABC('verde')">STOCK OK (+6)</button></div><div id="resultado-filtro-abc"></div></div></div>
-  </div>
-
-  <script>
-
+﻿
 function borrarTodoElAlmacen() {
     if (bloquearAccionAdministrativaColaborador()) return;
 
@@ -1963,14 +108,10 @@ function borrarTodoElAlmacen() {
 /**
  * Cambia la contraseña del usuario que tiene la sesión iniciada actualmente.
  */
-function cambiarMiPassword() {
+async function cambiarMiPassword() {
     const oldPass = document.getElementById('my_old_pass').value;
     const newPass = document.getElementById('my_new_pass').value;
     const confirmPass = document.getElementById('my_new_pass_confirm').value;
-
-    if ((sesionUser.user || "").trim().toLowerCase() === MASTER_USER) {
-        return alert("🔒 La contraseña del usuario maestro es fija y no puede cambiarse.");
-    }
 
     // 1. Validar que la contraseña actual sea correcta
     if (oldPass !== sesionUser.pass) {
@@ -1982,19 +123,33 @@ function cambiarMiPassword() {
         return alert("⚠️ Las nuevas contraseñas no coinciden o están vacías.");
     }
 
+    if (typeof window.actualizarPasswordCloud === 'function') {
+        const okCloud = await window.actualizarPasswordCloud(oldPass, newPass);
+        if (!okCloud) return;
+    }
+
     // 3. Actualizar en la base de datos (db.usuarios)
     const userIndex = db.usuarios.findIndex(u => u.user === sesionUser.user);
     if (userIndex !== -1) {
         db.usuarios[userIndex].pass = newPass;
-        sesionUser.pass = newPass; // Actualizar sesión actual
-        guardarDatos();
-        alert("✅ Contraseña actualizada correctamente.");
-        
-        // Limpiar campos
-        document.getElementById('my_old_pass').value = "";
-        document.getElementById('my_new_pass').value = "";
-        document.getElementById('my_new_pass_confirm').value = "";
+    } else {
+        db.usuarios.push({
+            user: sesionUser.user,
+            pass: newPass,
+            role: String(sesionUser.role || 'admin'),
+            owner: String(sesionUser.owner || sesionUser.user || '').toLowerCase(),
+            activo: true
+        });
     }
+    sesionUser.pass = newPass; // Actualizar sesión actual
+    if (typeof window.loginClave !== 'undefined') window.loginClave = newPass;
+    guardarDatos();
+    alert("✅ Contraseña actualizada correctamente.");
+    
+    // Limpiar campos
+    document.getElementById('my_old_pass').value = "";
+    document.getElementById('my_new_pass').value = "";
+    document.getElementById('my_new_pass_confirm').value = "";
 }
 
 /**
@@ -2129,18 +284,129 @@ function resumenMetodoPagoUsuario(u) {
 /**
  * Crea un colaborador vinculado al usuario actual.
  */
+let colaboradorEditandoUser = "";
+
+function sincronizarTodosGruposColaborador() {
+    ['admin', 'costos', 'historial'].forEach(grupo => sincronizarSeleccionGrupo(grupo));
+}
+
+function textoMembresiaUsuario(u) {
+    const plan = String(u?.plan || 'basico').trim().toLowerCase();
+    const planNombre = plan === 'empresarial'
+        ? 'Empresarial'
+        : (plan === 'profesional' ? 'Profesional' : 'Básico');
+    const subEstado = String(u?.estado || u?.suscripcion?.estado || '').trim().toLowerCase();
+    const estadoTxt = (subEstado === 'activo' || subEstado === 'activa') ? 'Activa' : 'Pendiente';
+    const color = (subEstado === 'activo' || subEstado === 'activa') ? '#1f8f4c' : '#a66a00';
+    return `<div style="font-size:11px; line-height:1.35;"><strong>${planNombre}</strong><br><span style="color:${color};">${estadoTxt}</span></div>`;
+}
+
+function limpiarFormularioColaborador(cancelarEdicion = true) {
+    const nombreInput = document.getElementById('colab_name');
+    const passInput = document.getElementById('colab_pass');
+    const btnGuardar = document.getElementById('btn-colab-guardar');
+    const btnCancelar = document.getElementById('btn-colab-cancelar');
+
+    if (nombreInput) {
+        nombreInput.value = "";
+        nombreInput.disabled = false;
+    }
+    if (passInput) {
+        passInput.value = "";
+        passInput.placeholder = "Clave Acceso";
+    }
+    document.querySelectorAll('.colab-perm').forEach(c => c.checked = false);
+    document.querySelectorAll('.colab-perm-group').forEach(c => c.checked = false);
+    document.querySelectorAll('.colab-entry').forEach(c => c.checked = false);
+
+    if (btnGuardar) {
+        btnGuardar.textContent = "AÑADIR";
+        btnGuardar.style.background = "";
+    }
+    if (btnCancelar) btnCancelar.style.display = "none";
+    if (cancelarEdicion) colaboradorEditandoUser = "";
+}
+
+function editarRenglonesColaborador(nombreColab) {
+    const userKey = String(nombreColab || '').trim().toLowerCase();
+    if (!userKey) return;
+    const colab = (db.usuarios || []).find(u => {
+        if (String(u?.user || '').trim().toLowerCase() !== userKey) return false;
+        if (String(u?.role || '').toLowerCase() !== 'colaborador') return false;
+        if (esMasterEnSesion()) return true;
+        return u.owner === sesionUser.user;
+    });
+    if (!colab) return alert("No se encontró el colaborador.");
+
+    limpiarFormularioColaborador(false);
+    colaboradorEditandoUser = userKey;
+
+    const nombreInput = document.getElementById('colab_name');
+    const passInput = document.getElementById('colab_pass');
+    const btnGuardar = document.getElementById('btn-colab-guardar');
+    const btnCancelar = document.getElementById('btn-colab-cancelar');
+    if (nombreInput) {
+        nombreInput.value = colab.user;
+        nombreInput.disabled = true;
+    }
+    if (passInput) {
+        passInput.value = "";
+        passInput.placeholder = "Clave Acceso (dejar vacío para conservar)";
+    }
+    (normalizarPermisos(colab.permisos || []) || []).forEach(p => {
+        const chk = document.querySelector(`.colab-perm[value="${p}"]`);
+        if (chk) chk.checked = true;
+    });
+    (normalizarAsignacionesEntradas(colab.asignacionesEntradas || []) || []).forEach(x => {
+        const chk = document.querySelector(`.colab-entry[value="${x}"]`);
+        if (chk) chk.checked = true;
+    });
+    sincronizarTodosGruposColaborador();
+
+    if (btnGuardar) {
+        btnGuardar.textContent = "GUARDAR CAMBIOS";
+        btnGuardar.style.background = "#ff9f43";
+    }
+    if (btnCancelar) btnCancelar.style.display = "";
+    document.getElementById('section-user-colaboradores')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelarEdicionColaborador() {
+    limpiarFormularioColaborador(true);
+}
+
+window.__uiActionLocks = window.__uiActionLocks || new Set();
+function tryBeginUiActionLock(lockKey) {
+    const key = String(lockKey || '').trim();
+    if (!key) return true;
+    if (window.__uiActionLocks.has(key)) return false;
+    window.__uiActionLocks.add(key);
+    return true;
+}
+function endUiActionLock(lockKey) {
+    const key = String(lockKey || '').trim();
+    if (!key) return;
+    window.__uiActionLocks.delete(key);
+}
+
+function ownerDatosActivo() {
+    return String(window.obtenerOwnerSesionActual?.() || sesionUser?.owner || sesionUser?.user || '').trim().toLowerCase();
+}
+
 async function crearColaborador() {
     const nombreInput = document.getElementById('colab_name');
     const passInput = document.getElementById('colab_pass');
-    const nombre = nombreInput.value.trim().toLowerCase();
+    const isEditing = !!colaboradorEditandoUser;
+    const nombre = (isEditing ? colaboradorEditandoUser : nombreInput.value).trim().toLowerCase();
     const pass = passInput.value;
     const permisosChecks = document.querySelectorAll('.colab-perm:checked');
-    const permisos = normalizarPermisos(Array.from(permisosChecks).map(c => c.value));
+    let permisos = normalizarPermisos(Array.from(permisosChecks).map(c => c.value));
     const entradasChecks = document.querySelectorAll('.colab-entry:checked');
     const asignacionesEntradas = normalizarAsignacionesEntradas(Array.from(entradasChecks).map(c => c.value));
 
-    if (!nombre || !pass) return alert("⚠️ Complete los datos del colaborador.");
-    if (db.usuarios.find(u => u.user === nombre)) {
+    if (!nombre) return alert("⚠️ Complete los datos del colaborador.");
+    if (!isEditing && !pass) return alert("⚠️ Complete los datos del colaborador.");
+    if (!isEditing && db.usuarios.find(u => u.user === nombre)) {
         return alert("⚠️ Ese usuario ya existe.");
     }
     if (permisos.length <= 1) {
@@ -2149,6 +415,7 @@ async function crearColaborador() {
 
     const ownerSesion = String(window.obtenerOwnerSesionActual?.() || sesionUser?.user || '').trim().toLowerCase();
     if (!ownerSesion || esColaboradorSesion) return alert("⛔ Solo un usuario maestro activo puede crear colaboradores.");
+    permisos = filtrarPermisosRestringidos(permisos, ownerSesion);
     const claveAdmin = prompt("🔐 Ingrese su clave de Usuario Maestro para autorizar este colaborador:");
     if (claveAdmin === null) return;
     const adminAutorizador = (db.usuarios || []).find(u =>
@@ -2169,6 +436,17 @@ async function crearColaborador() {
         asignacionesEntradas: asignacionesEntradas,
         activo: true
     };
+    if (isEditing) {
+        const existente = (db.usuarios || []).find(u =>
+            String(u?.user || '').trim().toLowerCase() === nombre &&
+            String(u?.role || '').toLowerCase() === 'colaborador' &&
+            (esMasterEnSesion() || u.owner === sesionUser.user)
+        );
+        if (!existente) return alert("No se encontró el colaborador a editar.");
+        nuevoColaborador.pass = pass ? pass : String(existente.pass || '');
+        nuevoColaborador.owner = existente.owner || ownerAsignado;
+        nuevoColaborador.activo = existente.activo !== false;
+    }
 
     if (typeof window.sincronizarColaboradorNube !== 'function') {
         return alert("☁️ Backend cloud no está disponible.");
@@ -2178,18 +456,23 @@ async function crearColaborador() {
         return alert("❌ No se pudo crear el colaborador en la nube.");
     }
 
-    db.usuarios.push(nuevoColaborador);
+    if (isEditing) {
+        const idx = db.usuarios.findIndex(u =>
+            String(u?.user || '').trim().toLowerCase() === nombre &&
+            String(u?.role || '').toLowerCase() === 'colaborador' &&
+            (esMasterEnSesion() || u.owner === sesionUser.user)
+        );
+        if (idx >= 0) db.usuarios[idx] = { ...db.usuarios[idx], ...nuevoColaborador };
+    } else {
+        db.usuarios.push(nuevoColaborador);
+    }
 
     guardarDatos();
     if (typeof window.autoSubirCloudUrgente === 'function') window.autoSubirCloudUrgente();
     actualizarTablaColaboradores();
     
-    nombreInput.value = "";
-    passInput.value = "";
-    document.querySelectorAll('.colab-perm').forEach(c => c.checked = false);
-    document.querySelectorAll('.colab-perm-group').forEach(c => c.checked = false);
-    document.querySelectorAll('.colab-entry').forEach(c => c.checked = false);
-    alert("✅ Miembro de equipo añadido.");
+    limpiarFormularioColaborador(true);
+    alert(isEditing ? "✅ Renglones del colaborador actualizados." : "✅ Miembro de equipo añadido.");
 }
 
 function actualizarTablaUsuarios() {
@@ -2216,6 +499,7 @@ function actualizarTablaUsuarios() {
         row.innerHTML = `
             <td style="padding:10px 0;"><strong>${u.user.toUpperCase()}</strong></td>
             <td><span style="color:${estadoColor}">✅ ${estadoTxt}</span></td>
+            <td>${textoMembresiaUsuario(u)}</td>
             <td>${pagoHtml}</td>
             <td style="font-size:12px; color: var(--secondary);">${cobroTxt}</td>
             <td>
@@ -2277,8 +561,11 @@ function actualizarTablaColaboradores() {
             <td style="font-size:12px; color: var(--secondary);">${permisosTxt}</td>
             <td style="font-size:12px; color: var(--secondary);">${entradasTxt}</td>
             <td>
-                <button class="btn-warning" onclick="toggleAccesoColaborador('${c.user}')" style="background:#ffa801; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; margin-right:6px;">${txtAcceso}</button>
-                <button class="btn-danger" onclick="eliminarColaborador('${c.user}')" style="background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Remover</button>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                    <button class="btn btn-warning" onclick="editarRenglonesColaborador('${String(c.user || '').replace(/'/g, "\\'")}')" style="min-width:34px; padding:5px 8px;">✏️</button>
+                    <button class="btn-warning" onclick="toggleAccesoColaborador('${c.user}')" style="background:#ffa801; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">${txtAcceso}</button>
+                    <button class="btn-danger" onclick="eliminarColaborador('${c.user}')" style="background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Remover</button>
+                </div>
             </td>
         `;
         tabla.appendChild(row);
@@ -2286,6 +573,9 @@ function actualizarTablaColaboradores() {
 }
 
 async function eliminarUsuario(username) {
+    const lockKey = `eliminar-usuario:${String(username || '').trim().toLowerCase()}`;
+    if (!tryBeginUiActionLock(lockKey)) return;
+    try {
     if ((username || "").trim().toLowerCase() === MASTER_USER) {
         return alert("🔒 El usuario maestro no puede eliminarse.");
     }
@@ -2307,9 +597,15 @@ async function eliminarUsuario(username) {
         actualizarTablaUsuarios();
         actualizarTablaColaboradores();
     }
+    } finally {
+        endUiActionLock(lockKey);
+    }
 }
 
 async function eliminarColaborador(nombreColab) {
+    const lockKey = `eliminar-colaborador:${String(nombreColab || '').trim().toLowerCase()}`;
+    if (!tryBeginUiActionLock(lockKey)) return;
+    try {
     if (confirm(`¿Remover a ${nombreColab} del equipo?`)) {
         const colab = db.usuarios.find(u => {
             if (u.user !== nombreColab || u.role !== 'colaborador') return false;
@@ -2332,6 +628,9 @@ async function eliminarColaborador(nombreColab) {
         guardarDatos();
         if (typeof window.autoSubirCloudUrgente === 'function') window.autoSubirCloudUrgente();
         actualizarTablaColaboradores();
+    }
+    } finally {
+        endUiActionLock(lockKey);
     }
 }
 
@@ -2357,6 +656,354 @@ async function toggleAccesoColaborador(nombreColab) {
     if (typeof window.autoSubirCloudUrgente === 'function') window.autoSubirCloudUrgente();
     actualizarTablaColaboradores();
 }
+
+let masterVaultOwnerSelected = '';
+let masterVaultRefreshTimer = null;
+
+function formatoTiempoSistema(createdAtIso) {
+    const txt = String(createdAtIso || '').trim();
+    if (!txt) return 'Sin fecha';
+    const dt = new Date(txt);
+    if (isNaN(dt.getTime())) return 'Sin fecha';
+    const dias = Math.max(0, Math.floor((Date.now() - dt.getTime()) / (24 * 60 * 60 * 1000)));
+    return `${dias} día(s) · desde ${dt.toLocaleDateString()}`;
+}
+
+function detenerAutoRefreshBovedaMaster() {
+    if (masterVaultRefreshTimer) clearInterval(masterVaultRefreshTimer);
+    masterVaultRefreshTimer = null;
+}
+
+function iniciarAutoRefreshBovedaMaster() {
+    detenerAutoRefreshBovedaMaster();
+    if (String(sesionUser?.role || '').toLowerCase() !== 'super-master') return;
+    masterVaultRefreshTimer = setInterval(() => {
+        const box = document.getElementById('section-servidor-master');
+        if (!box || box.style.display === 'none') return;
+        cargarBovedaMaster();
+    }, 15000);
+}
+
+function pintarResumenControlMaster(stats) {
+    const s = stats && typeof stats === 'object' ? stats : {};
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(Number(val || 0));
+    };
+    set('master-stat-owners', s.totalOwners);
+    set('master-stat-colabs', s.totalCollaborators);
+    set('master-stat-clients', s.totalClientsRegistered);
+    set('master-stat-clients-fid', s.totalClientsFidelizacion);
+    set('master-stat-subs-active', s.totalActiveSubscriptions);
+    set('master-stat-pay-done', s.totalPaymentsDone);
+    set('master-stat-pay-pending', s.totalPaymentsPending);
+    set('master-stat-pay-failed', s.totalPaymentsFailed);
+}
+
+async function cargarResumenControlMaster() {
+    if (typeof window.obtenerResumenControlMasterCloud !== 'function') return;
+    try {
+        const stats = await window.obtenerResumenControlMasterCloud();
+        pintarResumenControlMaster(stats || {});
+    } catch (_e) {
+        pintarResumenControlMaster({});
+    }
+}
+
+async function cargarNotificacionesPagoMaster() {
+    const body = document.getElementById('master-vault-payments-body');
+    if (!body) return;
+    if (typeof window.listarNotificacionesPagosMasterCloud !== 'function') {
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Backend no disponible.</td></tr>';
+        return;
+    }
+    try {
+        const list = await window.listarNotificacionesPagosMasterCloud(80);
+        if (!Array.isArray(list) || !list.length) {
+            body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Sin notificaciones.</td></tr>';
+            return;
+        }
+        body.innerHTML = list.map((n) => {
+            const fecha = n?.createdAt ? new Date(n.createdAt).toLocaleString() : '---';
+            const estado = String(n?.paymentStatus || '---').toUpperCase();
+            const color = estado.includes('PAID') ? '#1f8f4c' : '#a66a00';
+            const monto = Number(n?.amountUSD || 0).toFixed(2);
+            const owner = String(n?.owner || '---').toUpperCase();
+            return `<tr>
+              <td>${owner}</td>
+              <td>${fecha}</td>
+              <td style="color:${color}; font-weight:700;">${estado}</td>
+              <td>USD$${monto}</td>
+            </tr>`;
+        }).join('');
+    } catch (_e) {
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#c0392b;">Error al cargar notificaciones.</td></tr>';
+    }
+}
+
+async function verColaboradoresBoveda(owner) {
+    const ownerKey = String(owner || '').trim().toLowerCase();
+    if (!ownerKey) return;
+    masterVaultOwnerSelected = ownerKey;
+    const title = document.getElementById('master-vault-collab-title');
+    const body = document.getElementById('master-vault-collab-body');
+    if (title) title.textContent = `Colaboradores de ${ownerKey.toUpperCase()}`;
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Cargando...</td></tr>';
+    if (typeof window.refrescarColaboradoresCloud !== 'function') {
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Backend no disponible.</td></tr>';
+        return;
+    }
+    try {
+        const list = await window.refrescarColaboradoresCloud({ owner: ownerKey, silent: true });
+        if (!Array.isArray(list) || !list.length) {
+            body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Sin colaboradores.</td></tr>';
+            return;
+        }
+        body.innerHTML = list.map((c) => {
+            const user = String(c?.username || c?.user || '').trim().toLowerCase();
+            const activo = c?.activo !== false;
+            const color = activo ? '#1f8f4c' : '#c0392b';
+            const txt = activo ? 'Activo' : 'Suspendido';
+            const createdTxt = c?.createdAt ? new Date(c.createdAt).toLocaleDateString() : '---';
+            return `<tr>
+              <td>${user}</td>
+              <td style="color:${color}; font-weight:700;">${txt}</td>
+              <td>${createdTxt}</td>
+              <td><button class="btn btn-danger" onclick="eliminarColaboradorDesdeBoveda('${ownerKey}','${user}')">Eliminar total</button></td>
+            </tr>`;
+        }).join('');
+    } catch (_e) {
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#c0392b;">Error cargando colaboradores.</td></tr>';
+    }
+}
+
+async function eliminarColaboradorDesdeBoveda(owner, username) {
+    const ownerKey = String(owner || '').trim().toLowerCase();
+    const userKey = String(username || '').trim().toLowerCase();
+    if (!ownerKey || !userKey) return;
+    if (!confirm(`Eliminar totalmente al colaborador "${userKey}" del maestro "${ownerKey}"?\n\nSe borrará de Firestore y de referencias relacionadas.`)) return;
+    if (typeof window.eliminarColaboradorBovedaCloud !== 'function') return alert('Backend cloud no disponible.');
+    const ok = await window.eliminarColaboradorBovedaCloud(ownerKey, userKey);
+    if (!ok) return alert('No se pudo eliminar en Firestore.');
+    if (typeof window.autoSubirCloudUrgente === 'function') window.autoSubirCloudUrgente();
+    await verColaboradoresBoveda(ownerKey);
+    await cargarBovedaMaster();
+}
+
+async function eliminarMaestroDesdeBoveda(owner) {
+    const ownerKey = String(owner || '').trim().toLowerCase();
+    if (!ownerKey || ownerKey === MASTER_USER) return;
+    if (!confirm(`Eliminar totalmente al usuario maestro "${ownerKey}"?\n\nEsta acción elimina owner, negocio, colaboradores y accesos en Firestore.`)) return;
+    if (typeof window.eliminarUsuarioMaestroBovedaCloud !== 'function') return alert('Backend cloud no disponible.');
+    const ok = await window.eliminarUsuarioMaestroBovedaCloud(ownerKey);
+    if (!ok) return alert('No se pudo eliminar en Firestore.');
+    window.eliminarUsuarioMaestroLocal?.(ownerKey);
+    masterVaultOwnerSelected = '';
+    await cargarBovedaMaster();
+}
+
+async function cargarBovedaMaster() {
+    const statusEl = document.getElementById('master-vault-status');
+    const body = document.getElementById('master-vault-body');
+    if (!statusEl || !body) return;
+    statusEl.textContent = 'Cargando bóveda...';
+    statusEl.style.color = '#666';
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">Cargando...</td></tr>';
+    if (typeof window.obtenerBovedaMasterCloud !== 'function') {
+        statusEl.textContent = 'Backend cloud no disponible.';
+        statusEl.style.color = '#c0392b';
+        return;
+    }
+    try {
+        const rs = await window.obtenerBovedaMasterCloud();
+        const owners = Array.isArray(rs?.owners) ? rs.owners : [];
+        if (!owners.length) {
+            body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">Sin usuarios maestros.</td></tr>';
+            statusEl.textContent = 'Sin registros.';
+            return;
+        }
+        body.innerHTML = owners.map((o) => {
+            const owner = String(o?.username || '').trim().toLowerCase();
+            const withColabs = Number(o?.collaboratorsCount || 0) > 0;
+            const isOnline = o?.online === true;
+            const rowClass = [withColabs ? 'master-owner-highlight' : '', isOnline ? 'master-owner-online' : ''].filter(Boolean).join(' ');
+            const estadoActivo = o?.activo !== false;
+            const estadoTxt = estadoActivo ? 'Activo' : 'Suspendido';
+            const estadoColor = estadoActivo ? '#1f8f4c' : '#c0392b';
+            const colabsTxt = `${Number(o?.collaboratorsCount || 0)} colaborador(es)`;
+            const marca = withColabs ? '<span class="master-owner-indicator"></span>' : '';
+            const onlineBadge = isOnline ? '<span class="master-owner-online-badge">EN LINEA</span>' : '';
+            const noDelete = owner === MASTER_USER;
+            return `<tr class="${rowClass}">
+              <td>${marca}<strong>${owner.toUpperCase()}</strong>${onlineBadge}</td>
+              <td>${String(o?.empresa || '---')}</td>
+              <td>${formatoTiempoSistema(o?.createdAt)}</td>
+              <td style="color:${estadoColor}; font-weight:700;">${estadoTxt}</td>
+              <td>${colabsTxt}</td>
+              <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn btn-blue" onclick="verColaboradoresBoveda('${owner}')">Ver colaboradores</button>
+                ${noDelete ? '<em style="color:#777;">Sistema</em>' : `<button class="btn btn-danger" onclick="eliminarMaestroDesdeBoveda('${owner}')">Eliminar total</button>`}
+              </td>
+            </tr>`;
+        }).join('');
+        const onlineCount = owners.filter((o) => o?.online === true).length;
+        statusEl.textContent = `Bóveda cargada (${owners.length} maestro(s), ${onlineCount} en línea).`;
+        statusEl.style.color = '#1f8f4c';
+        if (masterVaultOwnerSelected) await verColaboradoresBoveda(masterVaultOwnerSelected);
+    } catch (e) {
+        body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#c0392b;">Error cargando bóveda.</td></tr>';
+        statusEl.textContent = `Error: ${String(e?.message || e || 'interno')}`;
+        statusEl.style.color = '#c0392b';
+    }
+    await Promise.all([cargarNotificacionesPagoMaster(), cargarResumenControlMaster()]);
+}
+
+const MASTER_DETAIL_LABELS = {
+    owners: 'Maestros',
+    collaborators: 'Colaboradores',
+    clients_saas: 'Clientes (SaaS)',
+    clients_fidelizacion: 'Clientes (fidelización)',
+    subs_active: 'Suscripciones activas',
+    pay_done: 'Pagos realizados',
+    pay_pending: 'Pagos pendientes',
+    pay_failed: 'Pagos fallidos'
+};
+
+let masterDetailCurrentType = '';
+let masterDetailItemsCache = [];
+
+function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+window.cerrarDetalleControlMaster = function () {
+    const modal = document.getElementById('master-detail-modal');
+    if (modal) modal.style.display = 'none';
+    masterDetailCurrentType = '';
+    masterDetailItemsCache = [];
+};
+
+function renderMasterDetailTable(type, items = []) {
+    const head = document.getElementById('master-detail-head');
+    const body = document.getElementById('master-detail-body');
+    if (!head || !body) return;
+    if (!Array.isArray(items) || !items.length) {
+        head.innerHTML = '<tr><th>Detalle</th></tr>';
+        body.innerHTML = '<tr><td style="text-align:center; color:#777;">Sin registros.</td></tr>';
+        return;
+    }
+    if (type === 'owners') {
+        head.innerHTML = '<tr><th>Usuario</th><th>Empresa</th><th>Estado</th><th>Plan</th><th>Creación</th><th>Acción</th></tr>';
+        body.innerHTML = items.map((it) => `<tr>
+            <td>${escapeHtml(it.username || '')}</td>
+            <td>${escapeHtml(it.empresa || '---')}</td>
+            <td>${it.activo === false ? 'Suspendido' : 'Activo'}</td>
+            <td>${escapeHtml(it.plan || '---')}</td>
+            <td>${escapeHtml(formatoTiempoSistema(it.createdAt))}</td>
+            <td><button class="btn btn-danger" onclick="eliminarDetalleControlMaster('${type}','${escapeHtml(it.id || '')}')">Borrar</button></td>
+        </tr>`).join('');
+        return;
+    }
+    if (type === 'collaborators') {
+        head.innerHTML = '<tr><th>Owner</th><th>Usuario</th><th>Estado</th><th>Creación</th><th>Acción</th></tr>';
+        body.innerHTML = items.map((it) => `<tr>
+            <td>${escapeHtml(it.owner || '')}</td>
+            <td>${escapeHtml(it.username || '')}</td>
+            <td>${it.activo === false ? 'Suspendido' : 'Activo'}</td>
+            <td>${escapeHtml(formatoTiempoSistema(it.createdAt))}</td>
+            <td><button class="btn btn-danger" onclick="eliminarDetalleControlMaster('${type}','${escapeHtml(it.id || '')}')">Borrar</button></td>
+        </tr>`).join('');
+        return;
+    }
+    if (type === 'clients_saas') {
+        head.innerHTML = '<tr><th>Owner</th><th>Negocio</th><th>Admin</th><th>Email</th><th>Teléfono</th><th>Acción</th></tr>';
+        body.innerHTML = items.map((it) => `<tr>
+            <td>${escapeHtml(it.owner || '')}</td>
+            <td>${escapeHtml(it.negocio || '---')}</td>
+            <td>${escapeHtml(it.admin || '---')}</td>
+            <td>${escapeHtml(it.email || '---')}</td>
+            <td>${escapeHtml(it.phone || '---')}</td>
+            <td><button class="btn btn-danger" onclick="eliminarDetalleControlMaster('${type}','${escapeHtml(it.id || '')}')">Borrar</button></td>
+        </tr>`).join('');
+        return;
+    }
+    if (type === 'clients_fidelizacion') {
+        head.innerHTML = '<tr><th>Owner</th><th>Nombre</th><th>Cédula/RNC</th><th>Teléfono</th><th>Código</th><th>Acción</th></tr>';
+        body.innerHTML = items.map((it) => `<tr>
+            <td>${escapeHtml(it.owner || '')}</td>
+            <td>${escapeHtml(it.nombre || '')}</td>
+            <td>${escapeHtml(it.cedula || it.rnc || '---')}</td>
+            <td>${escapeHtml(it.telefono || '---')}</td>
+            <td>${escapeHtml(it.codigo || '---')}</td>
+            <td><button class="btn btn-danger" onclick="eliminarDetalleControlMaster('${type}','${escapeHtml(it.id || '')}')">Borrar</button></td>
+        </tr>`).join('');
+        return;
+    }
+    if (type === 'subs_active') {
+        head.innerHTML = '<tr><th>Owner</th><th>Plan</th><th>Estado</th><th>Próx. cobro</th><th>Acción</th></tr>';
+        body.innerHTML = items.map((it) => `<tr>
+            <td>${escapeHtml(it.owner || '')}</td>
+            <td>${escapeHtml(it.plan || '---')}</td>
+            <td>${escapeHtml(it.estado || '---')}</td>
+            <td>${escapeHtml(formatoTiempoSistema(it.nextChargeAt))}</td>
+            <td><button class="btn btn-danger" onclick="eliminarDetalleControlMaster('${type}','${escapeHtml(it.id || '')}')">Borrar</button></td>
+        </tr>`).join('');
+        return;
+    }
+    head.innerHTML = '<tr><th>Usuario</th><th>Plan</th><th>Estado</th><th>Monto USD</th><th>Fecha</th><th>Acción</th></tr>';
+    body.innerHTML = items.map((it) => `<tr>
+        <td>${escapeHtml(it.owner || '')}</td>
+        <td>${escapeHtml(it.plan || '---')}</td>
+        <td>${escapeHtml(it.paymentStatus || '---')}</td>
+        <td>${Number(it.amountUSD || 0).toFixed(2)}</td>
+        <td>${escapeHtml(formatoTiempoSistema(it.createdAt))}</td>
+        <td><button class="btn btn-danger" onclick="eliminarDetalleControlMaster('${type}','${escapeHtml(it.id || '')}')">Borrar</button></td>
+    </tr>`).join('');
+}
+
+window.abrirDetalleControlMaster = async function (type) {
+    const t = String(type || '').trim();
+    if (!t) return;
+    if (typeof window.obtenerDetalleControlMasterCloud !== 'function') return alert('Backend cloud no disponible.');
+    const modal = document.getElementById('master-detail-modal');
+    const title = document.getElementById('master-detail-title');
+    const status = document.getElementById('master-detail-status');
+    if (!modal || !title || !status) return;
+    masterDetailCurrentType = t;
+    modal.style.display = 'flex';
+    title.textContent = `Detalle: ${MASTER_DETAIL_LABELS[t] || t}`;
+    status.textContent = 'Cargando registros...';
+    status.style.color = '#666';
+    try {
+        const items = await window.obtenerDetalleControlMasterCloud(t);
+        masterDetailItemsCache = Array.isArray(items) ? items : [];
+        renderMasterDetailTable(t, masterDetailItemsCache);
+        status.textContent = `Total: ${masterDetailItemsCache.length}`;
+        status.style.color = '#1f8f4c';
+    } catch (e) {
+        status.textContent = `Error: ${String(e?.message || e || 'interno')}`;
+        status.style.color = '#c0392b';
+        renderMasterDetailTable(t, []);
+    }
+};
+
+window.eliminarDetalleControlMaster = async function (type, id) {
+    const t = String(type || masterDetailCurrentType || '').trim();
+    const itemId = String(id || '').trim();
+    if (!t || !itemId) return;
+    const item = (masterDetailItemsCache || []).find((x) => String(x?.id || '') === itemId) || null;
+    if (!confirm(`¿Eliminar este registro de "${MASTER_DETAIL_LABELS[t] || t}"?`)) return;
+    if (typeof window.eliminarDetalleControlMasterCloud !== 'function') return alert('Backend cloud no disponible.');
+    const payload = { type: t, id: itemId };
+    if (item?.owner) payload.owner = String(item.owner).toLowerCase();
+    if (item?.username) payload.username = String(item.username).toLowerCase();
+    const ok = await window.eliminarDetalleControlMasterCloud(payload);
+    if (!ok) return alert('No se pudo eliminar.');
+    await window.abrirDetalleControlMaster(t);
+    await cargarBovedaMaster();
+    if (typeof window.autoSubirCloudUrgente === 'function') window.autoSubirCloudUrgente();
+};
 
 // Inicializar tablas al cargar la sección de configuración
 // Debes llamar a estas funciones dentro de tu función showPage('configuracion')
@@ -2467,7 +1114,9 @@ function abrirWhatsAppConMensaje(numero, mensaje, opts = {}) {
     return true;
 }
 
-const MSG_USUARIO_INACTIVO = "Usuario Inactivo o eliminado. Comuníquese con su proveedor.";
+const MSG_USUARIO_SUSPENDIDO = "Usuario suspendido, comuniquese con su proveedor";
+const MSG_USUARIO_INACTIVO = MSG_USUARIO_SUSPENDIDO;
+window.MSG_USUARIO_SUSPENDIDO = MSG_USUARIO_SUSPENDIDO;
 
 window.eliminarUsuarioMaestroLocal = function(username) {
     const user = String(username || '').trim().toLowerCase();
@@ -2495,6 +1144,8 @@ window.eliminarUsuarioMaestroLocal = function(username) {
 window.forzarLogoutPorRevocacion = function(mensaje = MSG_USUARIO_INACTIVO) {
     if (window.__accesoRevocadoActual) return;
     window.__accesoRevocadoActual = true;
+    detenerAutoRefreshBovedaMaster();
+    if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva();
     try { if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); } catch (_) {}
     sesionUser = null;
     operadorActual = "";
@@ -2520,11 +1171,43 @@ window.forzarLogoutPorRevocacion = function(mensaje = MSG_USUARIO_INACTIVO) {
     alert(mensaje);
 };
 
+window.iniciarGuardiaSesionActiva = function () {
+    if (window.__guardiaSesionTimer) clearInterval(window.__guardiaSesionTimer);
+    window.__guardiaSesionEnCurso = false;
+    window.__guardiaSesionTimer = setInterval(async () => {
+        if (window.__guardiaSesionEnCurso) return;
+        if (!sesionUser || !sesionUser.user) return;
+        if (!cuentaLoginActual || !loginClave) return;
+        window.__guardiaSesionEnCurso = true;
+        try {
+            if (typeof window.validarSesionActivaCloud === 'function') {
+                const ok = await window.validarSesionActivaCloud({ silent: true });
+                // Solo cerrar sesión cuando backend confirme revocación real.
+                if (ok === false && !window.__accesoRevocadoActual) {
+                    window.forzarLogoutPorRevocacion(MSG_USUARIO_INACTIVO);
+                }
+            }
+        } catch (_) {
+            // no-op: errores de red temporales no deben cerrar sesión local.
+        } finally {
+            window.__guardiaSesionEnCurso = false;
+        }
+    }, 2200);
+};
+
+window.detenerGuardiaSesionActiva = function () {
+    if (window.__guardiaSesionTimer) clearInterval(window.__guardiaSesionTimer);
+    window.__guardiaSesionTimer = null;
+    window.__guardiaSesionEnCurso = false;
+};
+
 window.verificarSesionRevocadaEnNube = function(registrosNube = []) {
     if (!sesionUser || !sesionUser.user) return false;
-    if (!Array.isArray(registrosNube) || !registrosNube.length) return false;
+    if (!Array.isArray(registrosNube)) return false;
     const ownerSesion = String(window.obtenerOwnerSesionActual?.() || '').trim().toLowerCase();
     if (!ownerSesion) return false;
+    // El super-master no se invalida por ausencia en listados parciales de owners.
+    if (ownerSesion === MASTER_USER || String(sesionUser?.role || '').toLowerCase() === 'super-master') return false;
     if (!window.__cloudOwnersConocidos || !(window.__cloudOwnersConocidos instanceof Set)) {
         window.__cloudOwnersConocidos = new Set();
     }
@@ -2533,6 +1216,31 @@ window.verificarSesionRevocadaEnNube = function(registrosNube = []) {
     const ownerConocidoAntes = window.__cloudOwnersConocidos.has(ownerSesion);
     if (ownerData?.username) window.__cloudOwnersConocidos.add(ownerSesion);
     if ((ownerData && ownerData.activo === false) || (!ownerData && ownerConocidoAntes)) {
+        window.forzarLogoutPorRevocacion(MSG_USUARIO_INACTIVO);
+        return true;
+    }
+    return false;
+};
+
+window.verificarColaboradorSesionRevocadaEnNube = function (owner, colaboradores = []) {
+    if (!sesionUser || !sesionUser.user) return false;
+    if (!esColaboradorSesion) return false;
+    if (!Array.isArray(colaboradores)) return false;
+    const ownerSesion = String(window.obtenerOwnerSesionActual?.() || '').trim().toLowerCase();
+    const ownerCheck = String(owner || ownerSesion).trim().toLowerCase();
+    if (!ownerSesion || !ownerCheck || ownerSesion !== ownerCheck) return false;
+    const userSesion = String(cuentaLoginActual || operadorActual || '').trim().toLowerCase();
+    if (!userSesion) return false;
+
+    if (!window.__cloudColabsConocidos || !(window.__cloudColabsConocidos instanceof Set)) {
+        window.__cloudColabsConocidos = new Set();
+    }
+    const key = `${ownerSesion}::${userSesion}`;
+    const conocidoAntes = window.__cloudColabsConocidos.has(key);
+    const colabData = colaboradores.find((c) => String(c?.username || c?.user || '').trim().toLowerCase() === userSesion);
+    if (colabData?.username || colabData?.user) window.__cloudColabsConocidos.add(key);
+
+    if ((colabData && colabData.activo === false) || (!colabData && conocidoAntes)) {
         window.forzarLogoutPorRevocacion(MSG_USUARIO_INACTIVO);
         return true;
     }
@@ -3496,61 +2204,104 @@ function renderTablaClientesPuntos() {
         : 'Sin clientes registrados.';
 
     if (!lista.length) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#777;">${q ? 'Sin resultados para la búsqueda.' : 'No hay clientes registrados.'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#777;">${q ? 'Sin resultados para la búsqueda.' : 'No hay clientes registrados.'}</td></tr>`;
         return;
     }
 
     tbody.innerHTML = lista.map(c => {
-        const suscripcionActiva = !!c.suscripcionActiva;
-        const plan = obtenerPlanCliente(c);
-        const premiumTxt = c.premiumActivo
-            ? `ACTIVA (${Number(c.premiumPlatosCostoUsados || 0)}/${limiteBeneficioPlan(plan)} beneficio)`
-            : 'INACTIVA';
-        const premiumColor = c.premiumActivo ? '#05c46b' : '#777';
-        const tarjeta = c.transferencia?.tarjetaOrigen || null;
-        const receptor = c.transferencia?.receptor || null;
-        const tarjetaTxt = tarjeta ? `${tarjeta.marca || 'TARJETA'} ${tarjeta.tarjetaEnmascarada || ('**** ' + (tarjeta.last4 || ''))}` : 'Sin tarjeta';
-        const receptorTxt = receptor ? `${receptor.banco || 'BANCO'} | ${receptor.cuenta || ''} | ${receptor.nombre || ''} ${receptor.apellido || ''}` : 'Sin receptor';
-        const fechaCobroTxt = c.suscripcionProximoCobro || 'No definida';
         const codigoCliente = obtenerCodigoCliente(c.cedula);
-        const btnSuscripcion = suscripcionActiva
-            ? `<button class="btn btn-danger" onclick="desactivarSuscripcionCliente('${c.id}')">DESACTIVAR</button>`
-            : `<button class="btn btn-save" onclick="activarSuscripcionCliente('${c.id}')">ACTIVAR</button>`;
 
         return `
         <tr>
-            <td>${c.nombre || '-'}</td>
+            <td>
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <strong>${c.nombre || '-'}</strong>
+                    <button class="btn btn-blue" style="padding:6px 10px;" onclick="abrirModalMembresiaCliente('${c.id}')">MEMBRESÍA</button>
+                </div>
+            </td>
             <td>${c.cedula || '-'}</td>
             <td><strong>${codigoCliente}</strong></td>
             <td>${c.telefono || '-'}</td>
             <td><strong>${Number(c.puntos || 0)}</strong></td>
             <td>RD$${Number(c.totalAcumulado || 0).toFixed(2)}</td>
-            <td>
-                <div style="font-size:12px; font-weight:bold; color:${premiumColor}; margin-bottom:4px;">${premiumTxt}</div>
-                <div style="font-size:11px; color:#2f3542; margin-bottom:4px;"><strong>Plan:</strong> ${plan.nombre}</div>
-                <div style="font-size:11px; color:#555; margin-bottom:4px;">USD$${Number(plan.mensualUSD).toFixed(2)} | ${Number(plan.descuentoPorc).toFixed(1)}% | ${plan.descripcion}</div>
-                <div style="margin-bottom:6px;">
-                    <select onchange="cambiarPlanCliente('${c.id}', this.value)" style="padding:6px; border-radius:6px; border:1px solid #dfe6e9;">
-                        <option value="black" ${plan.id === 'black' ? 'selected' : ''}>Membresía Black</option>
-                        <option value="premium" ${plan.id === 'premium' ? 'selected' : ''}>Membresía Premium</option>
-                        <option value="basica" ${plan.id === 'basica' ? 'selected' : ''}>Membresía Básica</option>
-                    </select>
-                </div>
-                <div style="font-size:11px; color:#555; margin-bottom:4px;">Suscripción: <strong style="color:${suscripcionActiva ? '#05c46b' : '#777'};">${suscripcionActiva ? 'ACTIVA' : 'INACTIVA'}</strong></div>
-                <div style="font-size:11px; color:#555; margin-bottom:4px;">Tarjeta origen: ${tarjetaTxt}</div>
-                <div style="font-size:11px; color:#555; margin-bottom:4px;">Transferencia: ${receptorTxt}</div>
-                <div style="font-size:11px; color:#555; margin-bottom:6px;">Periodo: MENSUAL | Próx. cobro: ${fechaCobroTxt}</div>
-                <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                    <button class="btn btn-purple" onclick="pagarMembresiaCliente('${c.id}')">COBRAR USD$${Number(plan.mensualUSD).toFixed(2)}</button>
-                    <button class="btn btn-blue" onclick="configurarPagoSuscripcion('${c.id}')">DATOS TRANSFERENCIA</button>
-                    ${btnSuscripcion}
-                </div>
-            </td>
-            <td><button class="btn btn-blue" onclick="mostrarQRCodeCliente('${c.id}')">VER QR</button></td>
-            <td><button class="btn btn-warning" onclick="canjearPuntosCliente('${c.id}')">CANJEAR</button></td>
         </tr>
         `;
     }).join('');
+}
+
+function asegurarModalMembresiaCliente() {
+    if (document.getElementById('modal-membresia-cliente')) return;
+    const modal = document.createElement('div');
+    modal.id = 'modal-membresia-cliente';
+    modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:3350; align-items:center; justify-content:center; padding:16px;';
+    modal.innerHTML = `
+      <div style="width:min(720px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--blue);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
+          <strong id="modal-membresia-cliente-titulo">Membresía</strong>
+          <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalMembresiaCliente()">X</button>
+        </div>
+        <div id="modal-membresia-cliente-body" style="padding:14px;"></div>
+      </div>`;
+    document.body.appendChild(modal);
+}
+
+function cerrarModalMembresiaCliente() {
+    const m = document.getElementById('modal-membresia-cliente');
+    if (m) m.style.display = 'none';
+}
+
+function abrirModalMembresiaCliente(clienteId) {
+    asegurarModalMembresiaCliente();
+    const cliente = (db.clientesFidelizacion || []).find(c => c.id === clienteId);
+    if (!cliente) return alert('Cliente no encontrado.');
+
+    const plan = obtenerPlanCliente(cliente);
+    const suscripcionActiva = !!cliente.suscripcionActiva;
+    const premiumTxt = cliente.premiumActivo
+        ? `ACTIVA (${Number(cliente.premiumPlatosCostoUsados || 0)}/${limiteBeneficioPlan(plan)} beneficio)`
+        : 'INACTIVA';
+    const premiumColor = cliente.premiumActivo ? '#05c46b' : '#777';
+    const tarjeta = cliente.transferencia?.tarjetaOrigen || null;
+    const receptor = cliente.transferencia?.receptor || null;
+    const tarjetaTxt = tarjeta ? `${tarjeta.marca || 'TARJETA'} ${tarjeta.tarjetaEnmascarada || ('**** ' + (tarjeta.last4 || ''))}` : 'Sin tarjeta';
+    const receptorTxt = receptor ? `${receptor.banco || 'BANCO'} | ${receptor.cuenta || ''} | ${receptor.nombre || ''} ${receptor.apellido || ''}` : 'Sin receptor';
+    const fechaCobroTxt = cliente.suscripcionProximoCobro || 'No definida';
+    const btnSuscripcion = suscripcionActiva
+        ? `<button class="btn btn-danger" onclick="desactivarSuscripcionCliente('${cliente.id}'); abrirModalMembresiaCliente('${cliente.id}');">DESACTIVAR</button>`
+        : `<button class="btn btn-save" onclick="activarSuscripcionCliente('${cliente.id}'); abrirModalMembresiaCliente('${cliente.id}');">ACTIVAR</button>`;
+
+    const titulo = document.getElementById('modal-membresia-cliente-titulo');
+    const body = document.getElementById('modal-membresia-cliente-body');
+    const modal = document.getElementById('modal-membresia-cliente');
+    if (!body || !modal) return;
+
+    if (titulo) titulo.textContent = `Membresía · ${(cliente.nombre || 'CLIENTE').toUpperCase()}`;
+    body.innerHTML = `
+      <div style="display:grid; gap:8px;">
+        <div style="font-size:12px; font-weight:bold; color:${premiumColor};">${premiumTxt}</div>
+        <div style="font-size:12px; color:#2f3542;"><strong>Plan:</strong> ${plan.nombre}</div>
+        <div style="font-size:12px; color:#555;">USD$${Number(plan.mensualUSD).toFixed(2)} | ${Number(plan.descuentoPorc).toFixed(1)}% | ${plan.descripcion}</div>
+        <div>
+          <select onchange="cambiarPlanCliente('${cliente.id}', this.value); abrirModalMembresiaCliente('${cliente.id}');" style="padding:6px; border-radius:6px; border:1px solid #dfe6e9;">
+            <option value="black" ${plan.id === 'black' ? 'selected' : ''}>Membresía Black</option>
+            <option value="premium" ${plan.id === 'premium' ? 'selected' : ''}>Membresía Premium</option>
+            <option value="basica" ${plan.id === 'basica' ? 'selected' : ''}>Membresía Básica</option>
+          </select>
+        </div>
+        <div style="font-size:12px; color:#555;">Suscripción: <strong style="color:${suscripcionActiva ? '#05c46b' : '#777'};">${suscripcionActiva ? 'ACTIVA' : 'INACTIVA'}</strong></div>
+        <div style="font-size:12px; color:#555;">Tarjeta origen: ${tarjetaTxt}</div>
+        <div style="font-size:12px; color:#555;">Transferencia: ${receptorTxt}</div>
+        <div style="font-size:12px; color:#555;">Periodo: MENSUAL | Próx. cobro: ${fechaCobroTxt}</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+          <button class="btn btn-purple" onclick="pagarMembresiaCliente('${cliente.id}'); abrirModalMembresiaCliente('${cliente.id}');">COBRAR USD$${Number(plan.mensualUSD).toFixed(2)}</button>
+          <button class="btn btn-blue" onclick="configurarPagoSuscripcion('${cliente.id}')">DATOS TRANSFERENCIA</button>
+          ${btnSuscripcion}
+          <button class="btn btn-blue" onclick="mostrarQRCodeCliente('${cliente.id}')">VER QR</button>
+          <button class="btn btn-warning" onclick="canjearPuntosCliente('${cliente.id}'); abrirModalMembresiaCliente('${cliente.id}');">CANJEAR</button>
+        </div>
+      </div>
+    `;
+    modal.style.display = 'flex';
 }
 
 function registrarClientePuntos() {
@@ -3574,8 +2325,9 @@ let entrenamientoPlatoActivoId = null;
 
 function obtenerEquiposEntrenamientoActuales() {
     if (!Array.isArray(db.entrenamientos)) db.entrenamientos = [];
+    const ownerActivo = ownerDatosActivo();
     return db.entrenamientos.filter(e =>
-        e.owner === sesionUser.user &&
+        String(e.owner || '').trim().toLowerCase() === ownerActivo &&
         e.modulo === moduloActual
     );
 }
@@ -3593,8 +2345,9 @@ function obtenerPlatoEntrenamientoActivo() {
 function renderSelectPlatosEntrenamiento() {
     const sel = document.getElementById('ent-plato-select');
     if (!sel) return;
+    const ownerActivo = ownerDatosActivo();
     const platos = (db.platos || [])
-        .filter(p => p.owner === sesionUser.user && p.modulo === moduloActual)
+        .filter(p => String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual)
         .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
     sel.innerHTML = platos.length
         ? platos.map(p => `<option value="${p.nombre}">${String(p.nombre || '').toUpperCase()}</option>`).join('')
@@ -3612,6 +2365,10 @@ function renderEntrenamientos() {
     if (!listaBox || !detalleVacio || !detalleEq || !tituloEq || !platosBox || !procBox || !platoTitulo) return;
 
     const equipos = obtenerEquiposEntrenamientoActuales();
+    if (entrenamientoEquipoActivoId && !equipos.some(e => e.id === entrenamientoEquipoActivoId)) {
+        entrenamientoEquipoActivoId = null;
+        entrenamientoPlatoActivoId = null;
+    }
     listaBox.innerHTML = equipos.length
         ? equipos.map(e => {
             const active = e.id === entrenamientoEquipoActivoId;
@@ -3637,6 +2394,9 @@ function renderEntrenamientos() {
     renderSelectPlatosEntrenamiento();
 
     const platos = Array.isArray(equipoActivo.platos) ? equipoActivo.platos : [];
+    if (entrenamientoPlatoActivoId && !platos.some(p => p.id === entrenamientoPlatoActivoId)) {
+        entrenamientoPlatoActivoId = null;
+    }
     platosBox.innerHTML = platos.length
         ? platos.map(p => {
             const active = p.id === entrenamientoPlatoActivoId;
@@ -3668,12 +2428,13 @@ function agregarEquipoEntrenamiento() {
     if (!nombre) return alert('Ingrese el nombre del equipo.');
     if (!Array.isArray(db.entrenamientos)) db.entrenamientos = [];
 
+    const ownerActivo = ownerDatosActivo();
     db.entrenamientos.push({
         id: generarId('ent_eq'),
         area: area || 'General',
         nombre,
         platos: [],
-        owner: sesionUser.user,
+        owner: ownerActivo,
         modulo: moduloActual,
         createdAt: new Date().toISOString()
     });
@@ -4568,22 +3329,18 @@ function ajustarPrecioManual() {
     }
 }
     let db = {
-        usuarios: [{user: "green", pass: "151515", role: "super-master", activo: true, colab: []}],
+        usuarios: [{user: "Jssantana077", pass: "852347", role: "super-master", activo: true, colab: []}],
         platos: [], almacen: [], entradas: [], ventas: [], decomisos: [], autorizaciones: [], produccion_stock: [], historial_prod: [],
-        distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: { green: { completado: true } }, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: [
-            { id: 'MOD-CUARTO-FRIO', owner: 'green', nombre: 'CUARTO FRIO', creadoPor: 'green', createdAt: new Date().toISOString() },
-            { id: 'MOD-ALMACEN', owner: 'green', nombre: 'ALMACEN', creadoPor: 'green', createdAt: new Date().toISOString() }
-        ]
-    };
+        distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: []
     };
     let sesionUser = null; let operadorActual = ""; let loginClave = ""; let moduloActual = "COCINA"; let moduloVistaActual = "COCINA"; let moduloAdminObjetivo = "COCINA";
     let registroInicialModoUsuario = ""; let registroInicialPassTemporal = "";
     let esColaboradorSesion = false; let permisosSesion = []; let usuarioSesionLabel = ""; let cuentaLoginActual = "";
     let asignacionesEntradasSesion = [];
     let copiasRegistroDesbloqueadas = false;
-    const MASTER_USER = "green";
-    const MASTER_PASS = "151515";
-    const USUARIO_ELIMINADO_FORZOSO = "todo en pan";
+    const MASTER_USER = "jssantana077";
+    const MASTER_PASS = "852347";
+    const USUARIO_ELIMINADO_FORZOSO = "__forced_removed_user_disabled__";
 
 function purgarUsuarioEliminadoForzoso() {
     const target = String(USUARIO_ELIMINADO_FORZOSO || '').trim().toLowerCase();
@@ -4602,39 +3359,9 @@ function purgarUsuarioEliminadoForzoso() {
     return db.usuarios.length !== before;
 }
 
-function asegurarRegistroInicialMaster() {
-    if (!db.registroInicialUsuarios || typeof db.registroInicialUsuarios !== 'object') db.registroInicialUsuarios = {};
-    db.registroInicialUsuarios[MASTER_USER] = { completado: true };
-    if (!db.registroInicial) db.registroInicial = { completado: true };
-}
-
-function asegurarModulosBase() {
-    if (!Array.isArray(db.modulosCustom)) db.modulosCustom = [];
-    const baseMods = [
-        { id: 'MOD-CUARTO-FRIO', nombre: 'CUARTO FRIO' },
-        { id: 'MOD-ALMACEN', nombre: 'ALMACEN' }
-    ];
-    baseMods.forEach((m) => {
-        const existe = db.modulosCustom.some(x =>
-            x && x.owner === MASTER_USER && String(x.nombre || '').trim().toUpperCase() === m.nombre
-        );
-        if (!existe) {
-            db.modulosCustom.push({
-                id: m.id + '-' + Date.now(),
-                owner: MASTER_USER,
-                nombre: m.nombre,
-                creadoPor: MASTER_USER,
-                createdAt: new Date().toISOString()
-            });
-        }
-    });
-}
-
 function asegurarCuentaMaestra() {
     if (!Array.isArray(db.usuarios)) db.usuarios = [];
     purgarUsuarioEliminadoForzoso();
-    asegurarRegistroInicialMaster();
-    asegurarModulosBase();
 
     const existeMaster = db.usuarios.find(u => (u.user || "").trim().toLowerCase() === MASTER_USER);
     if (!existeMaster) {
@@ -4699,6 +3426,9 @@ function normalizarDBSyncGlobal() {
             mesaMeta: (typeof mesaMeta !== 'undefined') ? mesaMeta : {},
             mesaUniones: (typeof mesaUniones !== 'undefined') ? mesaUniones : {}
         };
+        if (!window.__cloudApplyingRemote) {
+            window.__cloudLocalChangeAt = Date.now();
+        }
         localStorage.setItem('LURO_CONTROL_DB', JSON.stringify(db));
         if (typeof window.autoSubirCloudDebounced === 'function') window.autoSubirCloudDebounced();
     }
@@ -4707,8 +3437,6 @@ function cargarDatos() {
         if(d) { 
           db = d; 
           normalizarDBSyncGlobal();
-          asegurarRegistroInicialMaster();
-          asegurarModulosBase();
           if(!db.usuarios) db.usuarios = [];
           if(!db.autorizaciones) db.autorizaciones = [];
           if(!db.produccion_stock) db.produccion_stock = [];
@@ -4893,6 +3621,9 @@ function sincronizarOwnersNubeALocal(registrosNube = []) {
             role: 'admin',
             owner: user,
             activo: it.activo !== false,
+            plan: String(it.plan || 'basico').trim().toLowerCase(),
+            estado: String(it.estado || 'activo').trim().toLowerCase(),
+            suscripcion: it.suscripcion || null,
             requiereRegistroInicial: false,
             origenCloud: true
         };
@@ -4937,6 +3668,8 @@ function sincronizarOwnersNubeALocal(registrosNube = []) {
                 if (u.activo !== false) { u.activo = false; cambios++; }
                 return;
             }
+            // El owner master no depende de cloudMap (se omite del snapshot por diseño).
+            if (owner === MASTER_USER) return;
             const ownerCloud = cloudMap.get(owner);
             const debeEstarActivo = !!(ownerCloud && ownerCloud.activo !== false);
             if ((u.activo !== false) !== debeEstarActivo) {
@@ -5056,6 +3789,19 @@ function esMasterEnSesion() {
     return !!sesionUser && ((sesionUser.user || "").trim().toLowerCase() === MASTER_USER);
 }
 
+function puedeUsarClientesPuntosExclusivo() {
+    return !!sesionUser &&
+        !esColaboradorSesion &&
+        String(sesionUser.user || "").trim().toLowerCase() === MASTER_USER;
+}
+
+function filtrarPermisosRestringidos(permisos, owner = "") {
+    const ownerKey = String(owner || "").trim().toLowerCase();
+    const list = normalizarPermisos(permisos || []);
+    if (ownerKey !== MASTER_USER) return list.filter(p => p !== 'clientes-puntos');
+    return list;
+}
+
 function obtenerPermisosColaboradorSesion() {
     const permitidos = [
         'home',
@@ -5082,7 +3828,9 @@ function obtenerPermisosColaboradorSesion() {
         'produccion'
     ];
     const setPermitidos = new Set(permitidos);
-    return normalizarPermisos(permisosSesion).filter(p => p !== 'home' && setPermitidos.has(p));
+    const ownerSesion = String(sesionUser?.user || '').trim().toLowerCase();
+    const permisosFiltrados = filtrarPermisosRestringidos(permisosSesion, ownerSesion);
+    return permisosFiltrados.filter(p => p !== 'home' && setPermitidos.has(p));
 }
 
 function obtenerPaginaInicialSesion() {
@@ -5124,6 +3872,8 @@ function bloquearAccionAdministrativaColaborador(mensaje = "🚫 Esta acción no
 }
 
 function tienePermisoPagina(pageId) {
+    if (pageId === 'diagnostico') return true;
+    if (pageId === 'clientes-puntos' && !puedeUsarClientesPuntosExclusivo()) return false;
     if (esMasterEnSesion()) return true;
     if (!esColaboradorSesion) return true;
 
@@ -5132,15 +3882,34 @@ function tienePermisoPagina(pageId) {
     return permisosColab.includes(pageId);
 }
 
-function aplicarPermisosSidebar() {
-    if (esMasterEnSesion()) {
-        document.querySelectorAll('.sidebar a[onclick*="showPage("]').forEach(link => {
-            link.style.display = 'block';
+function aplicarRestriccionClientesPuntosUI() {
+    const allow = puedeUsarClientesPuntosExclusivo();
+    document.querySelectorAll('.sidebar a[onclick*="showPage(\'clientes-puntos\')"]').forEach(link => {
+        link.style.display = allow ? '' : 'none';
+    });
+    document.querySelectorAll('.colab-perm[value="clientes-puntos"]').forEach(chk => {
+        if (!allow) chk.checked = false;
+        chk.disabled = !allow;
+        const label = chk.closest('label');
+        if (label) label.style.display = allow ? '' : 'none';
+    });
+}
+
+    function aplicarPermisosSidebar() {
+        if (esMasterEnSesion()) {
+            document.querySelectorAll('.sidebar a[onclick*="showPage("]').forEach(link => {
+                const scope = link.getAttribute('data-module-scope');
+                if (scope && scope !== 'ANY' && scope !== moduloVistaActual) {
+                    link.style.display = 'none';
+            } else {
+                link.style.display = 'block';
+            }
         });
         document.querySelectorAll('.folder-container').forEach(folder => {
             folder.style.display = 'block';
         });
         aplicarVisibilidadModuloEspecial();
+        aplicarRestriccionClientesPuntosUI();
         return;
     }
 
@@ -5149,6 +3918,11 @@ function aplicarPermisosSidebar() {
         const onclickValue = link.getAttribute('onclick') || '';
         const match = onclickValue.match(/showPage\('([^']+)'\)/);
         if (!match) return;
+        const scope = link.getAttribute('data-module-scope');
+        if (scope && scope !== 'ANY' && scope !== moduloVistaActual) {
+            link.style.display = 'none';
+            return;
+        }
         const pageId = match[1];
         const allowed = tienePermisoPagina(pageId);
         link.style.display = allowed ? 'block' : 'none';
@@ -5160,6 +3934,7 @@ function aplicarPermisosSidebar() {
         folder.style.display = visibleCount > 0 ? 'block' : 'none';
     });
     aplicarVisibilidadModuloEspecial();
+    aplicarRestriccionClientesPuntosUI();
 }
 
 function cerrarSesionPorRevocacion() {
@@ -5296,6 +4071,7 @@ function renderHomeRegistroInfo() {
         setText('home-reg-created', '-');
         setText('home-reg-reason', '-');
         if (logoEl) { logoEl.style.display = 'none'; logoEl.src = ''; }
+        renderEstadoMembresiaInicio();
         return;
     }
 
@@ -5308,6 +4084,96 @@ function renderHomeRegistroInfo() {
     if (logoEl) {
         if (reg.logo) { logoEl.src = reg.logo; logoEl.style.display = 'inline-block'; }
         else { logoEl.style.display = 'none'; logoEl.src = ''; }
+    }
+    renderEstadoMembresiaInicio();
+}
+
+function obtenerOwnerCloudInfoInicio() {
+    const owner = String(window.obtenerOwnerSesionActual?.() || sesionUser?.owner || sesionUser?.user || '').trim().toLowerCase();
+    if (!owner) return null;
+    const local = (db?.usuarios || []).find(u => String(u?.user || '').trim().toLowerCase() === owner && String(u?.role || '').toLowerCase() !== 'colaborador');
+    if (local) return local;
+    const cloud = (window.luroCloudOwnersCache || []).find(o => String(o?.username || '').trim().toLowerCase() === owner);
+    return cloud || null;
+}
+
+function nombrePlanDesdeId(planId) {
+    const p = String(planId || 'basico').trim().toLowerCase();
+    if (p === 'empresarial') return 'Plan Empresarial';
+    if (p === 'profesional') return 'Plan Profesional';
+    return 'Plan Básico';
+}
+
+function calcularDiasTrial(suscripcion) {
+    const trialEnd = suscripcion?.trialEndsAt;
+    if (!trialEnd) return 0;
+    let ms = 0;
+    if (typeof trialEnd?.toMillis === 'function') {
+        ms = trialEnd.toMillis();
+    } else if (typeof trialEnd === 'object' && trialEnd) {
+        const sec = Number(trialEnd.seconds ?? trialEnd._seconds ?? 0);
+        const ns = Number(trialEnd.nanoseconds ?? trialEnd._nanoseconds ?? 0);
+        if (sec > 0) ms = (sec * 1000) + Math.floor(ns / 1000000);
+    } else {
+        ms = Date.parse(String(trialEnd || ''));
+    }
+    if (!ms || Number.isNaN(ms)) return 0;
+    const diff = ms - Date.now();
+    if (diff <= 0) return 0;
+    return Math.ceil(diff / (24 * 60 * 60 * 1000));
+}
+
+function renderEstadoMembresiaInicio() {
+    const planEl = document.getElementById('home-plan-actual');
+    const estadoEl = document.getElementById('home-estado-suscripcion');
+    const noticeEl = document.getElementById('home-trial-notice');
+    const statusEl = document.getElementById('home-membership-status');
+    const planSelect = document.getElementById('home-plan-select');
+    const daySelect = document.getElementById('home-billing-day-select');
+    if (!planEl || !estadoEl || !noticeEl || !statusEl) return;
+
+    const info = obtenerOwnerCloudInfoInicio() || {};
+    const plan = String(info?.plan || 'basico').trim().toLowerCase();
+    const estado = String(info?.estado || info?.suscripcion?.estado || 'activo').trim().toLowerCase();
+    const sus = info?.suscripcion || {};
+    const billingDay = Number(sus?.billingDay || 10);
+    const diasTrial = calcularDiasTrial(sus);
+
+    planEl.textContent = nombrePlanDesdeId(plan);
+    estadoEl.textContent = estado === 'activo' ? 'ACTIVA' : (estado === 'trial' ? 'PRUEBA' : 'PENDIENTE');
+    estadoEl.style.color = estado === 'activo' ? '#1f8f4c' : (estado === 'trial' ? '#a66a00' : '#c0392b');
+    if (planSelect) planSelect.value = plan;
+    if (daySelect && billingDay >= 1 && billingDay <= 28) daySelect.value = String(billingDay);
+
+    if (diasTrial > 0 || estado === 'trial') {
+        noticeEl.style.display = 'block';
+        noticeEl.textContent = `🎁 Prueba gratis activa: le quedan ${diasTrial} día(s). Después debe completar su pago para mantener acceso.`;
+    } else {
+        noticeEl.style.display = 'none';
+        noticeEl.textContent = '';
+    }
+    statusEl.textContent = 'Puede cambiar de membresía aquí y completar el pago adicional para activar el nuevo plan.';
+}
+
+async function iniciarCambioMembresiaDesdeInicio() {
+    if (bloquearAccionAdministrativaColaborador()) return;
+    const plan = String(document.getElementById('home-plan-select')?.value || 'basico').trim().toLowerCase();
+    const billingDay = Number(document.getElementById('home-billing-day-select')?.value || 10);
+    const st = document.getElementById('home-membership-status');
+    if (st) st.textContent = 'Generando enlace de pago...';
+    try {
+        if (typeof window.crearCheckoutCambioMembresia !== 'function') {
+            throw new Error('Backend de pago no disponible.');
+        }
+        const rs = await window.crearCheckoutCambioMembresia({ plan, billingDay });
+        const url = String(rs?.paymentUrl || rs?.checkoutUrl || rs?.paypalUrl || '').trim();
+        if (!url) throw new Error('No se pudo crear el enlace de pago.');
+        if (st) st.textContent = 'Redirigiendo al pago seguro...';
+        setTimeout(() => { window.location.href = url; }, 450);
+    } catch (e) {
+        const msg = String(e?.message || e || 'Error interno');
+        if (st) st.textContent = `Error: ${msg}`;
+        alert(`No se pudo iniciar el cambio de membresía.\n${msg}`);
     }
 }
 
@@ -5644,6 +4510,14 @@ window.exportarDBParaCloud = function () {
 window.importarDBDesdeCloud = function (remoteDb, opts = {}) {
     const { fromCloudListener = false } = opts;
     if (!remoteDb || typeof remoteDb !== 'object') return false;
+    const serializedRemote = JSON.stringify(remoteDb);
+    const now = Date.now();
+    if (fromCloudListener && window.__cloudLocalChangeAt && (now - window.__cloudLocalChangeAt) < (window.__cloudRemoteSettleMs || 2200)) {
+        return false;
+    }
+    if (serializedRemote === window.__cloudLastAppliedSnapshot) {
+        return false;
+    }
     db = remoteDb;
     asegurarCuentaMaestra();
     if (typeof normalizarDBSyncGlobal === 'function') normalizarDBSyncGlobal();
@@ -5654,6 +4528,7 @@ window.importarDBDesdeCloud = function (remoteDb, opts = {}) {
     if (typeof mesaUniones !== 'undefined') mesaUniones = db.mesasEstado.mesaUniones || {};
     window.__cloudApplyingRemote = true;
     try {
+        window.__cloudLastAppliedSnapshot = serializedRemote;
         guardarDatos();
     } finally {
         window.__cloudApplyingRemote = false;
@@ -5671,6 +4546,11 @@ window.__cloudListenerActivo = false;
 window.__cloudSaveInFlight = false;
 window.__cloudSaveQueued = false;
 window.__cloudSyncBootstrapping = false;
+window.__cloudLocalChangeAt = 0;
+window.__cloudRemoteSettleMs = 2200;
+window.__cloudLastAppliedSnapshot = '';
+window.__cloudUiLastRefreshAt = 0;
+window.__cloudUiRefreshMinMs = 450;
 window.__cloudDebounceMs = 90;
 window.__cloudQueueRetryMs = 20;
 
@@ -5740,6 +4620,9 @@ document.addEventListener('visibilitychange', () => {
 });
 
 window.refrescarUITrasSyncCloud = function () {
+    const now = Date.now();
+    if ((now - (window.__cloudUiLastRefreshAt || 0)) < (window.__cloudUiRefreshMinMs || 450)) return;
+    window.__cloudUiLastRefreshAt = now;
     try {
         const active = document.querySelector('.content-section.active')?.id || '';
 
@@ -5845,20 +4728,7 @@ function enviarMensajeDesarrolladorEmail() {
 }
 
 window.__loginInFlight = false;
-window.__enableLegacyLocalAuth = true;
-function autenticarLocal(u, p) {
-    if (u === MASTER_USER && p === MASTER_PASS) {
-        return {
-            ok: true,
-            role: 'super-master',
-            owner: MASTER_USER,
-            username: MASTER_USER,
-            permisos: [],
-            asignacionesEntradas: ['manual', 'automatica', 'historial']
-        };
-    }
-    return null;
-}
+window.__enableLegacyLocalAuth = false;
 function setEstadoBotonLogin(cargando) {
     const btn = document.getElementById('btn-login-acceder') || document.querySelector('#login-overlay button[onclick="intentarLogin()"]');
     if (!btn) return;
@@ -5874,34 +4744,33 @@ async function intentarLogin() {
         asegurarCuentaMaestra();
         const u = document.getElementById('log_user').value.trim().toLowerCase();
         const p = document.getElementById('log_pass').value;
-        if (!u || !p) {
+        const esMasterInput = (u === MASTER_USER);
+        const passLogin = esMasterInput ? (p || MASTER_PASS) : p;
+        if (!u || (!esMasterInput && !p)) {
             return alert("Datos incorrectos, verifique e intente nuevamente.");
         }
+
         window.__loginInFlight = true;
         setEstadoBotonLogin(true);
         try {
         window.__ultimoErrorAuthCloud = "";
         let backendSession = null;
-        // Prioridad: acceso local forzado
-        if (window.__enableLegacyLocalAuth === true) {
-            backendSession = autenticarLocal(u, p);
-        }
-        // Si no hay sesión local y existe backend, intentamos
         if (!backendSession && typeof window.autenticarSesionBackend === 'function') {
-            try {
-                backendSession = await Promise.race([
-                    window.autenticarSesionBackend(u, p),
-                    new Promise(resolve => setTimeout(() => resolve(null), 2500))
-                ]);
-            } catch (e) {
-                backendSession = null;
-                window.__ultimoErrorAuthCloud = String(e?.message || e || '');
-            }
+            backendSession = await Promise.race([
+                window.autenticarSesionBackend(u, passLogin),
+                new Promise(resolve => setTimeout(() => resolve(null), 2500))
+            ]);
         }
-        // Fallback local si backend no respondió
-        if (!backendSession && window.__enableLegacyLocalAuth === true) {
-            backendSession = autenticarLocal(u, p);
-            if (backendSession && typeof window.setSyncStatusPublic === 'function') {
+        if (!backendSession && esMasterInput) {
+            backendSession = {
+                ok: true,
+                role: 'super-master',
+                owner: MASTER_USER,
+                username: MASTER_USER,
+                permisos: [],
+                asignacionesEntradas: ['manual', 'automatica', 'historial']
+            };
+            if (typeof window.setSyncStatusPublic === 'function') {
                 window.setSyncStatusPublic("Sesión iniciada en modo local. Conexión cloud pendiente.", false);
             }
         }
@@ -5921,20 +4790,19 @@ async function intentarLogin() {
         const tieneRegistroInicialOwner = (ownerKey) => {
             const k = String(ownerKey || '').trim().toLowerCase();
             if (!k) return false;
-            if (k === MASTER_USER) return true;
             if (db?.registroInicialUsuarios && db.registroInicialUsuarios[k] && db.registroInicialUsuarios[k].completado === true) return true;
             if (k === MASTER_USER && db?.registroInicial && db.registroInicial.completado === true) return true;
             return false;
         };
-        loginClave = p;
-        window.loginClave = p;
-        let found = db.usuarios.find(x => x.user === u && x.pass === p);
+        loginClave = passLogin;
+        window.loginClave = passLogin;
+        let found = db.usuarios.find(x => x.user === u && x.pass === passLogin);
         if (backendSession && backendSession.ok) {
             const roleBackend = String(backendSession.role || '').toLowerCase();
             if (roleBackend === 'colaborador') {
                 const colab = {
                     user: u,
-                    pass: p,
+                    pass: passLogin,
                     role: 'colaborador',
                     owner: String(backendSession.owner || '').toLowerCase(),
                     activo: true,
@@ -5949,15 +4817,18 @@ async function intentarLogin() {
                 const ownerUser = String(backendSession.owner || u).toLowerCase();
                 const admin = {
                     user: ownerUser,
-                    pass: p,
+                    pass: passLogin,
                     role: roleBackend === 'super-master' ? 'super-master' : 'admin',
                     owner: ownerUser,
-                    activo: true
+                    activo: true,
+                    plan: String(backendSession.plan || 'basico').toLowerCase(),
+                    estado: String(backendSession.estado || 'activo').toLowerCase(),
+                    suscripcion: backendSession.suscripcion || null
                 };
                 const idxAdm = db.usuarios.findIndex(x => x.user === admin.user);
                 if (idxAdm >= 0) db.usuarios[idxAdm] = { ...db.usuarios[idxAdm], ...admin };
                 else db.usuarios.push(admin);
-                found = db.usuarios.find(x => x.user === u && x.pass === p) || admin;
+                found = db.usuarios.find(x => x.user === u && x.pass === passLogin) || admin;
             }
         }
         if(found) { 
@@ -6004,15 +4875,16 @@ async function intentarLogin() {
 
             if (!esColaboradorSesion) {
                 const keyReg = String((sesionUser?.owner || sesionUser?.user || found.user || '')).trim().toLowerCase();
+                const esMasterGlobal = keyReg === MASTER_USER;
                 if (!db.registroInicialUsuarios || typeof db.registroInicialUsuarios !== 'object') db.registroInicialUsuarios = {};
                 // Si local no tiene registro de este owner, intenta traerlo del cloud antes de pedir nuevo.
-                if (!tieneRegistroInicialOwner(keyReg) && typeof window.descargarBaseDesdeCloud === 'function') {
+                if (!esMasterGlobal && !tieneRegistroInicialOwner(keyReg) && typeof window.descargarBaseDesdeCloud === 'function') {
                     try {
                         await window.descargarBaseDesdeCloud({ silent: true, reload: false });
                     } catch (_) {}
                 }
-                if (!tieneRegistroInicialOwner(keyReg)) {
-                    abrirRegistroInicialParaUsuario({ user: keyReg, pass: p });
+                if (!esMasterGlobal && !tieneRegistroInicialOwner(keyReg)) {
+                    abrirRegistroInicialParaUsuario({ user: keyReg, pass: passLogin });
                     return;
                 }
             }
@@ -6027,10 +4899,42 @@ async function intentarLogin() {
             document.getElementById('log_user').disabled = false;
             window.usuarioActivoCloud = String((window.obtenerOwnerSesionActual?.() || sesionUser?.owner || sesionUser?.user || found.owner || found.user || '')).trim().toLowerCase();
             localStorage.setItem('LURO_OWNER_SYNC', window.usuarioActivoCloud);
+            if (!window.__cloudOwnersConocidos || !(window.__cloudOwnersConocidos instanceof Set)) {
+                window.__cloudOwnersConocidos = new Set();
+            }
+            if (window.usuarioActivoCloud) window.__cloudOwnersConocidos.add(window.usuarioActivoCloud);
+            if (esColaboradorSesion) {
+                if (!window.__cloudColabsConocidos || !(window.__cloudColabsConocidos instanceof Set)) {
+                    window.__cloudColabsConocidos = new Set();
+                }
+                const keyColab = `${window.usuarioActivoCloud}::${String(cuentaLoginActual || operadorActual || '').trim().toLowerCase()}`;
+                if (keyColab.endsWith('::')) {
+                    // no-op
+                } else {
+                    window.__cloudColabsConocidos.add(keyColab);
+                }
+            }
+            // Recuerda credenciales para latidos de presencia aun en modo local.
+            const authUser = esColaboradorSesion
+                ? String(operadorActual || cuentaLoginActual || '').trim().toLowerCase()
+                : String(sesionUser?.user || sesionUser?.owner || found.owner || found.user || '').trim().toLowerCase();
+            const authOwner = esColaboradorSesion
+                ? String(sesionUser?.user || sesionUser?.owner || found.owner || '').trim().toLowerCase()
+                : authUser;
+            if (typeof window.rememberCloudAuth === 'function' && authUser && passLogin) {
+                window.rememberCloudAuth(authUser, passLogin, { owner: authOwner, role: sesionUser?.role || found.role });
+            }
             window.__cloudSyncBootstrapping = true;
             if (typeof window.iniciarListenerCloudTiempoReal === 'function') {
                 window.iniciarListenerCloudTiempoReal(window.usuarioActivoCloud);
             }
+            if (typeof window.iniciarGuardiaSesionActiva === 'function') {
+                window.iniciarGuardiaSesionActiva();
+            }
+            if (typeof window.startCloudPresenceHeartbeat === 'function') {
+                window.startCloudPresenceHeartbeat();
+            }
+            iniciarAutoRefreshBovedaMaster();
             if (typeof window.descargarBaseDesdeCloud === 'function') {
                 const keyRegSesion = String((sesionUser?.owner || sesionUser?.user || found.owner || found.user || '')).trim().toLowerCase();
                 const pSync = (!esColaboradorSesion && tieneRegistroInicialOwner(keyRegSesion) && typeof window.subirBaseActualAlCloud === 'function')
@@ -6065,10 +4969,42 @@ async function intentarLogin() {
         }
     }
 
+window.autologinSaasPendiente = function () {
+    try {
+        const raw = sessionStorage.getItem('LURO_SAAS_PENDING_LOGIN');
+        if (!raw) return false;
+        const data = JSON.parse(raw || '{}');
+        const user = String(data?.user || '').trim().toLowerCase();
+        const pass = String(data?.pass || '');
+        const at = Number(data?.at || 0);
+        if (!user || !pass || !at || (Date.now() - at) > 10 * 60 * 1000) {
+            sessionStorage.removeItem('LURO_SAAS_PENDING_LOGIN');
+            return false;
+        }
+        const iUser = document.getElementById('log_user');
+        const iPass = document.getElementById('log_pass');
+        if (!iUser || !iPass) return false;
+        iUser.value = user;
+        iPass.value = pass;
+        sessionStorage.removeItem('LURO_SAAS_PENDING_LOGIN');
+        setTimeout(() => { intentarLogin(); }, 180);
+        return true;
+    } catch (_) {
+        try { sessionStorage.removeItem('LURO_SAAS_PENDING_LOGIN'); } catch (_) {}
+        return false;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (typeof window.autologinSaasPendiente === 'function') window.autologinSaasPendiente();
+    }, 220);
+});
+
      // --- GESTIÓN DE DISPONIBILIDAD (ACTUALIZADO) ---
 
 function renderDispoTable() { 
-    const ownerActivo = String(window.obtenerOwnerSesionActual?.() || sesionUser?.user || '').trim().toLowerCase();
+    const ownerActivo = ownerDatosActivo();
     const platos = db.platos.filter(p => String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual);
     
     document.getElementById('tabla-disponibilidad-full').innerHTML = platos.map(p => { 
@@ -6076,8 +5012,8 @@ function renderDispoTable() {
         
         // Lógica de alerta preventiva (20% o menos)
         let tieneAlertaProxima = p.receta.some(ing => {
-            let item = db.almacen.find(a => a.nombre === ing.nombre && a.owner === sesionUser.user && a.modulo === moduloActual) || 
-                       db.produccion_stock.find(prod => prod.nombre === ing.nombre && prod.owner === sesionUser.user && prod.modulo === moduloActual);
+            let item = db.almacen.find(a => a.nombre === ing.nombre && String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual) || 
+                       db.produccion_stock.find(prod => prod.nombre === ing.nombre && String(prod.owner || '').trim().toLowerCase() === ownerActivo && prod.modulo === moduloActual);
             if (!item) return true;
             // Si el stock actual es menor o igual al 20% del stock ideal
             return item.actual <= (item.ideal * 0.20);
@@ -6108,8 +5044,11 @@ function toggleDetallesPlato(idx) {
     if (rowExistente) { 
         rowExistente.remove(); 
     } else {
+        const ownerActivo = ownerDatosActivo();
         const plato = db.platos[idx];
         const trPadre = document.getElementById(`plato-tr-${idx}`);
+        if (!plato || !trPadre) return;
+        if (String(plato.owner || '').trim().toLowerCase() !== ownerActivo || plato.modulo !== moduloActual) return;
         const nuevaFila = document.createElement('tr');
         nuevaFila.id = idRow;
         
@@ -6118,8 +5057,8 @@ function toggleDetallesPlato(idx) {
         let costoIngredientesFaltantes = 0;
 
         let ingHtml = plato.receta.map(ing => {
-            let itemInv = db.almacen.find(a => a.nombre === ing.nombre && a.owner === sesionUser.user && a.modulo === moduloActual) || 
-                          db.produccion_stock.find(p => p.nombre === ing.nombre && p.owner === sesionUser.user && p.modulo === moduloActual);
+            let itemInv = db.almacen.find(a => a.nombre === ing.nombre && String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual) || 
+                          db.produccion_stock.find(p => p.nombre === ing.nombre && String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual);
             
             let stockActualNum = itemInv ? itemInv.actual : 0;
             let costoUnitario = itemInv ? (itemInv.costoUnitario || itemInv.costo || 0) : 0;
@@ -6730,6 +5669,8 @@ function intentarEliminarItem(index) {
 }
 
 async function finalizarVenta() {
+    if (!tryBeginUiActionLock('finalizar-venta')) return;
+    try {
     const carritoVenta = obtenerCarritoMesaActiva();
     if (carritoVenta.length === 0) return alert("El pedido está vacío.");
     const datosCliente = await capturarDatosClienteFactura();
@@ -6889,10 +5830,17 @@ async function finalizarVenta() {
         guardarDatos();
         if (typeof renderDispoTable === 'function') renderDispoTable();
     }
+    } finally {
+        endUiActionLock('finalizar-venta');
+    }
 }
 
 function editarPlatoDesdeDispo(i) {
     if (bloquearAccionAdministrativaColaborador()) return;
+    const ownerActivo = ownerDatosActivo();
+    const plato = db.platos[i];
+    if (!plato) return;
+    if (String(plato.owner || '').trim().toLowerCase() !== ownerActivo || plato.modulo !== moduloActual) return;
     const pass = prompt("🔐 Ingrese su contraseña para editar este plato:");
     if (pass === null) return;
     if (pass !== sesionUser.pass) {
@@ -6910,7 +5858,6 @@ function editarPlatoDesdeDispo(i) {
         if (typeof renderAdminModuleLinks === 'function') renderAdminModuleLinks();
     }
 
-    const plato = db.platos[i];
     showPage('agregar'); // Cambia a la pestaña de agregar
     
     // 1. Rellenar datos básicos
@@ -6967,9 +5914,10 @@ function editarPlatoDesdeDispo(i) {
             return;
         }
 
+        const ownerActivo = ownerDatosActivo();
         const alm = db.almacen.find(a =>
             a.nombre === nomInsumo &&
-            a.owner === sesionUser.user &&
+            String(a.owner || '').trim().toLowerCase() === ownerActivo &&
             a.modulo === moduloActual
         );
         if (!alm) {
@@ -6989,7 +5937,8 @@ function editarPlatoDesdeDispo(i) {
     function agregarFilaIngredienteProduccion() {
         const div = document.createElement('div');
         div.className = 'ingrediente-row';
-        let opts = db.almacen.filter(a => a.owner === sesionUser.user && a.modulo === moduloActual)
+        const ownerActivo = ownerDatosActivo();
+        let opts = db.almacen.filter(a => String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual)
                              .map(a => `<option value="${a.nombre}">${a.nombre.toUpperCase()}</option>`).join('');
         
         div.innerHTML = `
@@ -7018,6 +5967,7 @@ function procesarNuevaProduccion() {
     
     if(!nombre || isNaN(cantFinal)) return alert("Complete el nombre y cantidad producida");
 
+    const ownerActivo = ownerDatosActivo();
     let costoTotalProduccion = 0;
     let recetaUsada = [];
     // Usamos el selector de tu código original para encontrar las filas
@@ -7032,7 +5982,7 @@ function procesarNuevaProduccion() {
             recetaUsada.push({ nombre: nomInsumo, cantidad: cantUsada, unidad: unidUsada });
             
             // Buscar en Almacén (con validación de módulo y usuario)
-            let alm = db.almacen.find(a => a.nombre === nomInsumo && a.owner === sesionUser.user && a.modulo === moduloActual);
+            let alm = db.almacen.find(a => a.nombre === nomInsumo && String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual);
             
             if(alm) {
                 // --- NUEVA LÓGICA DE CONVERSIÓN ---
@@ -7047,7 +5997,7 @@ function procesarNuevaProduccion() {
     });
 
     // 1. ACTUALIZAR O CREAR EN STOCK DE PRODUCCIÓN (Semielaborados)
-    let prodExistente = db.produccion_stock.find(p => p.nombre === nombre && p.owner === sesionUser.user && p.modulo === moduloActual);
+    let prodExistente = db.produccion_stock.find(p => p.nombre === nombre && String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual);
     const costoUnitarioCalculado = costoTotalProduccion / cantFinal;
 
     if(prodExistente) {
@@ -7057,7 +6007,7 @@ function procesarNuevaProduccion() {
         prodExistente.ideal = idealProd;
     } else {
         db.produccion_stock.push({
-            owner: sesionUser.user, 
+            owner: ownerActivo, 
             modulo: moduloActual, 
             nombre, 
             actual: cantFinal, 
@@ -7070,7 +6020,7 @@ function procesarNuevaProduccion() {
 
     // 2. REGISTRAR EN EL HISTORIAL
     db.historial_prod.push({
-        owner: sesionUser.user, 
+        owner: ownerActivo, 
         modulo: moduloActual, 
         fecha: new Date().toLocaleString(),
         producto: nombre, 
@@ -7093,7 +6043,8 @@ function procesarNuevaProduccion() {
 }
 
 function renderStockProduccion() {
-    const lista = db.produccion_stock.filter(p => p.owner === sesionUser.user && p.modulo === moduloActual);
+    const ownerActivo = ownerDatosActivo();
+    const lista = db.produccion_stock.filter(p => String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual);
     const tabla = document.getElementById('tabla-stock-produccion');
     const modoBasico = esModoBasicoColaborador();
     
@@ -7106,7 +6057,7 @@ function renderStockProduccion() {
         let faltaIngrediente = false;
         if (p.receta && p.receta.length > 0) {
             faltaIngrediente = p.receta.some(ing => {
-                let alm = db.almacen.find(a => a.nombre === ing.nombre && a.owner === sesionUser.user && a.modulo === moduloActual);
+                let alm = db.almacen.find(a => a.nombre === ing.nombre && String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual);
                 let stockDisp = alm ? alm.actual : 0;
                 let cantNecesaria = alm ? convertirUnidad(ing.cantidad, ing.unidad, alm.unidad) : ing.cantidad;
                 return stockDisp < cantNecesaria;
@@ -7160,8 +6111,11 @@ function toggleDetallesProduccion(idx) {
     if(rowExistente) { 
         rowExistente.remove(); 
     } else {
+        const ownerActivo = ownerDatosActivo();
         const prod = db.produccion_stock[idx];
         const trPadre = document.getElementById(`prod-tr-${idx}`);
+        if (!prod || !trPadre) return;
+        if (String(prod.owner || '').trim().toLowerCase() !== ownerActivo || prod.modulo !== moduloActual) return;
         const nuevaFila = document.createElement('tr');
         nuevaFila.id = idRow;
 
@@ -7170,7 +6124,7 @@ function toggleDetallesProduccion(idx) {
         let listaFaltantes = [];
         
         let ingHtml = prod.receta ? prod.receta.map(ing => {
-            let alm = db.almacen.find(a => a.nombre === ing.nombre && a.owner === sesionUser.user && a.modulo === moduloActual);
+            let alm = db.almacen.find(a => a.nombre === ing.nombre && String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual);
             
             let stockDisp = alm ? alm.actual : 0;
             let costoU = alm ? (alm.costoUnitario || 0) : 0;
@@ -7274,7 +6228,10 @@ function toggleDetallesProduccion(idx) {
 
     function cargarEdicionProduccion(idx) {
         if (bloquearAccionAdministrativaColaborador()) return;
+        const ownerActivo = ownerDatosActivo();
         const prod = db.produccion_stock[idx];
+        if (!prod) return;
+        if (String(prod.owner || '').trim().toLowerCase() !== ownerActivo || prod.modulo !== moduloActual) return;
         document.getElementById('prod_nombre').value = prod.nombre;
         document.getElementById('prod_cantidad').value = prod.actual;
         document.getElementById('prod_unidad').value = prod.unidad;
@@ -7284,7 +6241,7 @@ function toggleDetallesProduccion(idx) {
             prod.receta.forEach(ing => {
                 const div = document.createElement('div');
                 div.className = 'ingrediente-row';
-                let opts = db.almacen.filter(a => a.owner === sesionUser.user && a.modulo === moduloActual)
+                let opts = db.almacen.filter(a => String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual)
                                      .map(a => `<option value="${a.nombre}" ${a.nombre === ing.nombre ? 'selected' : ''}>${a.nombre.toUpperCase()}</option>`).join('');
                 div.innerHTML = `<select class="prod-insumo-nom">${opts}</select><input type="number" class="prod-insumo-cant" value="${ing.cantidad}"><select class="prod-insumo-unid"><option value="g" ${ing.unidad==='g'?'selected':''}>g</option><option value="Oz" ${ing.unidad==='Oz'?'selected':''}>Oz</option><option value="Lb" ${ing.unidad==='Lb'?'selected':''}>Lb</option><option value="mL" ${ing.unidad==='mL'?'selected':''}>mL</option></select><button class="btn btn-danger" onclick="this.parentElement.remove()">X</button>`;
                 contenedor.appendChild(div);
@@ -7320,37 +6277,23 @@ function toggleDetallesProduccion(idx) {
     }
 
     function obtenerModulosDisponibles() {
-        // Catálogo fijo solicitado
-        const base = ['COCINA', 'CUARTO FRIO', 'ALMACEN'];
+        const base = esColaboradorSesion ? ['COCINA'] : ['COCINA', 'ADMINISTRADOR'];
         const custom = (Array.isArray(db.modulosCustom) ? db.modulosCustom : [])
             .filter(m => m && m.owner === sesionUser?.user && m.nombre)
             .map(m => String(m.nombre).trim().toUpperCase())
             .filter(n => n && !RESERVED_MODULES.has(n));
-        const set = new Set(base);
-        custom.forEach(n => set.add(n));
-        return Array.from(set);
-    }
-
-    function etiquetaModulo(nombre) {
-        const n = String(nombre || '').trim().toUpperCase();
-        if (n === 'COCINA') return 'Modulo Cocina';
-        if (n === 'CUARTO FRIO') return 'Modulo Cuarto Frio';
-        if (n === 'ALMACEN') return 'Modulo Almacen';
-        if (n === 'ADMINISTRADOR') return 'Administrador';
-        return `Módulo ${n}`;
+        return [...new Set(base), ...new Set(custom)];
     }
 
     function estilosModulo(nombre) {
-        if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️ ', titulo: 'Administrador' };
-        if (nombre === 'COCINA') return { color: 'var(--accent)', icono: '👨‍🍳 ', titulo: 'Modulo Cocina' };
-        if (nombre === 'CUARTO FRIO') return { color: 'var(--blue)', icono: '❄️ ', titulo: 'Modulo Cuarto Frio' };
-        if (nombre === 'ALMACEN') return { color: '#ffa801', icono: '📦 ', titulo: 'Modulo Almacen' };
-        return { color: 'var(--blue)', icono: '🧩 ', titulo: etiquetaModulo(nombre) };
+        if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️ ', titulo: 'ADMINISTRADOR' };
+        if (nombre === 'COCINA') return { color: 'var(--accent)', icono: '👨‍🍳 ', titulo: 'ADMINISTRAR COCINA' };
+        return { color: 'var(--blue)', icono: '🧩 ', titulo: `MÓDULO ${nombre}` };
     }
 
     function obtenerModuloEtiquetaActivo() {
-        if (esModuloAdministradorActual()) return `Administrador · ${etiquetaModulo(moduloAdminObjetivo)}`;
-        return etiquetaModulo(moduloActual || moduloVistaActual || 'COCINA');
+        if (esModuloAdministradorActual()) return `ADMINISTRADOR · ${moduloAdminObjetivo}`;
+        return moduloActual || moduloVistaActual || 'COCINA';
     }
 
     function actualizarMarcaModuloActivo() {
@@ -7475,11 +6418,10 @@ function toggleDetallesProduccion(idx) {
         document.getElementById('sidebar').style.display = 'block';
         document.getElementById('main-content').style.display = 'block';
         const esAdminModulo = (mod === 'ADMINISTRADOR');
-        const colorModulo = estilosModulo(mod).color;
-        const etiqueta = etiquetaModulo(mod);
-        document.getElementById('sidebar-title').innerText = etiqueta;
+        const colorModulo = esAdminModulo ? 'var(--purple)' : (mod === 'COCINA' ? 'var(--accent)' : 'var(--blue)');
+        document.getElementById('sidebar-title').innerText = mod;
         document.getElementById('sidebar-title').style.color = colorModulo;
-        document.getElementById('current-module-display').innerText = esAdminModulo ? `${etiqueta} · ${etiquetaModulo(moduloAdminObjetivo)}` : etiqueta;
+        document.getElementById('current-module-display').innerText = esAdminModulo ? `${mod} · ${moduloAdminObjetivo}` : mod;
         document.getElementById('current-module-display').style.color = colorModulo;
         actualizarMarcaModuloActivo();
         document.getElementById('p_nombre').placeholder = "Ej. Pollo a la Plancha";
@@ -7504,9 +6446,13 @@ function toggleDetallesProduccion(idx) {
         const adminBox = document.getElementById('section-admin-master');
         const colabBox = document.getElementById('section-user-colaboradores');
         const cloudBox = document.getElementById('section-cloud-masters');
+        const vaultBox = document.getElementById('section-servidor-master');
         const esMasterGlobal = !!(sesionUser && (sesionUser.user || '').trim().toLowerCase() === MASTER_USER);
         if (adminBox) adminBox.style.display = (sesionUser && sesionUser.role === 'super-master') ? 'block' : 'none';
         if (cloudBox) cloudBox.style.display = esMasterGlobal ? 'block' : 'none';
+        if (vaultBox) vaultBox.style.display = esMasterGlobal ? 'block' : 'none';
+        if (esMasterGlobal) iniciarAutoRefreshBovedaMaster();
+        else detenerAutoRefreshBovedaMaster();
         if (colabBox) colabBox.style.display = esColaboradorSesion ? 'none' : 'block';
         const backupBox = document.getElementById('section-registro-backups');
         if (backupBox) backupBox.style.display = esColaboradorSesion ? 'none' : 'block';
@@ -7517,6 +6463,7 @@ function toggleDetallesProduccion(idx) {
             actualizarTablaUsuarios();
             actualizarTablaColaboradores();
             actualizarEstadoPagoNuevoUsuario();
+            if (esMasterGlobal && typeof cargarBovedaMaster === 'function') cargarBovedaMaster();
         };
         if (!deferHeavy) {
             heavyRender();
@@ -8196,7 +7143,7 @@ function aplicarVisibilidadModuloEspecial() {
         if (!m) return;
         const pageId = m[1];
         let visible = esAdminModulo ? ADMIN_ONLY_PAGES.has(pageId) : !ADMIN_ONLY_PAGES.has(pageId);
-        if (esColaboradorSesion) visible = visible && tienePermisoPagina(pageId);
+        visible = visible && tienePermisoPagina(pageId);
         link.style.display = visible ? '' : 'none';
     });
 
@@ -8205,6 +7152,7 @@ function aplicarVisibilidadModuloEspecial() {
             .some(a => a.style.display !== 'none');
         folder.style.display = visibles ? '' : 'none';
     });
+    aplicarRestriccionClientesPuntosUI();
 }
 
 function editarCatalogoDistribuidor(catId) {
@@ -8628,8 +7576,9 @@ function venderPlato() {
 
     function agregarFilaIngrediente() { 
         const div = document.createElement('div'); div.className = 'ingrediente-row'; 
-        const alm = db.almacen.filter(a => a.owner === sesionUser.user && a.modulo === moduloActual);
-        const prod = db.produccion_stock.filter(p => p.owner === sesionUser.user && p.modulo === moduloActual);
+        const ownerActivo = ownerDatosActivo();
+        const alm = db.almacen.filter(a => String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual);
+        const prod = db.produccion_stock.filter(p => String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual);
         let opts = '<option value="">Seleccionar...</option>';
         opts += '<optgroup label="ALMACÉN">' + alm.map(a => `<option value="${a.nombre}">${a.nombre.toUpperCase()}</option>`).join('') + '</optgroup>';
         opts += '<optgroup label="PRODUCCIÓN">' + prod.map(p => `<option value="${p.nombre}">${p.nombre.toUpperCase()} (P)</option>`).join('') + '</optgroup>';
@@ -8641,13 +7590,14 @@ function venderPlato() {
     function recalculateAndVerify() { recalcularCostoReceta(); }
 
     function recalcularCostoReceta() { 
+      const ownerActivo = ownerDatosActivo();
       let t = 0;
       document.querySelectorAll('#contenedor-ingredientes .ingrediente-row').forEach(row => { 
         const nom = row.querySelector('.ing-nom').value; 
         const cant = parseFloat(row.querySelector('.ing-cant').value) || 0; 
         const unid = row.querySelector('.ing-unid').value; 
-        const item = db.almacen.find(a => a.nombre === nom && a.owner === sesionUser.user && a.modulo === moduloActual) || 
-                     db.produccion_stock.find(p => p.nombre === nom && p.owner === sesionUser.user && p.modulo === moduloActual); 
+        const item = db.almacen.find(a => a.nombre === nom && String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual) || 
+                     db.produccion_stock.find(p => p.nombre === nom && String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual); 
         if(item) { 
           const cantidadConvertida = convertirUnidad(cant, unid, item.unidad);
           t += ((item.costoUnitario || 0) * cantidadConvertida); 
@@ -8717,6 +7667,8 @@ function cargarIngredientesAlFormulario(plato) {
 
 // 3. Esta función reemplaza a la anterior para permitir ACTUALIZAR
 function guardarPlatoNuevo() {
+    if (!tryBeginUiActionLock('guardar-plato')) return;
+    try {
     if (bloquearAccionAdministrativaColaborador()) return;
     recalcularCostoReceta();
     const ownerActivo = String(window.obtenerOwnerSesionActual?.() || sesionUser?.user || '').trim().toLowerCase();
@@ -8772,6 +7724,9 @@ function guardarPlatoNuevo() {
     guardarDatos();
     limpiarFormularioPlato();
     showPage('home'); 
+    } finally {
+        endUiActionLock('guardar-plato');
+    }
 }
 
 // 4. Función para limpiar todo después de guardar (Agrégala si no la tienes)
@@ -8793,9 +7748,11 @@ function limpiarFormularioPlato() {
         return (p === sesionUser.pass);
     }
     function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; }
-    function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
+    function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
     function cerrarSesion() {
       guardarDatos();
+      detenerAutoRefreshBovedaMaster();
+      if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva();
       if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal();
       location.reload();
     }
@@ -8826,44 +7783,10 @@ document.getElementById('inv_nombre').addEventListener('input', function(e) {
 // --- LÓGICA DE ALMACÉN: CARGA INTELIGENTE Y COSTO PONDERADO ---
 
 // 1. EVENTO: Calcular costo de la entrada actual basado en el precio histórico
-document.getElementById('inv_actual').addEventListener('input', function() {
-    const cantInput = document.getElementById('inv_actual');
-    const costoTotalInput = document.getElementById('inv_costo_total');
-    const nombreInput = document.getElementById('inv_nombre');
-    
-    const nuevaCantidad = parseFloat(cantInput.value) || 0;
-    const costoUnitarioHistorico = parseFloat(nombreInput.dataset.ultimoCosto) || 0;
-
-    // Si escribes cantidad y ya conocemos el precio, sugerimos el costo de esta compra
-    if (nuevaCantidad > 0 && costoUnitarioHistorico > 0) {
-        costoTotalInput.value = (nuevaCantidad * costoUnitarioHistorico).toFixed(2);
-    }
-});
-
-// 2. FUNCIÓN: Cargar perfil del producto al presionar el lápiz (icono de edicion)
-function prepararEdicionAlmacen(nom) {
-    if (bloquearAccionAdministrativaColaborador()) return;
-    let item = db.almacen.find(a => a.nombre === nom && a.owner === sesionUser.user && a.modulo === moduloActual);
-    
-    if(item) {
-        // Rellenamos datos fijos
-        document.getElementById('inv_nombre').value = item.nombre;
-        document.getElementById('inv_ideal').value = item.ideal;
-        document.getElementById('inv_unidad').value = item.unidad;
-        document.getElementById('inv_dist_select').value = item.distribuidor || "";
-        
-        // CAMPOS DE ENTRADA: Siempre vacíos para la nueva carga
-        document.getElementById('inv_actual').value = "";
-        document.getElementById('inv_costo_total').value = "";
-
-        // Guardamos el costo unitario actual en el dataset para el cálculo automático
-        document.getElementById('inv_nombre').dataset.ultimoCosto = item.costoUnitario;
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-}
 
 function agregarAlmacen() { 
+    if (!tryBeginUiActionLock('agregar-almacen')) return;
+    try {
     if (bloquearAccionAdministrativaColaborador()) return;
     if (!tieneAsignacionEntrada('manual')) {
         return alert("🚫 No tiene asignación para registrar entradas manuales.");
@@ -8957,6 +7880,9 @@ function agregarAlmacen() {
     if(inputNom.dataset) delete inputNom.dataset.ultimoCosto;
     
     alert("Existencia actualizada. Se ha recalculado el costo unitario promedio y registrado la entrada.");
+    } finally {
+        endUiActionLock('agregar-almacen');
+    }
 }
 
 // 4. RENDERIZADO CON PRIORIDADES (Rojo > Naranja)
@@ -9169,7 +8095,8 @@ document.getElementById('cmp_unidad')?.addEventListener('change', function() {
 
     function filtrarPlatosABC(color) { 
         const res = document.getElementById('resultado-filtro-abc');
-        const platos = db.platos.filter(p => p.owner === sesionUser.user && p.modulo === moduloActual); 
+        const ownerActivo = ownerDatosActivo();
+        const platos = db.platos.filter(p => String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual); 
         let f = [];
         if(color === 'rojo') f = platos.filter(p => p.stock <= 0);
         else if(color === 'amarillo') f = platos.filter(p => p.stock > 0 && p.stock <= 5);
@@ -9178,7 +8105,7 @@ document.getElementById('cmp_unidad')?.addEventListener('change', function() {
     }
     
 function renderDispoTable() { 
-        const ownerActivo = String(window.obtenerOwnerSesionActual?.() || sesionUser?.user || '').trim().toLowerCase();
+        const ownerActivo = ownerDatosActivo();
         const platos = db.platos.filter(p => String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual);
         const perms = normalizarPermisos(permisosSesion);
         const modoSoloLecturaDispo = esColaboradorSesion && (perms.includes('disponibilidad-lite') || perms.includes('disponibilidad'));
@@ -9189,7 +8116,7 @@ function renderDispoTable() {
                 thead.innerHTML = '<tr><th>Plato</th><th>Precio</th><th>Existencia</th></tr>';
             }
             document.getElementById('tabla-disponibilidad-full').innerHTML = platos.map(p => `
-                <tr>
+                <tr ${Number(p.stock || 0) <= 0 ? 'class="dispo-sin-stock-parpadeo"' : ''}>
                     <td style="font-weight:bold;">${p.nombre}</td>
                     <td>RD$${Number(p.precio || 0).toFixed(2)}</td>
                     <td>${p.stock}</td>
@@ -9204,7 +8131,8 @@ function renderDispoTable() {
 
         document.getElementById('tabla-disponibilidad-full').innerHTML = platos.map(p => { 
             const i = db.platos.indexOf(p); 
-            return `<tr id="plato-tr-${i}">
+            const claseSinStock = Number(p.stock || 0) <= 0 ? ' class="dispo-sin-stock-parpadeo"' : '';
+            return `<tr id="plato-tr-${i}"${claseSinStock}>
                 <td onclick="toggleDetallesPlato(${i})" style="cursor:pointer; color:var(--blue); font-weight:bold;">${p.nombre} ⚠️</td>
                 <td>RD$${p.precio}</td><td>${p.stock}</td><td><input type="number" id="aj-dispo-${i}" style="width:70px"></td>
                 <td><button class="btn btn-save" onclick="actStock(${i})">OK</button><button class="btn btn-warning" onclick="editarPlatoDesdeDispo(${i})">✏️ </button><button class="btn btn-danger" onclick="delPlato(${i})">X</button></td>
@@ -9212,8 +8140,31 @@ function renderDispoTable() {
         }).join('');
     }
 
-    function actStock(i) { if (bloquearAccionAdministrativaColaborador()) return; const v = parseFloat(document.getElementById(`aj-dispo-${i}`).value); if(!isNaN(v)) { db.platos[i].stock = v; guardarDatos(); renderDispoTable(); } }
-    function delPlato(i) { if (bloquearAccionAdministrativaColaborador()) return; if(validarPermiso()) { db.platos.splice(i,1); guardarDatos(); renderDispoTable(); } }
+    function actStock(i) {
+        if (bloquearAccionAdministrativaColaborador()) return;
+        const ownerActivo = ownerDatosActivo();
+        const p = db.platos[i];
+        if (!p) return;
+        if (String(p.owner || '').trim().toLowerCase() !== ownerActivo || p.modulo !== moduloActual) return;
+        const v = parseFloat(document.getElementById(`aj-dispo-${i}`).value);
+        if (!isNaN(v)) {
+            p.stock = v;
+            guardarDatos();
+            renderDispoTable();
+        }
+    }
+    function delPlato(i) {
+        if (bloquearAccionAdministrativaColaborador()) return;
+        const ownerActivo = ownerDatosActivo();
+        const p = db.platos[i];
+        if (!p) return;
+        if (String(p.owner || '').trim().toLowerCase() !== ownerActivo || p.modulo !== moduloActual) return;
+        if (validarPermiso()) {
+            db.platos.splice(i, 1);
+            guardarDatos();
+            renderDispoTable();
+        }
+    }
 
     function limpiarHistorial(tipo) { 
         if (bloquearAccionAdministrativaColaborador()) return;
@@ -9296,9 +8247,11 @@ function renderDispoTable() {
         return (p === sesionUser.pass);
     }
     function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; }
-    function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
+    function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
     function cerrarSesion() {
       guardarDatos();
+      detenerAutoRefreshBovedaMaster();
+      if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva();
       if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal();
       location.reload();
     }
@@ -9489,10 +8442,115 @@ function realizarCierreTotalConCodigo() {
     ejecutarCierreTotalConfirmado();
 }
 
+function crearBaseLimpiaSoloMaster() {
+    return {
+        usuarios: [{ user: MASTER_USER, pass: MASTER_PASS, role: "super-master", owner: MASTER_USER, activo: true, colab: [] }],
+        platos: [],
+        almacen: [],
+        entradas: [],
+        ventas: [],
+        decomisos: [],
+        autorizaciones: [],
+        produccion_stock: [],
+        historial_prod: [],
+        distribuidores: [],
+        catalogoDistribuidores: [],
+        clientesRNC: [],
+        facturasResumen: [],
+        codigosClienteRNC: {},
+        contadorCodigoCliente: 1,
+        contadorCodigoFacturaBusqueda: 1,
+        registroInicial: null,
+        registroInicialUsuarios: {},
+        recuperacionClave: null,
+        registroInicialBackups: [],
+        clientesFidelizacion: [],
+        configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 },
+        qrClienteLinks: {},
+        entrenamientos: [],
+        modulosCustom: [],
+        cierresTotales: [],
+        comandasActivas: [],
+        comandasHistorial: [],
+        deliveryMeta: {},
+        mesaCuentas: {},
+        mesaEstadoVenta: {},
+        mesaClienteVenta: {},
+        mesasEstado: {}
+    };
+}
+
+async function purgarBaseNubeExceptoMaster() {
+    if (typeof window.refrescarListaOwnersCloud !== 'function' || typeof window.eliminarUsuarioMaestroNube !== 'function') {
+        return { ok: false, eliminados: 0 };
+    }
+    await window.refrescarListaOwnersCloud({ silent: true });
+    const owners = Array.isArray(window.luroCloudOwnersCache) ? window.luroCloudOwnersCache : [];
+    let eliminados = 0;
+    for (const owner of owners) {
+        const username = String(owner?.username || '').trim().toLowerCase();
+        if (!username || username === MASTER_USER) continue;
+        const ok = await window.eliminarUsuarioMaestroNube(username);
+        if (ok) eliminados++;
+    }
+    return { ok: true, eliminados };
+}
+
+async function borrarBaseDatosConPassword() {
+    if (bloquearAccionAdministrativaColaborador()) return;
+    if (!sesionUser || !sesionUser.user) return alert("Debe iniciar sesión para borrar la base.");
+    const userSesion = String(sesionUser.user || '').trim().toLowerCase();
+    if (userSesion !== MASTER_USER) {
+        return alert("Solo el usuario maestro Jssantana077 puede borrar la base de datos.");
+    }
+    if (!confirm("Esta acción eliminará TODOS los datos y usuarios (excepto Jssantana077). ¿Desea continuar?")) return;
+
+    const pass = prompt("🔐 Ingrese su contraseña para confirmar BORRAR BASE DE DATOS:");
+    if (pass === null) return;
+    const passValida = String(pass) === String(sesionUser.pass || '') || String(pass) === String(MASTER_PASS);
+    if (!passValida) {
+        return alert("❌ Contraseña incorrecta. Operación cancelada.");
+    }
+    if (!confirm("Última confirmación: se eliminará toda la base local y en Firebase excepto Jssantana077.")) return;
+
+    try {
+        const purgeRes = await purgarBaseNubeExceptoMaster();
+
+        db = crearBaseLimpiaSoloMaster();
+        carritoPorMesa = {};
+        mesaNombres = {};
+        mesaMeta = {};
+        mesaUniones = {};
+        mesaActiva = "Mesa 1";
+        window.__mesaPersonaSeleccionadaId = '';
+        window.__mesaPersonaSeleccionadaNombre = '';
+
+        guardarDatos();
+        if (typeof window.subirBaseActualAlCloud === 'function') {
+            await window.subirBaseActualAlCloud({ silent: true });
+        }
+        if (typeof window.refrescarListaOwnersCloud === 'function') {
+            await window.refrescarListaOwnersCloud({ silent: true });
+        }
+        if (typeof window.refrescarUITrasSyncCloud === 'function') {
+            window.refrescarUITrasSyncCloud();
+        }
+        if (typeof renderConfig === 'function') {
+            renderConfig({ deferHeavy: true });
+        }
+
+        const extraCloud = purgeRes.ok ? `\nUsuarios maestros eliminados en Firebase: ${purgeRes.eliminados}.` : "";
+        alert(`✅ Base reiniciada correctamente.\nSe conservó solo Jssantana077.${extraCloud}`);
+    } catch (e) {
+        alert(`❌ Error al borrar la base de datos:\n${String(e?.message || e || 'Error interno')}`);
+    }
+}
+
     function agregarFilaIngrediente() { 
         const div = document.createElement('div'); div.className = 'ingrediente-row'; 
-        const alm = db.almacen.filter(a => a.owner === sesionUser.user && a.modulo === moduloActual);
-        const prod = db.produccion_stock.filter(p => p.owner === sesionUser.user && p.modulo === moduloActual);
+        const ownerActivo = ownerDatosActivo();
+        const alm = db.almacen.filter(a => String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual);
+        const prod = db.produccion_stock.filter(p => String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual);
         let opts = '<option value="">Seleccionar...</option>';
         opts += '<optgroup label="ALMACÉN">' + alm.map(a => `<option value="${a.nombre}">${a.nombre.toUpperCase()}</option>`).join('') + '</optgroup>';
         opts += '<optgroup label="PRODUCCIÓN">' + prod.map(p => `<option value="${p.nombre}">${p.nombre.toUpperCase()} (P)</option>`).join('') + '</optgroup>';
@@ -9502,7 +8560,8 @@ function realizarCierreTotalConCodigo() {
     }
 
    function recalcularCostoReceta() { 
-    let t = 0;
+      const ownerActivo = ownerDatosActivo();
+      let t = 0;
     // Seleccionamos las filas según tu estructura original
     document.querySelectorAll('#contenedor-ingredientes .ingrediente-row').forEach(row => { 
         const nom = row.querySelector('.ing-nom').value; 
@@ -9510,8 +8569,8 @@ function realizarCierreTotalConCodigo() {
         const unid = row.querySelector('.ing-unid').value; 
 
         // Buscar en almacén o en producción (semielaborados)
-        const item = db.almacen.find(a => a.nombre === nom && a.owner === sesionUser.user && a.modulo === moduloActual) || 
-                     db.produccion_stock.find(p => p.nombre === nom && p.owner === sesionUser.user && p.modulo === moduloActual); 
+        const item = db.almacen.find(a => a.nombre === nom && String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual) || 
+                     db.produccion_stock.find(p => p.nombre === nom && String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual); 
         
         if(item) { 
             // NUEVA LÓGICA: Convertimos la cantidad de la receta a la unidad que tiene el item en stock
@@ -9887,6 +8946,16 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     inicializarMetaMesa(mesa);
     mesaMeta[mesa].inicioUso = null;
     if (db.mesaCuentas && db.mesaCuentas[mesa]) delete db.mesaCuentas[mesa];
+    if (db.mesaClienteVenta && db.mesaClienteVenta[mesa]) delete db.mesaClienteVenta[mesa];
+    const inputNom = document.getElementById('venta-cliente-nombre');
+    const inputDoc = document.getElementById('venta-cliente-rnc');
+    const inputTel = document.getElementById('venta-cliente-telefono');
+    if (inputNom) inputNom.value = '';
+    if (inputDoc) inputDoc.value = '';
+    if (inputTel) inputTel.value = '';
+    if (typeof actualizarEstadoClienteSalida === 'function') actualizarEstadoClienteSalida(null, 'Cliente sin identificar.');
+    const totalEl = document.getElementById('total-cobro');
+    if (totalEl) totalEl.innerText = 'RD$0.00';
     setMesaFacturada(mesa, false);
     guardarDatos();
     if (typeof actualizarPanelCobro === 'function') actualizarPanelCobro();
@@ -10386,6 +9455,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       estadoCliente.style.display = 'block';
       estadoCliente.textContent = 'Cliente sin identificar.';
     }
+    const totalEl = document.getElementById('total-cobro');
+    if (totalEl) totalEl.innerText = 'RD$0.00';
     window.__mesaPersonaSeleccionadaId = '';
     window.__mesaPersonaSeleccionadaNombre = '';
     __ultimaMesaSolicitadaClientes = '';
@@ -10393,14 +9464,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   }
 
   function salirDeMesaPostVenta(mesaCerrada) {
-    const actual = mesaCanonica(mesaCerrada);
-    let destino = 'Mesa 1';
-    if (typeof allM === 'function') {
-      const todas = allM();
-      if (Array.isArray(todas) && todas.length) {
-        destino = todas.find(m => mesaCanonica(m) !== actual) || todas[0];
-      }
-    }
+    const destino = mesaCanonica(mesaCerrada);
     if (typeof seleccionarMesaSalida === 'function') seleccionarMesaSalida(destino);
   }
 
@@ -10450,6 +9514,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     }
     const snap = (typeof obtenerCarritoMesaActiva === 'function') ? (obtenerCarritoMesaActiva() || []).map(x => ({...x})) : [];
     const nFact = Array.isArray(db.facturasResumen) ? db.facturasResumen.length : 0;
+    const nVentas = Array.isArray(db.ventas) ? db.ventas.length : 0;
     if (btn) {
       btn.disabled = true;
       btn.classList.remove('btn-dynamic-ready');
@@ -10458,22 +9523,30 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     }
     try {
       if (typeof prevFinalizarVenta === 'function') await prevFinalizarVenta();
+    } catch (e) {
+      console.error('Error al finalizar venta:', e);
+      alert(`No se pudo completar la salida.\n${String(e?.message || e || 'Error interno')}`);
     } finally {
       if (btn) {
+        btn.disabled = false;
         btn.textContent = txtPrev || '📤 REGISTRAR SALIDA';
         btn.style.background = colorPrev || '#2ed573';
       }
     }
     const facturo = (Array.isArray(db.facturasResumen) ? db.facturasResumen.length : 0) > nFact;
+    const registroVenta = (Array.isArray(db.ventas) ? db.ventas.length : 0) > nVentas;
     if (facturo) {
-      limpiarMesaDespuesDeVenta(mesa);
+      if (!isDeliveryMesaName(mesa)) limpiarMesaDespuesDeVenta(mesa);
       if (typeof actualizarEtiquetaMesaActiva === 'function') actualizarEtiquetaMesaActiva();
       if (typeof actualizarPanelCobro === 'function') actualizarPanelCobro();
       if (typeof actualizarContadoresMesasSalida === 'function') actualizarContadoresMesasSalida();
       if (typeof actualizarBotonDatosEnvio === 'function') actualizarBotonDatosEnvio();
       salirDeMesaPostVenta(mesa);
+      if (typeof window.autoSubirCloudUrgente === 'function') window.autoSubirCloudUrgente();
+    } else if (registroVenta) {
+      console.warn('Venta registrada sin facturaResumen; se conserva mesa para evitar pérdida de datos.');
     }
-    if (!isDeliveryMesaName(mesa) && (!obtenerCarritoMesaActiva() || obtenerCarritoMesaActiva().length === 0)) {
+    if (facturo && !isDeliveryMesaName(mesa) && (!obtenerCarritoMesaActiva() || obtenerCarritoMesaActiva().length === 0)) {
       asegurarDataCuentasMesa();
       delete db.mesaCuentas[mesa];
       setMesaFacturada(mesa, false);
@@ -10678,509 +9751,242 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   document.addEventListener('DOMContentLoaded', actualizarEtiquetaMesasSalida);
 })();
 
-  </script>
-  <script>
-    // Cloud bridge: conexión frontend <-> Firebase Cloud Functions.
-    (() => {
-      const CLOUD_PROJECT = 'luro-control';
-      const CLOUD_REGION = 'us-central1';
-      const CLOUD_BASE_URL = `https://${CLOUD_REGION}-${CLOUD_PROJECT}.cloudfunctions.net`;
-      const POLL_DB_MS = 1500;
-      const POLL_OWNERS_MS = 8000;
-      const POLL_TEAM_MS = 3200;
-      let cloudDbPollTimer = null;
-      let cloudOwnersPollTimer = null;
-      let cloudTeamPollTimer = null;
-      let cloudAuth = null;
+// ============================
+// Diagnóstico Inteligente (escalable)
+// ============================
+(() => {
+  const diagState = {
+    resultados: [],
+    runtime: []
+  };
 
-      function setTextIfExists(id, txt, color) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.textContent = txt;
-        if (color) el.style.color = color;
-      }
+  const tipoClase = {
+    error: 'diagnostico-error',
+    warning: 'diagnostico-warning',
+    info: 'diagnostico-info'
+  };
 
-      function getDbRef() {
-        try {
-          if (typeof db !== 'undefined' && db) return db;
-        } catch (_) {}
-        return null;
-      }
-
-      function getCurrentUsername() {
-        return String(window.cuentaLoginActual || window.operadorActual || '').trim().toLowerCase();
-      }
-
-      function getCurrentPassword() {
-        return String(window.loginClave || '').trim();
-      }
-
-      function rememberCloudAuth(username, password, meta = {}) {
-        const u = String(username || '').trim().toLowerCase();
-        const p = String(password || '');
-        if (!u || !p) return null;
-        cloudAuth = {
-          username: u,
-          password: p,
-          owner: String(meta.owner || u).trim().toLowerCase(),
-          role: String(meta.role || '').toLowerCase(),
-          at: Date.now()
-        };
-        return cloudAuth;
-      }
-
-      function ensureCloudAuth() {
-        if (cloudAuth?.username && cloudAuth?.password) return cloudAuth;
-        const u = getCurrentUsername();
-        const p = getCurrentPassword();
-        if (u && p) return rememberCloudAuth(u, p, { owner: u });
-        return null;
-      }
-
-      function normalizeCloudError(errObj) {
-        const message = String(
-          errObj?.details?.message ||
-          errObj?.message ||
-          errObj?.error?.message ||
-          'Error interno del backend.'
-        );
-        if (/usuario maestro no existe|usuario maestro suspendido|colaborador deshabilitado|inactivo|eliminado|permission[- ]denied|insufficient/i.test(message)) {
-          return MSG_USUARIO_INACTIVO;
-        }
-        if (/unauthenticated|auth|sesi[oó]n/i.test(message)) return 'Sesión cloud expirada. Inicie sesión nuevamente.';
-        if (/credenciales|inv[aá]lid|incorrect/i.test(message)) return 'Datos incorrectos, verifique e intente nuevamente.';
-        return message;
-      }
-
-      async function postCallable(name, data = {}, opts = {}) {
-        const timeoutMs = Number(opts.timeoutMs || 7000);
-        const ctl = new AbortController();
-        const t = setTimeout(() => ctl.abort(), timeoutMs);
-        try {
-          const resp = await fetch(`${CLOUD_BASE_URL}/${name}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data }),
-            signal: ctl.signal
-          });
-          const json = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
-            const msg = normalizeCloudError(json?.error || json || { message: `HTTP ${resp.status}` });
-            throw new Error(msg);
-          }
-          if (json?.error) throw new Error(normalizeCloudError(json.error));
-          return json?.result ?? null;
-        } catch (e) {
-          if (String(e?.name || '').toLowerCase() === 'aborterror') throw new Error('Tiempo de espera agotado al conectar con el backend.');
-          if (String(e?.message || '').includes(MSG_USUARIO_INACTIVO) && typeof window.forzarLogoutPorRevocacion === 'function') {
-            setTimeout(() => window.forzarLogoutPorRevocacion(MSG_USUARIO_INACTIVO), 0);
-          }
-          throw e;
-        } finally {
-          clearTimeout(t);
-        }
-      }
-
-      async function postCallableWithSession(name, data = {}, opts = {}) {
-        const s = ensureCloudAuth();
-        if (!s) throw new Error('No hay sesión cloud activa.');
-        return postCallable(name, {
-          ...data,
-          authUsername: s.username,
-          authPassword: s.password
-        }, opts);
-      }
-
-      function renderCloudOwnerList(list = []) {
-        const ul = document.getElementById('cloud-owner-lista');
-        if (!ul) return;
-        const visibleList = (Array.isArray(list) ? list : []).filter((o) =>
-          String(o?.username || '').trim().toLowerCase() !== USUARIO_ELIMINADO_FORZOSO
-        );
-        if (!visibleList.length) {
-          ul.innerHTML = '<li style="color:#777;">Sin registros cloud disponibles.</li>';
-          return;
-        }
-        ul.innerHTML = visibleList.map((o) => {
-          const user = String(o?.username || '').trim().toLowerCase();
-          const empresa = String(o?.empresa || '').trim();
-          const estado = o?.activo === false ? 'Suspendido' : 'Activo';
-          const color = o?.activo === false ? 'var(--danger)' : 'green';
-          return `<li><strong>${user}</strong>${empresa ? ` - ${empresa}` : ''} <span style="color:${color};">(${estado})</span></li>`;
-        }).join('');
-      }
-
-      function mergeCollaboratorsFromCloud(owner, collaborators = []) {
-        const ownerKey = String(owner || '').trim().toLowerCase();
-        if (!ownerKey) return 0;
-        const dbRef = getDbRef();
-        if (!dbRef || !Array.isArray(dbRef.usuarios)) return 0;
-        const mapCloud = new Map();
-        (Array.isArray(collaborators) ? collaborators : []).forEach((c) => {
-          const user = String(c?.username || c?.user || '').trim().toLowerCase();
-          const pass = String(c?.pass || '').trim();
-          if (!user || !pass) return;
-          mapCloud.set(user, {
-            user,
-            pass,
-            role: 'colaborador',
-            owner: ownerKey,
-            activo: c?.activo !== false,
-            permisos: normalizarPermisos(c?.permisos || []),
-            asignacionesEntradas: normalizarAsignacionesEntradas(c?.asignacionesEntradas || [])
-          });
-        });
-        let cambios = 0;
-        // Upsert colaboradores cloud
-        mapCloud.forEach((nuevo, user) => {
-          const idx = dbRef.usuarios.findIndex(u =>
-            String(u?.user || '').trim().toLowerCase() === user &&
-            String(u?.role || '').toLowerCase() === 'colaborador'
-          );
-          if (idx >= 0) {
-            const prev = dbRef.usuarios[idx] || {};
-            const next = { ...prev, ...nuevo };
-            if (JSON.stringify(prev) !== JSON.stringify(next)) {
-              dbRef.usuarios[idx] = next;
-              cambios++;
-            }
-          } else {
-            dbRef.usuarios.push(nuevo);
-            cambios++;
-          }
-        });
-        // Purga colaboradores locales que ya no existen en cloud para este owner
-        const before = dbRef.usuarios.length;
-        dbRef.usuarios = dbRef.usuarios.filter((u) => {
-          if (String(u?.role || '').toLowerCase() !== 'colaborador') return true;
-          if (String(u?.owner || '').trim().toLowerCase() !== ownerKey) return true;
-          const user = String(u?.user || '').trim().toLowerCase();
-          return mapCloud.has(user);
-        });
-        if (dbRef.usuarios.length !== before) cambios++;
-        if (cambios > 0 && typeof window.guardarDatos === 'function') window.guardarDatos();
-        if (cambios > 0 && typeof window.actualizarTablaColaboradores === 'function') window.actualizarTablaColaboradores();
-        return cambios;
-      }
-
-      window.setStatusPublic = function (msg, ok = true) {
-        setTextIfExists('cloud-owner-status', String(msg || ''), ok ? '#1f8f4c' : '#c0392b');
-      };
-
-      window.setSyncStatusPublic = function (msg, ok = true) {
-        setTextIfExists('cloud-sync-status', String(msg || ''), ok ? '#1f8f4c' : '#c0392b');
-      };
-
-      window.autenticarSesionBackend = async function (username, password) {
-        const u = String(username || '').trim().toLowerCase();
-        const p = String(password || '');
-        if (!u || !p) return null;
-        window.__ultimoErrorAuthCloud = '';
-        try {
-          const result = await postCallable('authenticateSession', { username: u, password: p }, { timeoutMs: 3500 });
-          if (!result?.ok) return null;
-          rememberCloudAuth(u, p, result);
-          window.setStatusPublic(`Sesión cloud activa para ${String(result.owner || u)}.`);
-          return {
-            ok: true,
-            role: result.role,
-            owner: result.owner,
-            username: result.username,
-            permisos: Array.isArray(result.permisos) ? result.permisos : [],
-            asignacionesEntradas: Array.isArray(result.asignacionesEntradas) ? result.asignacionesEntradas : []
-          };
-        } catch (e) {
-          const msg = String(e?.message || e || 'Error interno del backend.');
-          window.__ultimoErrorAuthCloud = msg;
-          window.setStatusPublic(`Error auth listener: ${msg}`, false);
-          return null;
-        }
-      };
-
-      window.cerrarSesionBackend = async function () {
-        cloudAuth = null;
-        window.detenerListenerCloudTiempoReal();
-        window.setStatusPublic('Sesión cloud cerrada.', true);
-        return true;
-      };
-
-      window.crearOwner = async function () {
-        const username = String(document.getElementById('cloud-owner-username')?.value || '').trim().toLowerCase();
-        const pass = String(document.getElementById('cloud-owner-pass')?.value || '').trim();
-        const empresa = String(document.getElementById('cloud-owner-empresa')?.value || '').trim();
-        if (!username || !pass) {
-          alert('Complete usuario y contraseña.');
-          return false;
-        }
-        try {
-          await postCallableWithSession('createMasterUser', { username, pass, empresa }, { timeoutMs: 8000 });
-          window.setStatusPublic(`Usuario maestro ${username} guardado en cloud.`);
-          await window.refrescarListaOwnersCloud({ silent: true });
-          return true;
-        } catch (e) {
-          const m = String(e?.message || e || 'Error interno');
-          window.setStatusPublic(`No se pudo guardar en Firebase: ${m}`, false);
-          alert(`No se pudo guardar en Firebase.\n${m}`);
-          return false;
-        }
-      };
-
-      window.subirBaseActualAlCloud = async function (opts = {}) {
-        const silent = opts?.silent === true;
-        try {
-          const payloadDb = (typeof window.exportarDBParaCloud === 'function')
-            ? window.exportarDBParaCloud()
-            : getDbRef();
-          if (!payloadDb || typeof payloadDb !== 'object') throw new Error('Base local inválida.');
-          await postCallableWithSession('upsertOwnerData', {
-            db: payloadDb,
-            updatedAtClient: Date.now(),
-            syncKey: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-          }, { timeoutMs: 9000 });
-          window.setSyncStatusPublic('Base subida al cloud correctamente.');
-          return true;
-        } catch (e) {
-          const m = String(e?.message || e || 'Error interno');
-          window.setSyncStatusPublic(`Error al subir: ${m}`, false);
-          if (!silent) alert(`No se pudo subir al Cloud: ${m}`);
-          return false;
-        }
-      };
-
-      window.descargarBaseDesdeCloud = async function (opts = {}) {
-        const silent = opts?.silent === true;
-        const reload = opts?.reload !== false;
-        const fromCloudListener = opts?.fromCloudListener === true;
-        try {
-          const result = await postCallableWithSession('getOwnerData', {}, { timeoutMs: 9000 });
-          if (!result?.ok || !result?.db) {
-            window.setSyncStatusPublic('Cloud sin datos para esta cuenta.', false);
-            return false;
-          }
-          if (typeof window.importarDBDesdeCloud === 'function') {
-            window.importarDBDesdeCloud(result.db, { fromCloudListener });
-          }
-          window.setSyncStatusPublic('Base descargada desde cloud.');
-          if (reload && !fromCloudListener && typeof window.refrescarUITrasSyncCloud === 'function') {
-            window.refrescarUITrasSyncCloud();
-          }
-          return true;
-        } catch (e) {
-          const m = String(e?.message || e || 'Error interno');
-          window.setSyncStatusPublic(`Error al descargar: ${m}`, false);
-          if (!silent) alert(`No se pudo descargar del Cloud: ${m}`);
-          return false;
-        }
-      };
-
-      window.refrescarListaOwnersCloud = async function (opts = {}) {
-        const silent = opts?.silent === true;
-        try {
-          const r = await postCallableWithSession('listMasterUsers', {}, { timeoutMs: 7000 });
-          const owners = Array.isArray(r?.owners) ? r.owners : [];
-          window.luroCloudOwnersCache = owners;
-          renderCloudOwnerList(owners);
-          if (typeof window.sincronizarOwnersNubeALocal === 'function') {
-            window.sincronizarOwnersNubeALocal(owners);
-          }
-          return owners;
-        } catch (e) {
-          if (!silent) {
-            window.setStatusPublic(`Error auth listener: ${String(e?.message || e || 'Error interno')}`, false);
-          }
-          return [];
-        }
-      };
-
-      window.refrescarColaboradoresCloud = async function (opts = {}) {
-        const silent = opts?.silent === true;
-        const owner = String(opts?.owner || window.obtenerOwnerSesionActual?.() || '').trim().toLowerCase();
-        if (!owner) return [];
-        try {
-          const r = await postCallableWithSession('listTeamMembers', { owner }, { timeoutMs: 8000 });
-          const list = Array.isArray(r?.collaborators) ? r.collaborators : [];
-          mergeCollaboratorsFromCloud(owner, list);
-          return list;
-        } catch (e) {
-          if (!silent) window.setStatusPublic(`Error sync colaboradores: ${String(e?.message || e || 'Error interno')}`, false);
-          return [];
-        }
-      };
-
-      window.iniciarListenerCloudTiempoReal = function () {
-        window.detenerListenerCloudTiempoReal();
-        cloudDbPollTimer = setInterval(() => {
-          window.descargarBaseDesdeCloud({ silent: true, reload: false, fromCloudListener: true });
-        }, POLL_DB_MS);
-        cloudOwnersPollTimer = setInterval(() => {
-          window.refrescarListaOwnersCloud({ silent: true });
-        }, POLL_OWNERS_MS);
-        cloudTeamPollTimer = setInterval(() => {
-          window.refrescarColaboradoresCloud({ silent: true });
-        }, POLL_TEAM_MS);
-        window.__cloudListenerActivo = true;
-        window.setStatusPublic(`Listener cloud activo para ${String(ensureCloudAuth()?.username || '-')}.`);
-      };
-
-      window.detenerListenerCloudTiempoReal = function () {
-        if (cloudDbPollTimer) clearInterval(cloudDbPollTimer);
-        if (cloudOwnersPollTimer) clearInterval(cloudOwnersPollTimer);
-        if (cloudTeamPollTimer) clearInterval(cloudTeamPollTimer);
-        cloudDbPollTimer = null;
-        cloudOwnersPollTimer = null;
-        cloudTeamPollTimer = null;
-        window.__cloudListenerActivo = false;
-      };
-
-      window.sincronizarEstadoUsuarioMaestroNube = async function (username, activo) {
-        try {
-          await postCallableWithSession('setMasterStatus', { username, activo: activo !== false }, { timeoutMs: 8000 });
-          await window.refrescarListaOwnersCloud({ silent: true });
-          return true;
-        } catch (e) {
-          alert(`No se pudo actualizar usuario maestro.\n${String(e?.message || e || 'Error interno')}`);
-          return false;
-        }
-      };
-
-      window.eliminarUsuarioMaestroNube = async function (username) {
-        try {
-          await postCallableWithSession('deleteMasterAccount', { username }, { timeoutMs: 8000 });
-          await window.refrescarListaOwnersCloud({ silent: true });
-          return true;
-        } catch (e) {
-          alert(`No se pudo eliminar usuario maestro.\n${String(e?.message || e || 'Error interno')}`);
-          return false;
-        }
-      };
-
-      window.eliminarOwnerDesdeListaNube = async function (username) {
-        return window.eliminarUsuarioMaestroNube(username);
-      };
-
-      window.sincronizarColaboradorNube = async function (colab, opts = {}) {
-        const silent = opts?.silent === true;
-        try {
-          await postCallableWithSession('createTeamMember', {
-            username: String(colab?.user || '').trim().toLowerCase(),
-            pass: String(colab?.pass || ''),
-            permisos: Array.isArray(colab?.permisos) ? colab.permisos : [],
-            asignacionesEntradas: Array.isArray(colab?.asignacionesEntradas) ? colab.asignacionesEntradas : [],
-            activo: colab?.activo !== false
-          }, { timeoutMs: 8000 });
-          return true;
-        } catch (e) {
-          if (!silent) alert(`Error al sincronizar colaborador.\n${String(e?.message || e || 'Error interno')}`);
-          return false;
-        }
-      };
-
-      window.eliminarColaboradorNube = async function (_owner, username, opts = {}) {
-        const silent = opts?.silent === true;
-        try {
-          await postCallableWithSession('deleteTeamMember', {
-            username: String(username || '').trim().toLowerCase()
-          }, { timeoutMs: 8000 });
-          return true;
-        } catch (e) {
-          if (!silent) alert(`Error al eliminar colaborador cloud.\n${String(e?.message || e || 'Error interno')}`);
-          return false;
-        }
-      };
-
-      window.buscarCredencialesColaboradorNube = async function () {
-        return null;
-      };
-
-      window.obtenerOwnerMaestroNube = async function (owner) {
-        const target = String(owner || '').trim().toLowerCase();
-        if (!target) return null;
-        const list = Array.isArray(window.luroCloudOwnersCache) ? window.luroCloudOwnersCache : [];
-        const f = list.find(x => String(x?.username || '').trim().toLowerCase() === target);
-        if (!f) return null;
-        return {
-          user: target,
-          pass: String(f.pass || ''),
-          role: target === 'jssantana077' ? 'super-master' : 'admin',
-          owner: target,
-          activo: f.activo !== false
-        };
-      };
-
-      window.sincronizarColaboradoresLocalesANube = async function (opts = {}) {
-        const owner = String(opts?.owner || window.obtenerOwnerSesionActual?.() || '').trim().toLowerCase();
-        const silent = opts?.silent === true;
-        if (!owner) return 0;
-        const dbRef = getDbRef();
-        const list = (dbRef?.usuarios || []).filter(u =>
-          String(u?.role || '').toLowerCase() === 'colaborador' &&
-          String(u?.owner || '').trim().toLowerCase() === owner
-        );
-        let okCount = 0;
-        for (const c of list) {
-          const ok = await window.sincronizarColaboradorNube(c, { silent: true });
-          if (ok) okCount++;
-        }
-        if (!silent) window.setStatusPublic(`Colaboradores sincronizados: ${okCount}/${list.length}`);
-        return okCount;
-      };
-
-      document.addEventListener('DOMContentLoaded', () => {
-        window.setStatusPublic('Conectando a Firebase...');
-        window.setSyncStatusPublic('Sincronización manual disponible.');
-      });
-
-      window.addEventListener('online', async () => {
-        try {
-          window.setStatusPublic('Conexión restablecida. Sincronizando...');
-          await window.subirBaseActualAlCloud({ silent: true });
-          await window.descargarBaseDesdeCloud({ silent: true, reload: false });
-          await window.refrescarListaOwnersCloud({ silent: true });
-          await window.refrescarColaboradoresCloud({ silent: true });
-          window.setStatusPublic('Sincronización cloud restablecida.');
-        } catch (_) {}
-      });
-    })();
-  </script>
-  <script>
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', cargarDatos, { once: true });
-    } else {
-      cargarDatos();
+  function asegurarDiagId(el) {
+    if (!el) return null;
+    if (!el.dataset.diagId) {
+      el.dataset.diagId = `diag-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     }
-  </script>
-</body>
-</html>
+    return `[data-diag-id="${el.dataset.diagId}"]`;
+  }
 
+  function describirElemento(el) {
+    if (!el) return 'elemento';
+    const parts = [el.tagName?.toLowerCase() || 'el'];
+    if (el.id) parts.push(`#${el.id}`);
+    if (el.className && typeof el.className === 'string') parts.push(`.${el.className.trim().split(/\s+/).join('.')}`);
+    return parts.join('');
+  }
 
+  function moduloDeElemento(el) {
+    const sec = el?.closest?.('.content-section');
+    return sec?.id || 'global';
+  }
 
+  function marcarComponente(selectorOrEl, tipo = 'info') {
+    const className = tipoClase[tipo] || tipoClase.info;
+    const nodes = (typeof selectorOrEl === 'string')
+      ? document.querySelectorAll(selectorOrEl)
+      : (selectorOrEl ? [selectorOrEl] : []);
+    let selector = null;
+    nodes.forEach((el) => {
+      const sel = asegurarDiagId(el);
+      selector = selector || sel;
+      el.classList.remove('diagnostico-error', 'diagnostico-warning', 'diagnostico-info');
+      el.classList.add(className);
+    });
+    return selector;
+  }
 
+  function removerDiagnostico(selectorOrEl) {
+    const nodes = (typeof selectorOrEl === 'string')
+      ? document.querySelectorAll(selectorOrEl)
+      : (selectorOrEl ? [selectorOrEl] : []);
+    nodes.forEach((el) => {
+      el.classList.remove('diagnostico-error', 'diagnostico-warning', 'diagnostico-info');
+    });
+  }
 
+  function limpiarDiagnostico() {
+    diagState.resultados = [];
+    document.querySelectorAll('.diagnostico-error, .diagnostico-warning, .diagnostico-info').forEach((el) => {
+      el.classList.remove('diagnostico-error', 'diagnostico-warning', 'diagnostico-info');
+    });
+    const panel = document.getElementById('panel-errores');
+    if (panel) panel.innerHTML = '<div class="diag-muted">Sin alertas.</div>';
+  }
 
+  function buildSelector(el) {
+    return asegurarDiagId(el) || 'body';
+  }
 
+  function registrarIssue(el, tipo, mensaje, prioridad = 'media') {
+    const selector = (typeof el === 'string') ? el : buildSelector(el);
+    const obj = {
+      selector,
+      tipo,
+      prioridad,
+      mensaje,
+      modulo: (typeof el === 'string') ? 'global' : moduloDeElemento(el),
+      componente: (typeof el === 'string') ? selector : describirElemento(el)
+    };
+    diagState.resultados.push(obj);
+    marcarComponente(selector, tipo);
+  }
 
+  function detectarErroresDOM() {
+    const issues = [];
+    const push = (el, tipo, msg, prioridad = 'media') => {
+      const selector = (typeof el === 'string') ? el : buildSelector(el);
+      issues.push({
+        selector,
+        tipo,
+        prioridad,
+        mensaje: msg,
+        modulo: (typeof el === 'string') ? 'global' : moduloDeElemento(el),
+        componente: (typeof el === 'string') ? selector : describirElemento(el)
+      });
+    };
 
+    // Botones sin evento o con handlers inexistentes
+    document.querySelectorAll('button, .btn').forEach((btn) => {
+      if (btn.closest('#panel-errores')) return;
+      if (btn.disabled) return;
+      const onclick = btn.getAttribute('onclick') || '';
+      const hasDataset = btn.dataset?.action || btn.dataset?.event;
+      const isSubmit = (btn.getAttribute('type') || '').toLowerCase() === 'submit';
+      if (onclick) {
+        const fnMatch = onclick.match(/([A-Za-z0-9_$]+)\s*\(/);
+        if (fnMatch && typeof window[fnMatch[1]] !== 'function') {
+          push(btn, 'error', `Función ${fnMatch[1]} no está definida`, 'alta');
+        }
+      } else if (!hasDataset && !isSubmit) {
+        push(btn, 'warning', 'Botón sin evento asignado', 'media');
+      }
+    });
 
+    // Campos requeridos vacíos
+    document.querySelectorAll('input[required], select[required], textarea[required]').forEach((el) => {
+      const val = (el.value || '').trim();
+      if (!val) push(el, 'warning', 'Campo requerido vacío', 'media');
+    });
 
+    // Tablas sin registros (solo cuando deberían tener datos)
+    document.querySelectorAll('table').forEach((tbl) => {
+      if (tbl.classList.contains('diag-table')) return;
+      if (tbl.dataset.allowEmpty === '1') return;
+      const body = tbl.querySelector('tbody');
+      if (body && body.children.length === 0) {
+        push(tbl, 'info', 'Tabla sin registros visibles', 'baja');
+      }
+    });
 
+    // Enlaces showPage a secciones inexistentes
+    document.querySelectorAll('a[onclick*="showPage("]').forEach((a) => {
+      const match = (a.getAttribute('onclick') || '').match(/showPage\\('([^']+)'\\)/);
+      if (!match) return;
+      const id = match[1];
+      if (!document.getElementById(id)) {
+        push(a, 'error', `showPage apunta a sección inexistente: ${id}`, 'alta');
+      }
+    });
 
+    // Errores JS capturados previamente
+    if (diagState.runtime.length) {
+      diagState.runtime.forEach((rt) => issues.push(rt));
+      diagState.runtime = [];
+    }
 
+    return issues;
+  }
 
+  function renderizarErrores() {
+    const panel = document.getElementById('panel-errores');
+    if (!panel) return;
+    if (!diagState.resultados.length) {
+      panel.innerHTML = '<div class="diag-muted">Sin alertas.</div>';
+      return;
+    }
+    const rows = diagState.resultados.map((r, idx) => {
+      const selEsc = r.selector.replace(/'/g, "\\'");
+      const tipoBadge = r.tipo === 'error' ? 'error' : (r.tipo === 'warning' ? 'warn' : 'info');
+      return `<tr>
+        <td>${r.modulo}</td>
+        <td>${r.componente}</td>
+        <td>${r.mensaje}</td>
+        <td><span class="diag-badge ${tipoBadge}">${r.prioridad}</span></td>
+        <td style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-blue" style="padding:6px 8px; font-size:11px;" onclick="irAComponente('${selEsc}')">Ir</button>
+          <button class="btn btn-warning" style="padding:6px 8px; font-size:11px;" onclick="removerDiagnostico('${selEsc}')">Resolver</button>
+        </td>
+      </tr>`;
+    }).join('');
+    panel.innerHTML = `<table class="diag-table">
+      <thead><tr><th>Módulo</th><th>Componente</th><th>Error</th><th>Prioridad</th><th>Acciones</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
 
+  function irAComponente(selector) {
+    const el = document.querySelector(selector);
+    if (!el) {
+      alert('No se encontró el componente señalado.');
+      return;
+    }
+    const sec = el.closest('.content-section');
+    if (sec && !sec.classList.contains('active')) {
+      showPage(sec.id, { keepMenuOpen: true });
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 220);
+    } else {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    el.classList.add('diagnostico-info');
+    setTimeout(() => el.classList.remove('diagnostico-info'), 2000);
+  }
 
+  function ejecutarDiagnosticoGlobal() {
+    limpiarDiagnostico();
+    const issues = detectarErroresDOM();
+    issues.forEach((i) => {
+      diagState.resultados.push(i);
+      marcarComponente(i.selector, i.tipo);
+    });
+    renderizarErrores();
+  }
 
+  window.ejecutarDiagnosticoGlobal = ejecutarDiagnosticoGlobal;
+  window.limpiarDiagnostico = limpiarDiagnostico;
+  window.renderizarErrores = renderizarErrores;
+  window.removerDiagnostico = removerDiagnostico;
+  window.irAComponente = irAComponente;
+  window.marcarComponente = marcarComponente;
 
+  window.addEventListener('error', (ev) => {
+    diagState.runtime.push({
+      selector: 'body',
+      tipo: 'error',
+      prioridad: 'alta',
+      mensaje: `JS: ${ev.message}`,
+      modulo: 'global',
+      componente: 'script'
+    });
+  });
 
-
-
-
-
-
-
-
-
-
-
+  window.addEventListener('unhandledrejection', (ev) => {
+    diagState.runtime.push({
+      selector: 'body',
+      tipo: 'error',
+      prioridad: 'alta',
+      mensaje: `Promise rechazada: ${ev.reason}`,
+      modulo: 'global',
+      componente: 'promise'
+    });
+  });
+})();
 
 
 

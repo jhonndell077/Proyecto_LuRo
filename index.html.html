@@ -928,22 +928,6 @@
             <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn btn-danger" onclick="realizarCierreTotalConCodigo()">CIERRE TOTAL</button>
             </div>
-            <div style="margin-bottom:20px; padding:12px; border:1px solid #dfe6e9; border-radius:10px; background:#f8fafc;">
-              <h3 style="margin:0 0 8px; color:var(--blue);">☁️ Firebase Multi-Tenant</h3>
-              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
-                <input type="text" id="fb_api_key" placeholder="apiKey">
-                <input type="text" id="fb_auth_domain" placeholder="authDomain">
-                <input type="text" id="fb_project_id" placeholder="projectId">
-                <input type="text" id="fb_storage_bucket" placeholder="storageBucket">
-                <input type="text" id="fb_messaging_sender_id" placeholder="messagingSenderId">
-                <input type="text" id="fb_app_id" placeholder="appId">
-              </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="btn btn-blue" onclick="guardarConfigFirebaseUI()">GUARDAR CONFIG FIREBASE</button>
-                <button class="btn btn-save" onclick="conectarFirebaseDesdeUI()">PROBAR CONEXION</button>
-              </div>
-              <div id="firebase-status" style="margin-top:8px; font-size:12px; color:#666;">Firebase: no configurado.</div>
-            </div>
             <div id="section-my-security" style="margin-bottom:30px; padding:15px; border:1px solid #eee; border-radius:10px;">
               <h3>🔒 Seguridad</h3>
               <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px;">
@@ -1347,9 +1331,6 @@
     </button>
 </div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script>
 
 function borrarTodoElAlmacen() {
@@ -1518,7 +1499,6 @@ function crearUsuario() {
         role: 'admin',
         activo: true,
         owner: nombre,
-        tenantId: generarTenantId(nombre),
         requiereRegistroInicial: true,
         billing: { ...payData, createdAt: new Date().toISOString() }
     });
@@ -1657,7 +1637,6 @@ function crearColaborador() {
         pass: pass,
         role: 'colaborador',
         owner: ownerAsignado,
-        tenantId: obtenerTenantIdUsuario(adminAutorizador),
         permisos: permisos,
         asignacionesEntradas: asignacionesEntradas,
         activo: true
@@ -3895,7 +3874,7 @@ function ajustarPrecioManual() {
     let db = {
         usuarios: [{user: "Jssantana077", pass: "852347", role: "super-master", activo: true, colab: []}],
         platos: [], almacen: [], entradas: [], ventas: [], decomisos: [], autorizaciones: [], produccion_stock: [], historial_prod: [],
-        distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: [], firebaseConfig: null
+        distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: []
     };
     let sesionUser = null; let operadorActual = ""; let loginClave = ""; let moduloActual = "COCINA"; let moduloVistaActual = "COCINA"; let moduloAdminObjetivo = "COCINA";
     let registroInicialModoUsuario = ""; let registroInicialPassTemporal = "";
@@ -3904,182 +3883,6 @@ function ajustarPrecioManual() {
     let copiasRegistroDesbloqueadas = false;
     const MASTER_USER = "jssantana077";
     const MASTER_PASS = "852347";
-    let tenantIdSesion = "";
-    let firebaseAppInst = null;
-    let firebaseDbInst = null;
-    let firebaseAuthInst = null;
-    let sincronizacionNubeTimer = null;
-    let sincronizandoNube = false;
-    let sincronizacionPendiente = false;
-
-function generarTenantId(baseUser) {
-    const clean = String(baseUser || 'tenant').toLowerCase().replace(/[^a-z0-9]/g, '');
-    return `tenant_${clean || 'user'}_${Date.now()}`;
-}
-
-function obtenerTenantIdUsuario(userObj) {
-    if (!userObj || typeof userObj !== 'object') return '';
-    if (userObj.tenantId) return String(userObj.tenantId);
-    const seed = userObj.owner || userObj.user || 'tenant';
-    const t = generarTenantId(seed);
-    userObj.tenantId = t;
-    return t;
-}
-
-function filtrarUsuariosPorTenant(tenantId) {
-    const t = String(tenantId || '');
-    if (!t) return Array.isArray(db.usuarios) ? db.usuarios : [];
-    return (db.usuarios || []).filter(u => {
-        const tu = obtenerTenantIdUsuario(u);
-        return tu === t;
-    });
-}
-
-function estadoFirebase(msg, ok) {
-    const box = document.getElementById('firebase-status');
-    if (!box) return;
-    box.textContent = msg;
-    box.style.color = ok ? '#1f8b4c' : '#666';
-}
-
-function leerConfigFirebaseUI() {
-    return {
-        apiKey: (document.getElementById('fb_api_key')?.value || '').trim(),
-        authDomain: (document.getElementById('fb_auth_domain')?.value || '').trim(),
-        projectId: (document.getElementById('fb_project_id')?.value || '').trim(),
-        storageBucket: (document.getElementById('fb_storage_bucket')?.value || '').trim(),
-        messagingSenderId: (document.getElementById('fb_messaging_sender_id')?.value || '').trim(),
-        appId: (document.getElementById('fb_app_id')?.value || '').trim()
-    };
-}
-
-function cargarConfigFirebaseEnUI() {
-    const cfg = db.firebaseConfig || JSON.parse(localStorage.getItem('LURO_FIREBASE_CONFIG') || 'null') || {};
-    if (document.getElementById('fb_api_key')) document.getElementById('fb_api_key').value = cfg.apiKey || '';
-    if (document.getElementById('fb_auth_domain')) document.getElementById('fb_auth_domain').value = cfg.authDomain || '';
-    if (document.getElementById('fb_project_id')) document.getElementById('fb_project_id').value = cfg.projectId || '';
-    if (document.getElementById('fb_storage_bucket')) document.getElementById('fb_storage_bucket').value = cfg.storageBucket || '';
-    if (document.getElementById('fb_messaging_sender_id')) document.getElementById('fb_messaging_sender_id').value = cfg.messagingSenderId || '';
-    if (document.getElementById('fb_app_id')) document.getElementById('fb_app_id').value = cfg.appId || '';
-}
-
-function guardarConfigFirebaseUI() {
-    const cfg = leerConfigFirebaseUI();
-    if (!cfg.apiKey || !cfg.projectId || !cfg.appId) {
-        return alert('Complete al menos apiKey, projectId y appId.');
-    }
-    db.firebaseConfig = cfg;
-    localStorage.setItem('LURO_FIREBASE_CONFIG', JSON.stringify(cfg));
-    guardarDatos();
-    estadoFirebase('Firebase configurado. Pendiente conexión.', true);
-}
-
-async function inicializarFirebaseSiConfig() {
-    if (typeof firebase === 'undefined') {
-        estadoFirebase('SDK Firebase no cargado.', false);
-        return false;
-    }
-    const cfg = db.firebaseConfig || JSON.parse(localStorage.getItem('LURO_FIREBASE_CONFIG') || 'null');
-    if (!cfg || !cfg.apiKey || !cfg.projectId || !cfg.appId) {
-        estadoFirebase('Firebase: no configurado.', false);
-        return false;
-    }
-    try {
-        if (!firebaseAppInst) {
-            firebaseAppInst = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
-            firebaseAuthInst = firebase.auth();
-            firebaseDbInst = firebase.firestore();
-            try { await firebaseAuthInst.signInAnonymously(); } catch (e) {}
-        }
-        db.firebaseConfig = cfg;
-        estadoFirebase(`Firebase conectado (${cfg.projectId}).`, true);
-        return true;
-    } catch (e) {
-        console.error('Error Firebase:', e);
-        estadoFirebase('Error al conectar Firebase. Revise configuración.', false);
-        return false;
-    }
-}
-
-async function conectarFirebaseDesdeUI() {
-    const cfg = leerConfigFirebaseUI();
-    db.firebaseConfig = cfg;
-    localStorage.setItem('LURO_FIREBASE_CONFIG', JSON.stringify(cfg));
-    const ok = await inicializarFirebaseSiConfig();
-    if (ok) alert('✅ Firebase conectado correctamente.');
-}
-
-function construirPayloadTenant() {
-    const clone = JSON.parse(JSON.stringify(db));
-    const tenant = String(tenantIdSesion || '');
-    if (!tenant) return clone;
-    clone.usuarios = filtrarUsuariosPorTenant(tenant);
-    clone.__tenantId = tenant;
-    clone.__updatedAt = new Date().toISOString();
-    return clone;
-}
-
-async function sincronizarDBTenantNube() {
-    if (sincronizandoNube) {
-        sincronizacionPendiente = true;
-        return;
-    }
-    if (!tenantIdSesion) return;
-    const ok = await inicializarFirebaseSiConfig();
-    if (!ok || !firebaseDbInst) return;
-    sincronizandoNube = true;
-    try {
-        const payload = construirPayloadTenant();
-        await firebaseDbInst.collection('tenants').doc(tenantIdSesion).collection('state').doc('main').set(payload, { merge: true });
-        estadoFirebase(`Sincronizado en nube (${tenantIdSesion}).`, true);
-    } catch (e) {
-        console.error('Error sincronizando tenant:', e);
-        estadoFirebase('No se pudo sincronizar a la nube.', false);
-    } finally {
-        sincronizandoNube = false;
-        if (sincronizacionPendiente) {
-            sincronizacionPendiente = false;
-            setTimeout(() => { sincronizarDBTenantNube(); }, 300);
-        }
-    }
-}
-
-function programarSyncNube() {
-    if (!tenantIdSesion) return;
-    if (sincronizacionNubeTimer) clearTimeout(sincronizacionNubeTimer);
-    sincronizacionNubeTimer = setTimeout(() => { sincronizarDBTenantNube(); }, 800);
-}
-
-async function cargarDBTenantDesdeNube(tenantId) {
-    if (!tenantId) return false;
-    const ok = await inicializarFirebaseSiConfig();
-    if (!ok || !firebaseDbInst) return false;
-    try {
-        const ref = firebaseDbInst.collection('tenants').doc(tenantId).collection('state').doc('main');
-        const snap = await ref.get();
-        if (!snap.exists) {
-            tenantIdSesion = tenantId;
-            await sincronizarDBTenantNube();
-            return true;
-        }
-        const remoto = snap.data() || {};
-        const usuariosLocal = Array.isArray(db.usuarios) ? db.usuarios : [];
-        db = { ...remoto, usuarios: usuariosLocal, firebaseConfig: db.firebaseConfig || remoto.firebaseConfig || null };
-        if (!Array.isArray(db.platos)) db.platos = [];
-        if (!Array.isArray(db.almacen)) db.almacen = [];
-        if (!Array.isArray(db.ventas)) db.ventas = [];
-        if (!Array.isArray(db.facturasResumen)) db.facturasResumen = [];
-        if (!Array.isArray(db.entrenamientos)) db.entrenamientos = [];
-        if (!Array.isArray(db.modulosCustom)) db.modulosCustom = [];
-        asegurarCuentaMaestra();
-        localStorage.setItem('LURO_CONTROL_DB', JSON.stringify(db));
-        return true;
-    } catch (e) {
-        console.error('Error cargando tenant desde nube:', e);
-        estadoFirebase('No se pudo cargar data de nube.', false);
-        return false;
-    }
-}
 
 function asegurarCuentaMaestra() {
     if (!Array.isArray(db.usuarios)) db.usuarios = [];
@@ -4091,7 +3894,6 @@ function asegurarCuentaMaestra() {
             pass: MASTER_PASS,
             role: "super-master",
             owner: MASTER_USER,
-            tenantId: "tenant_master",
             activo: true
         });
     }
@@ -4105,7 +3907,6 @@ function asegurarCuentaMaestra() {
                 pass: MASTER_PASS,
                 role: "super-master",
                 owner: MASTER_USER,
-                tenantId: u.tenantId || "tenant_master",
                 activo: true
             };
         }
@@ -4126,8 +3927,7 @@ function asegurarCuentaMaestra() {
             mesaMeta: (typeof mesaMeta !== 'undefined') ? mesaMeta : {},
             mesaUniones: (typeof mesaUniones !== 'undefined') ? mesaUniones : {}
         };
-        localStorage.setItem('LURO_CONTROL_DB', JSON.stringify(db));
-        programarSyncNube();
+        localStorage.setItem('LURO_CONTROL_DB', JSON.stringify(db)); 
     }
 function cargarDatos() { 
         const d = JSON.parse(localStorage.getItem('LURO_CONTROL_DB')); 
@@ -4150,7 +3950,6 @@ function cargarDatos() {
           if(!db.qrClienteLinks || typeof db.qrClienteLinks !== 'object') db.qrClienteLinks = {};
           if(!Array.isArray(db.entrenamientos)) db.entrenamientos = [];
           if(!db.configMembresia || typeof db.configMembresia !== 'object') db.configMembresia = { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 };
-          if(!db.firebaseConfig || typeof db.firebaseConfig !== 'object') db.firebaseConfig = JSON.parse(localStorage.getItem('LURO_FIREBASE_CONFIG') || 'null');
           aplicarConfigMembresiaDesdeDB();
           db.clientesFidelizacion = db.clientesFidelizacion.map(c => ({
             ...c,
@@ -4207,7 +4006,6 @@ function cargarDatos() {
             ...u,
             user: (u.user || "").trim().toLowerCase(),
             owner: u.owner ? String(u.owner).trim().toLowerCase() : u.owner,
-            tenantId: u.tenantId || generarTenantId(u.owner || u.user),
             permisos: normalizarPermisos(u.permisos),
             asignacionesEntradas: normalizarAsignacionesEntradas(u.asignacionesEntradas),
             role: u.role || "admin",
@@ -4223,8 +4021,6 @@ function cargarDatos() {
           });
 
           asegurarCuentaMaestra();
-          cargarConfigFirebaseEnUI();
-          inicializarFirebaseSiConfig();
 
           if (db.mesasEstado && typeof db.mesasEstado === 'object') {
             if (typeof carritoPorMesa !== 'undefined') carritoPorMesa = db.mesasEstado.carritoPorMesa || {};
@@ -4285,11 +4081,8 @@ function cargarDatos() {
           asegurarCuentaMaestra();
           if(!db.qrClienteLinks || typeof db.qrClienteLinks !== 'object') db.qrClienteLinks = {};
           if(!Array.isArray(db.entrenamientos)) db.entrenamientos = [];
-          if(!db.firebaseConfig || typeof db.firebaseConfig !== 'object') db.firebaseConfig = JSON.parse(localStorage.getItem('LURO_FIREBASE_CONFIG') || 'null');
           if(!db.configMembresia || typeof db.configMembresia !== 'object') db.configMembresia = { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 };
           aplicarConfigMembresiaDesdeDB();
-          cargarConfigFirebaseEnUI();
-          inicializarFirebaseSiConfig();
           guardarDatos();
         }
 
@@ -4847,7 +4640,7 @@ function completarRegistroInicial() {
         existing.owner = existing.owner || user;
         existing.activo = true;
     } else {
-        db.usuarios.push({ user, pass, role: 'admin', owner: user, tenantId: generarTenantId(user), activo: true, permisos: ['home'] });
+        db.usuarios.push({ user, pass, role: 'admin', owner: user, activo: true, permisos: ['home'] });
     }
 
     const finalizarRegistro = (logoData) => {
@@ -4962,7 +4755,7 @@ function olvidastePassword() {
     document.getElementById('log_pass').value = '';
     alert("Contrasena restablecida correctamente.");
 }
-async function intentarLogin() {
+function intentarLogin() {
         asegurarCuentaMaestra();
         const u = document.getElementById('log_user').value.trim().toLowerCase();
         const p = document.getElementById('log_pass').value;
@@ -4977,10 +4770,6 @@ async function intentarLogin() {
         loginClave = p;
         let found = db.usuarios.find(x => x.user === u && x.pass === p);
         if(found) { 
-            const tenantLogin = obtenerTenantIdUsuario(found);
-            tenantIdSesion = tenantLogin;
-            await cargarDBTenantDesdeNube(tenantLogin);
-            found = db.usuarios.find(x => x.user === u && x.pass === p) || found;
             if(found.activo === false) return alert("Esta cuenta ha sido suspendida.");
             if ((found.role === 'admin' || found.role === 'super-master') && found.billing?.nextChargeAt) {
                 const venc = new Date(found.billing.nextChargeAt).getTime();
@@ -5000,14 +4789,12 @@ async function intentarLogin() {
                 const ownerUser = db.usuarios.find(x => x.user === found.owner);
                 if (!ownerUser) return alert("❌ Este colaborador no tiene dueño válido asignado.");
                 sesionUser = ownerUser;
-                tenantIdSesion = obtenerTenantIdUsuario(ownerUser);
                 operadorActual = found.user;
                 usuarioSesionLabel = `${found.user} (equipo de ${ownerUser.user})`;
                 permisosSesion = normalizarPermisos(found.permisos || []);
                 asignacionesEntradasSesion = normalizarAsignacionesEntradas(found.asignacionesEntradas || []);
             } else {
                 sesionUser = found;
-                tenantIdSesion = obtenerTenantIdUsuario(found);
                 operadorActual = found.user;
                 usuarioSesionLabel = (found.user === MASTER_USER) ? "Jssantana077" : found.user;
                 permisosSesion = [];

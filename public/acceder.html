@@ -1,0 +1,102 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso | LuRo Control SaaS</title>
+  <link rel="stylesheet" href="assets/saas/css/access.css?v=20260309-0420">
+</head>
+<body>
+  <main class="wrap">
+    <section class="panel">
+      <div class="access-brand">
+        <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo luro-logo-toned">
+        <span>LuRo Control</span>
+      </div>
+      <h1>Acceder a LuRo Control</h1>
+      <div class="tabs">
+        <button id="tab-login" class="active" onclick="showTab('login')">Iniciar sesión</button>
+        <button id="tab-register" onclick="showTab('register')">Registrar negocio</button>
+      </div>
+
+      <form id="form-login" onsubmit="return loginSaas(event)">
+        <div class="field">
+          <input id="login-user" placeholder=" " required>
+          <label for="login-user">Usuario o correo</label>
+        </div>
+        <div class="field">
+          <input id="login-pass" type="password" placeholder=" " required>
+          <label for="login-pass">Contraseña</label>
+        </div>
+        <button type="submit">Entrar al sistema</button>
+      </form>
+
+      <form id="form-register" class="hidden" onsubmit="return registerBusiness(event)">
+        <div class="field">
+          <input id="reg-business" placeholder=" " required>
+          <label for="reg-business">Nombre del negocio</label>
+        </div>
+        <div class="field">
+          <input id="reg-admin" placeholder=" " required>
+          <label for="reg-admin">Administrador</label>
+        </div>
+        <div class="field">
+          <input id="reg-firstname" placeholder=" " required>
+          <label for="reg-firstname">Nombre</label>
+        </div>
+        <div class="field">
+          <input id="reg-lastname" placeholder=" " required>
+          <label for="reg-lastname">Apellido</label>
+        </div>
+        <div class="field">
+          <input id="reg-cedula" placeholder=" " required>
+          <label for="reg-cedula">Cédula</label>
+        </div>
+        <div class="field">
+          <input id="reg-email" type="email" placeholder=" " required>
+          <label for="reg-email">Correo electrónico</label>
+        </div>
+        <div class="field">
+          <input id="reg-phone" placeholder=" " required>
+          <label for="reg-phone">Teléfono</label>
+        </div>
+        <div class="field">
+          <input id="reg-pass" type="password" placeholder=" " required>
+          <label for="reg-pass">Contraseña</label>
+        </div>
+        <div class="field select-field">
+          <select id="reg-plan">
+          <option value="basico">Plan Básico</option>
+          <option value="profesional">Plan Profesional</option>
+          <option value="empresarial">Plan Empresarial</option>
+          </select>
+          <label for="reg-plan">Plan</label>
+        </div>
+        <div class="field select-field">
+          <select id="reg-billing-day">
+          <option value="1">Cobro mensual: día 1</option>
+          <option value="5">Cobro mensual: día 5</option>
+          <option value="10" selected>Cobro mensual: día 10</option>
+          <option value="15">Cobro mensual: día 15</option>
+          <option value="20">Cobro mensual: día 20</option>
+          <option value="25">Cobro mensual: día 25</option>
+          <option value="28">Cobro mensual: día 28</option>
+          </select>
+          <label for="reg-billing-day">Frecuencia de cobro</label>
+        </div>
+        <button type="submit">Crear cuenta</button>
+      </form>
+
+      <p id="status" class="status"></p>
+      <div id="pay-box" class="pay-box hidden">
+        <p><strong>Pago de suscripción:</strong> complete el pago para activar la cuenta.</p>
+        <div id="paypal-register-slot" class="hidden" style="margin-top:8px;"></div>
+        <a id="pay-link" class="pay-link" target="_blank" rel="noopener">Pagar ahora</a>
+      </div>
+      <a class="back" href="index.html">Volver al inicio</a>
+    </section>
+  </main>
+  <script src="assets/saas/js/access.js?v=20260306-1205"></script>
+</body>
+</html>
+
