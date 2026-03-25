@@ -49,6 +49,13 @@
   font-weight: bold;
 }
 
+/* Ocultar círculo flotante en móvil (se usa el botón de navegación móvil) */
+@media (max-width: 900px) {
+  .menu-toggle-circle {
+    display: none;
+  }
+}
+
 .menu-toggle-circle:hover {
   transform: scale(1.1);
   box-shadow: 0 12px 30px rgba(5, 196, 107, 0.45);
@@ -75,6 +82,18 @@
 
 .sidebar.active {
   right: 0;
+}
+
+/* Ocultar sidebar antiguo en desktop */
+.sidebar:not(.sidebar-flotante) {
+  display: none;
+}
+
+/* Sidebar flotante visible en desktop */
+@media (min-width: 901px) {
+  .sidebar.sidebar-flotante {
+    display: block;
+  }
 }
 
 .sidebar-brand {
