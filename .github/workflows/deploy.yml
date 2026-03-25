@@ -7,21 +7,20 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+
+    - name: Deploy to Firebase Hosting (live)
+      uses: FirebaseExtended/action-hosting-deploy@v0
       with:
-        node-version: '20'
-        
-    - name: Install Firebase CLI
-      run: npm install -g firebase-tools
-      
-    - name: Deploy to Firebase Hosting
-      run: |
-        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/service-account.json
-        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/service-account.json
-        firebase deploy --project luro-control --only hosting --debug
+        repoToken: "${{ secrets.GITHUB_TOKEN }}"
+        firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+        projectId: luro-control
+        channelId: live
