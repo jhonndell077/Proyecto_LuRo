@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "luro-control",
     "public": "public",
     "ignore": [
       "firebase.json",
