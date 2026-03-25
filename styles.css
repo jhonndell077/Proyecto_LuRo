@@ -89,11 +89,14 @@
   display: none;
 }
 
-/* Sidebar flotante visible en desktop */
-@media (min-width: 901px) {
-  .sidebar.sidebar-flotante {
-    display: block;
-  }
+/* Sidebar flotante oculto por defecto en desktop */
+.sidebar.sidebar-flotante {
+  display: none;
+}
+
+/* Sidebar flotante visible solo cuando está activo */
+.sidebar.sidebar-flotante.active {
+  display: block;
 }
 
 .sidebar-brand {
