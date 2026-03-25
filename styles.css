@@ -5,6 +5,28 @@
     border: 2px solid var(--accent) !important;
 }
 
+/* Efecto de parpadeo para tarjetas de módulos */
+@keyframes parpadeo-suave {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    50% { 
+        opacity: 0.7; 
+        transform: scale(1.02);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+}
+
+.module-card {
+    animation: parpadeo-suave 2s infinite ease-in-out;
+}
+
+.module-card:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
 /* Estilos para el modal de información de producto */
 #modal-info-producto {
     display: none;
