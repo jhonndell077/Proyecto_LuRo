@@ -56,6 +56,13 @@
   }
 }
 
+/* Círculo flotante visible solo en desktop */
+@media (min-width: 901px) {
+  .menu-toggle-circle {
+    display: flex;
+  }
+}
+
 .menu-toggle-circle:hover {
   transform: scale(1.1);
   box-shadow: 0 12px 30px rgba(5, 196, 107, 0.45);
@@ -65,8 +72,15 @@
   background: linear-gradient(135deg, var(--danger), #ee5a6f);
 }
 
-/* Sidebar flotante */
-.sidebar {
+
+/* Ocultar sidebar antiguo en desktop */
+.sidebar:not(.sidebar-flotante) {
+  display: none;
+}
+
+/* Sidebar flotante oculto por defecto en desktop */
+.sidebar.sidebar-flotante {
+  display: none;
   position: fixed;
   top: 0;
   right: -320px;
@@ -80,23 +94,10 @@
   padding-top: 20px;
 }
 
-.sidebar.active {
-  right: 0;
-}
-
-/* Ocultar sidebar antiguo en desktop */
-.sidebar:not(.sidebar-flotante) {
-  display: none;
-}
-
-/* Sidebar flotante oculto por defecto en desktop */
-.sidebar.sidebar-flotante {
-  display: none;
-}
-
 /* Sidebar flotante visible solo cuando está activo */
 .sidebar.sidebar-flotante.active {
   display: block;
+  right: 0;
 }
 
 .sidebar-brand {
