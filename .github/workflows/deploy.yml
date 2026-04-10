@@ -2,10 +2,26 @@ name: Deploy to Firebase Hosting
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      motivo:
+        description: "Motivo del deploy (opcional)"
+        required: false
+        default: "Solicitud manual desde GitHub"
+  issue_comment:
+    types: [created]
 
 jobs:
   deploy:
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/deploy')
+      )
     runs-on: ubuntu-latest
 
     permissions:
@@ -14,13 +30,20 @@ jobs:
       pull-requests: write
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Deploy to Firebase Hosting (live)
-      uses: FirebaseExtended/action-hosting-deploy@v0
-      with:
-        repoToken: "${{ secrets.GITHUB_TOKEN }}"
-        firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
-        projectId: luro-control
-        channelId: live
+      - name: Mostrar contexto de solicitud
+        run: |
+          echo "Evento: ${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Motivo: ${{ github.event.inputs.motivo }}"
+          fi
+
+      - name: Deploy to Firebase Hosting (live)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          projectId: luro-control
+          channelId: live
