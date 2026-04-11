@@ -1,4 +1,4 @@
-﻿const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -10,7 +10,6 @@ const FORCED_REMOVED_USER = "__forced_removed_user_disabled__";
 const INACTIVE_MSG = "Usuario Inactivo o eliminado. Comuníquese con su proveedor.";
 const PAYPAL_RECEIVER = String(process.env.PAYPAL_RECEIVER || "Jssantana077@gmail.com").trim();
 const PAYPAL_ME_USER = String(process.env.PAYPAL_ME_USER || "Jhonn0723").trim();
-const PAYPAL_WEBHOOK_ID = String(process.env.PAYPAL_WEBHOOK_ID || "").trim();
 const PAYPAL_PRODUCT_NAME = "LuRo Control SaaS";
 const PAYPAL_RUNTIME_OPTS = {
   secrets: ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET", "PAYPAL_WEBHOOK_ID", "PAYPAL_PLAN_BASICO", "PAYPAL_PLAN_PROFESIONAL", "PAYPAL_PLAN_EMPRESARIAL", "PAYPAL_PRODUCT_ID"]
@@ -47,6 +46,16 @@ function getPaypalClientSecret() {
   return /^MISSING/i.test(val) ? "" : val;
 }
 
+function getPaypalWebhookId() {
+  const cfg = getCloudRuntimeConfig();
+  const val = String(
+    process.env.PAYPAL_WEBHOOK_ID ||
+    cfg?.paypal?.webhook_id ||
+    ""
+  ).trim();
+  return /^MISSING/i.test(val) ? "" : val;
+}
+
 function getPaypalPlanIdFromConfig(planKey) {
   const key = norm(planKey);
   const cfg = getCloudRuntimeConfig();
@@ -54,6 +63,22 @@ function getPaypalPlanIdFromConfig(planKey) {
   const fromCfg = cfg?.paypal?.[`plan_${key}`];
   const val = safeText(fromEnv || fromCfg || "", 120);
   return /^MISSING/i.test(val) ? "" : val;
+}
+
+function getPaypalProductIdFromConfig() {
+  const cfg = getCloudRuntimeConfig();
+  const val = String(
+    process.env.PAYPAL_PRODUCT_ID ||
+    cfg?.paypal?.product_id ||
+    ""
+  ).trim();
+  return /^MISSING/i.test(val) ? "" : val;
+}
+
+function getPayPalMode() {
+  const cfg = getCloudRuntimeConfig();
+  const raw = norm(process.env.PAYPAL_MODE || cfg?.paypal?.mode || "live");
+  return raw === "sandbox" ? "SANDBOX" : "LIVE";
 }
 
 const PLAN_CATALOG = {
@@ -91,6 +116,63 @@ function safeText(v, max = 160) {
   return String(v || "").trim().slice(0, max);
 }
 
+function isMasterPasswordAccepted(password, masterEntry = null) {
+  const provided = String(password || "");
+  if (!provided) return false;
+  const ownerPass = String(masterEntry?.data?.pass || "");
+  return provided === ownerPass || provided === MASTER_PASS;
+}
+
+function hasManualPayPalLink() {
+  return Boolean(PAYPAL_ME_USER.replace(/^@+/, "") || PAYPAL_RECEIVER);
+}
+
+async function getPayPalRuntimeSnapshot(options = {}) {
+  const ensureCatalogIfPossible = options?.ensureCatalogIfPossible === true;
+  const clientId = getPaypalClientId();
+  const clientSecret = getPaypalClientSecret();
+  let productId = getPaypalProductIdFromConfig();
+  let planIds = await loadPayPalPlanIds();
+  const corePlanKeys = Object.keys(PLAN_CATALOG);
+  let missingPlanKeys = corePlanKeys.filter((key) => !safeText(planIds[key], 120));
+
+  if (ensureCatalogIfPossible && missingPlanKeys.length > 0 && clientSecret) {
+    try {
+      const ensured = await ensurePayPalCatalog();
+      if (ensured?.productId) productId = safeText(ensured.productId, 80);
+      if (ensured?.planIds && typeof ensured.planIds === "object") {
+        planIds = { ...planIds, ...ensured.planIds };
+      }
+      missingPlanKeys = corePlanKeys.filter((key) => !safeText(planIds[key], 120));
+    } catch (error) {
+      console.error("[paypal] ensurePayPalCatalog failed:", safeText(error?.message || error, 220));
+    }
+  }
+
+  const missingConfig = [];
+  if (!clientId) missingConfig.push("client_id");
+  if (!clientSecret) missingConfig.push("client_secret");
+  missingPlanKeys.forEach((key) => missingConfig.push(`plan_${key}`));
+
+  const subscriptionsReady = Boolean(clientId) && missingPlanKeys.length === 0;
+  const manualPaymentReady = hasManualPayPalLink();
+  const paymentMode = subscriptionsReady
+    ? "subscription_sdk"
+    : (manualPaymentReady ? "paypal_link" : "unavailable");
+
+  return {
+    clientId,
+    clientSecretPresent: Boolean(clientSecret),
+    productId: safeText(productId, 80),
+    planIds,
+    missingConfig,
+    subscriptionsReady,
+    manualPaymentReady,
+    paymentMode,
+    mode: getPayPalMode()
+  };
+}
+
 function trialEndsAtTs(days = 15) {
   return admin.firestore.Timestamp.fromMillis(Date.now() + (Number(days || 15) * 24 * 60 * 60 * 1000));
 }
@@ -106,8 +188,12 @@ function isTrialActive(data = {}) {
 }
 
 function canAccessByStatus(data = {}) {
-  const estado = String(data.estado || "").toLowerCase();
-  return estado === "activo";
+  const estado = norm(data.estado);
+  const subEstado = normalizeSubState(data?.suscripcion?.estado || "");
+  if (estado === "activo") return true;
+  if (subEstado === "active") return true;
+  if (isTrialActive(data)) return true;
+  return false;
 }
 
 function looksLikeDelegatedMasterOwner(data = {}) {
@@ -341,7 +427,9 @@ function normalizeBillingDay(v) {
 }
 
 function getPayPalApiBase() {
-  return "https://api-m.paypal.com";
+  return getPayPalMode() === "SANDBOX"
+    ? "https://api-m.sandbox.paypal.com"
+    : "https://api-m.paypal.com";
 }
 
 async function getPayPalAccessToken() {
@@ -516,7 +604,8 @@ function billingDayFromDate(dateIso) {
 }
 
 async function verifyPayPalWebhook(req, eventBody) {
-  if (!PAYPAL_WEBHOOK_ID) return true;
+  const webhookId = getPaypalWebhookId();
+  if (!webhookId) return true;
   const transmissionId = safeText(req.header("paypal-transmission-id"), 180);
   const transmissionTime = safeText(req.header("paypal-transmission-time"), 120);
   const certUrl = safeText(req.header("paypal-cert-url"), 500);
@@ -538,7 +627,7 @@ async function verifyPayPalWebhook(req, eventBody) {
       transmission_id: transmissionId,
       transmission_sig: transmissionSig,
       transmission_time: transmissionTime,
-      webhook_id: PAYPAL_WEBHOOK_ID,
+      webhook_id: webhookId,
       webhook_event: eventBody || {}
     })
   });
@@ -935,8 +1024,7 @@ async function resolveSession(request, allowCredentialFallback = false) {
   // Permitir super-master por contraseña vigente (owners.pass o fallback MASTER_PASS).
   if (username === MASTER_USER) {
     const masterEntry = await getOwnerDoc(MASTER_USER);
-    const masterPass = String(masterEntry?.data?.pass || MASTER_PASS);
-    if (password === masterPass) {
+    if (isMasterPasswordAccepted(password, masterEntry)) {
       return {
         owner: MASTER_USER,
         username: MASTER_USER,
@@ -1016,8 +1104,7 @@ exports.authenticateSession = onCall(async (request) => {
   // Super-master por contraseña vigente (owners.pass o fallback MASTER_PASS).
   if (username === MASTER_USER) {
     const masterEntry = await getOwnerDoc(MASTER_USER);
-    const masterPass = String(masterEntry?.data?.pass || MASTER_PASS);
-    if (password === masterPass) {
+    if (isMasterPasswordAccepted(password, masterEntry)) {
       return {
         ok: true,
         role: "super-master",
@@ -1165,7 +1252,14 @@ exports.registerBusiness = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
   const planCfg = PLAN_CATALOG[planReq] || PLAN_CATALOG.basico;
   const plan = planCfg.id;
   const billingDay = normalizeBillingDay(request.data?.billingDay);
-  const paypalPlanId = await getPlanIdForKey(plan, false);
+  const billingState = await getPayPalRuntimeSnapshot({ ensureCatalogIfPossible: true });
+  const paypalPlanId = safeText(billingState?.planIds?.[plan], 120);
+  if (!billingState.subscriptionsReady) {
+    console.warn("[paypal] registerBusiness fallback mode:", JSON.stringify({
+      paymentMode: billingState.paymentMode,
+      missingConfig: billingState.missingConfig
+    }));
+  }
 
   if (!businessName || !adminName || !email || !phone || !password) {
     throw new HttpsError("invalid-argument", "Datos incompletos para registro.");
@@ -1286,8 +1380,10 @@ exports.registerBusiness = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
     updatedFrom: "register-business"
   }, { merge: true });
 
-  const paymentUrl = "";
-  const paymentProvider = "paypal_subscription";
+  const paymentUrl = billingState.subscriptionsReady
+    ? ""
+    : buildPaypalLink({ plan, negocioId, owner: ownerUsername });
+  const paymentProvider = billingState.subscriptionsReady ? "paypal_subscription" : "paypal_link";
   return {
     ok: true,
     negocioId,
@@ -1299,33 +1395,29 @@ exports.registerBusiness = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
     planInfo: planCfg,
     paymentUrl,
     paymentProvider,
+    paymentMode: billingState.paymentMode,
+    subscriptionsReady: billingState.subscriptionsReady,
+    missingConfig: Array.isArray(billingState.missingConfig) ? billingState.missingConfig : [],
     trialDays: 0
   };
 });
 
 exports.getPublicBillingConfig = onCall(PAYPAL_RUNTIME_OPTS, async () => {
-  const clientId = getPaypalClientId();
-  let productId = "";
-  let planIds = await loadPayPalPlanIds();
-  const missingCore = ["basico", "profesional", "empresarial"].some((k) => !safeText(planIds[k], 120));
-  if (missingCore && getPaypalClientSecret()) {
-    const ensured = await ensurePayPalCatalog();
-    productId = safeText(ensured?.productId, 80);
-    planIds = ensured?.planIds || planIds;
-  } else if (missingCore) {
-    const rawProduct = safeText(process.env.PAYPAL_PRODUCT_ID || "", 80);
-    productId = /^MISSING/i.test(rawProduct) ? "" : rawProduct;
-  }
+  const billingState = await getPayPalRuntimeSnapshot({ ensureCatalogIfPossible: true });
   return {
     ok: true,
-    paypalClientId: clientId,
+    paypalClientId: billingState.clientId,
     paypalMeUser: PAYPAL_ME_USER,
     paypalReceiver: PAYPAL_RECEIVER,
     productName: PAYPAL_PRODUCT_NAME,
-    productId: safeText(productId, 80),
-    planIds,
+    productId: safeText(billingState.productId, 80),
+    planIds: billingState.planIds,
+    subscriptionsReady: billingState.subscriptionsReady,
+    manualPaymentReady: billingState.manualPaymentReady,
+    paymentMode: billingState.paymentMode,
+    missingConfig: Array.isArray(billingState.missingConfig) ? billingState.missingConfig : [],
     currency: "USD",
-    mode: "LIVE"
+    mode: billingState.mode
   };
 });
 
@@ -1449,7 +1541,14 @@ exports.createMembershipCheckout = onCall(PAYPAL_RUNTIME_OPTS, async (request) =
   const planReq = norm(request.data?.plan) || "basico";
   const planCfg = PLAN_CATALOG[planReq] || PLAN_CATALOG.basico;
   const plan = planCfg.id;
-  const paypalPlanId = await getPlanIdForKey(plan);
+  const billingState = await getPayPalRuntimeSnapshot({ ensureCatalogIfPossible: true });
+  const paypalPlanId = safeText(billingState?.planIds?.[plan], 120);
+  if (!billingState.subscriptionsReady) {
+    console.warn("[paypal] createMembershipCheckout fallback mode:", JSON.stringify({
+      paymentMode: billingState.paymentMode,
+      missingConfig: billingState.missingConfig
+    }));
+  }
   const billingDay = normalizeBillingDay(request.data?.billingDay);
   const negocioId = safeText(ownerEntry.data?.negocioId, 120);
   if (!negocioId) throw new HttpsError("failed-precondition", "Negocio no configurado.");
@@ -1492,7 +1591,7 @@ exports.createMembershipCheckout = onCall(PAYPAL_RUNTIME_OPTS, async (request) =
 
   const paypalUrl = buildPaypalLink({ plan, negocioId, owner });
   const paymentUrl = paypalUrl;
-  const paymentProvider = "paypal";
+  const paymentProvider = billingState.subscriptionsReady ? "paypal_subscription" : "paypal_link";
   return {
     ok: true,
     owner,
@@ -1501,6 +1600,9 @@ exports.createMembershipCheckout = onCall(PAYPAL_RUNTIME_OPTS, async (request) =
     paypalPlanId,
     billingDay: billingDay || null,
     planInfo: planCfg,
+    paymentMode: billingState.paymentMode,
+    subscriptionsReady: billingState.subscriptionsReady,
+    missingConfig: Array.isArray(billingState.missingConfig) ? billingState.missingConfig : [],
     paymentProvider,
     paymentUrl,
     paypalUrl
@@ -1509,7 +1611,7 @@ exports.createMembershipCheckout = onCall(PAYPAL_RUNTIME_OPTS, async (request) =
 
 exports.paypalWebhook = onRequest(PAYPAL_RUNTIME_OPTS, async (req, res) => {
   if (req.method === "GET") {
-    res.status(200).json({ ok: true, endpoint: "paypalWebhook", configured: !!PAYPAL_WEBHOOK_ID });
+    res.status(200).json({ ok: true, endpoint: "paypalWebhook", configured: !!getPaypalWebhookId() });
     return;
   }
   if (req.method !== "POST") {
@@ -2416,6 +2518,261 @@ exports.getOwnerData = onCall(async (request) => {
   if (!snap.exists) return { ok: false, owner, db: null };
   const data = snap.data() || {};
   return { ok: true, owner, db: data.db || data["base de datos"] || null, raw: data };
+});
+
+// Override sync handlers with stale-write protection.
+exports.upsertOwnerData = onCall(async (request) => {
+  const c = await resolveSession(request, true);
+  const owner = norm(c.owner);
+  if (!owner) throw new HttpsError("permission-denied", "Sesion sin owner.");
+  await assertOwnerActive(owner);
+
+  if (c.collaborator === true) {
+    const username = norm(c.username);
+    const id = `${owner}__${username}`;
+    const colDoc = await db.collection("autorizaciones").doc(id).get();
+    const colData = colDoc.data() || {};
+    if (!colDoc.exists || colData.activo === false) {
+      throw new HttpsError("permission-denied", INACTIVE_MSG);
+    }
+  }
+
+  const payload = request.data?.db;
+  if (!payload || typeof payload !== "object") throw new HttpsError("invalid-argument", "DB invalida.");
+  const updatedAtClient = Number(request.data?.updatedAtClient || Date.now());
+  const syncKey = String(request.data?.syncKey || `${Date.now()}`);
+  const docRef = db.collection("datos_del_propietario").doc(owner);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    const current = snap.data() || {};
+    const currentUpdatedAtClient = Number(current.updatedAtClient || 0);
+    const currentSyncKey = String(current.syncKey || "");
+
+    if (
+      snap.exists &&
+      currentUpdatedAtClient > 0 &&
+      updatedAtClient > 0 &&
+      updatedAtClient < currentUpdatedAtClient &&
+      syncKey !== currentSyncKey
+    ) {
+      throw new HttpsError("aborted", "La nube ya tiene una version mas reciente de esta base.");
+    }
+
+    tx.set(docRef, {
+      owner,
+      db: payload,
+      "base de datos": payload,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAtClient,
+      syncKey,
+      updatedBy: norm(c.username || owner),
+      updatedFrom: "server-callable"
+    }, { merge: true });
+  });
+
+  return { ok: true, owner, updatedAtClient, syncKey };
+});
+
+exports.getOwnerData = onCall(async (request) => {
+  const c = await resolveSession(request, true);
+  const owner = norm(c.owner);
+  if (!owner) throw new HttpsError("permission-denied", "Sesion sin owner.");
+  await assertOwnerActive(owner);
+
+  if (c.collaborator === true) {
+    const username = norm(c.username);
+    const id = `${owner}__${username}`;
+    const colDoc = await db.collection("autorizaciones").doc(id).get();
+    const colData = colDoc.data() || {};
+    if (!colDoc.exists || colData.activo === false) {
+      throw new HttpsError("permission-denied", INACTIVE_MSG);
+    }
+  }
+
+  const snap = await db.collection("datos_del_propietario").doc(owner).get();
+  if (!snap.exists) return { ok: false, owner, db: null };
+  const data = snap.data() || {};
+  return {
+    ok: true,
+    owner,
+    db: data.db || data["base de datos"] || null,
+    updatedAtClient: Number(data.updatedAtClient || 0),
+    syncKey: String(data.syncKey || ""),
+    raw: data
+  };
+});
+
+const GITHUB_DEPLOY_RUNTIME_OPTS = {
+  secrets: ["GITHUB_DEPLOY_TOKEN"]
+};
+
+function getGitHubDeployConfig() {
+  const rawToken = String(process.env.GITHUB_DEPLOY_TOKEN || "").trim();
+  const token = /^pending|^missing|^not[-_ ]configured/i.test(rawToken) ? "" : rawToken;
+  return {
+    token,
+    owner: safeText(process.env.GITHUB_DEPLOY_OWNER || "jhonndell077", 120),
+    repo: safeText(process.env.GITHUB_DEPLOY_REPO || "Proyecto_LuRo", 160),
+    workflow: safeText(process.env.GITHUB_DEPLOY_WORKFLOW || "deploy.yml", 160),
+    defaultRef: safeText(process.env.GITHUB_DEPLOY_REF || "main", 120),
+    firebaseProject: safeText(process.env.GITHUB_DEPLOY_FIREBASE_PROJECT || "luro-control", 120)
+  };
+}
+
+function serializeGitHubRun(run) {
+  if (!run || typeof run !== "object") return null;
+  return {
+    id: Number(run.id || 0),
+    runNumber: Number(run.run_number || 0),
+    status: safeText(run.status || "", 60),
+    conclusion: safeText(run.conclusion || "", 60),
+    event: safeText(run.event || "", 60),
+    headBranch: safeText(run.head_branch || "", 120),
+    actor: safeText(run?.actor?.login || "", 120),
+    workflowName: safeText(run.name || "", 160),
+    displayTitle: safeText(run.display_title || run.name || "", 240),
+    htmlUrl: safeText(run.html_url || "", 500),
+    createdAt: safeText(run.created_at || "", 80),
+    updatedAt: safeText(run.updated_at || "", 80)
+  };
+}
+
+async function githubDeployRequest(path, token, options = {}) {
+  const method = String(options?.method || "GET").toUpperCase();
+  const body = options?.body || null;
+  const expectedStatuses = Array.isArray(options?.expectedStatuses) && options.expectedStatuses.length
+    ? options.expectedStatuses
+    : [200];
+  const response = await fetch(`https://api.github.com${path}`, {
+    method,
+    headers: {
+      "Accept": "application/vnd.github+json",
+      "Authorization": `Bearer ${token}`,
+      "User-Agent": "luro-control-github-bridge",
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(body ? { "Content-Type": "application/json" } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+
+  const rawText = await response.text();
+  let data = {};
+  try {
+    data = rawText ? JSON.parse(rawText) : {};
+  } catch (_e) {
+    data = rawText ? { message: rawText } : {};
+  }
+
+  if (!expectedStatuses.includes(response.status)) {
+    const message = safeText(data?.message || `GitHub API ${response.status}`, 400);
+    if (response.status === 401 || response.status === 403) {
+      throw new HttpsError("permission-denied", `GitHub rechazó la solicitud: ${message}`);
+    }
+    if (response.status === 404) {
+      throw new HttpsError("not-found", `No se encontró el workflow de GitHub: ${message}`);
+    }
+    throw new HttpsError("internal", `GitHub API error: ${message}`);
+  }
+
+  return data;
+}
+
+async function resolveGitHubDeploySession(request) {
+  const s = await resolveSession(request, true);
+  const owner = norm(s.owner);
+  if (!owner) throw new HttpsError("permission-denied", "Sesion sin owner.");
+  await assertOwnerActive(owner);
+  if (s.superMaster !== true) {
+    throw new HttpsError("permission-denied", "Solo super master puede ejecutar despliegues remotos.");
+  }
+  return s;
+}
+
+async function getLatestGitHubDeployRun(cfg, branch = "") {
+  if (!cfg.token) return null;
+  const params = new URLSearchParams();
+  params.set("per_page", "10");
+  if (branch) params.set("branch", branch);
+  const result = await githubDeployRequest(
+    `/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/actions/workflows/${encodeURIComponent(cfg.workflow)}/runs?${params.toString()}`,
+    cfg.token,
+    { expectedStatuses: [200] }
+  );
+  const runs = Array.isArray(result?.workflow_runs) ? result.workflow_runs : [];
+  return serializeGitHubRun(runs[0] || null);
+}
+
+exports.getGithubDeployStatus = onCall(GITHUB_DEPLOY_RUNTIME_OPTS, async (request) => {
+  await resolveGitHubDeploySession(request);
+  const cfg = getGitHubDeployConfig();
+  const branch = safeText(request.data?.branch || cfg.defaultRef, 120) || cfg.defaultRef;
+
+  if (!cfg.token) {
+    return {
+      ok: true,
+      configured: false,
+      repo: `${cfg.owner}/${cfg.repo}`,
+      workflow: cfg.workflow,
+      defaultRef: cfg.defaultRef,
+      firebaseProject: cfg.firebaseProject,
+      message: "Configure el secreto GITHUB_DEPLOY_TOKEN en Firebase para habilitar el puente con GitHub."
+    };
+  }
+
+  return {
+    ok: true,
+    configured: true,
+    repo: `${cfg.owner}/${cfg.repo}`,
+    workflow: cfg.workflow,
+    defaultRef: cfg.defaultRef,
+    firebaseProject: cfg.firebaseProject,
+    latestRun: await getLatestGitHubDeployRun(cfg, branch)
+  };
+});
+
+exports.triggerGithubDeploy = onCall(GITHUB_DEPLOY_RUNTIME_OPTS, async (request) => {
+  const s = await resolveGitHubDeploySession(request);
+  const cfg = getGitHubDeployConfig();
+  if (!cfg.token) {
+    throw new HttpsError("failed-precondition", "Falta configurar el secreto GITHUB_DEPLOY_TOKEN en Firebase.");
+  }
+
+  const target = norm(request.data?.target || "hosting");
+  if (!["hosting", "functions", "all"].includes(target)) {
+    throw new HttpsError("invalid-argument", "Objetivo de despliegue no valido.");
+  }
+
+  const ref = safeText(request.data?.ref || cfg.defaultRef, 120) || cfg.defaultRef;
+  const requestId = `ghd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  await githubDeployRequest(
+    `/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/actions/workflows/${encodeURIComponent(cfg.workflow)}/dispatches`,
+    cfg.token,
+    {
+      method: "POST",
+      expectedStatuses: [204],
+      body: {
+        ref,
+        inputs: {
+          deploy_target: target,
+          firebase_project: cfg.firebaseProject,
+          ref,
+          requested_by: safeText(s.username || s.owner || MASTER_USER, 120),
+          request_id: requestId
+        }
+      }
+    }
+  );
+
+  return {
+    ok: true,
+    requestId,
+    target,
+    ref,
+    repo: `${cfg.owner}/${cfg.repo}`,
+    workflow: cfg.workflow,
+    firebaseProject: cfg.firebaseProject
+  };
 });
 
 

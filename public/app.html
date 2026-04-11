@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0f1419">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20260320-1905">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260410-github-bridge-1">
 </head>
 <body onload="cargarDatos()">
 
@@ -76,6 +76,21 @@
     </div>
 </div>
 
+<div id="login-loading-overlay" class="luro-loading-overlay" aria-hidden="true" style="display:none;">
+  <div class="luro-loading-card">
+    <div class="luro-loading-orbit">
+      <span class="luro-loading-ring luro-loading-ring--one"></span>
+      <span class="luro-loading-ring luro-loading-ring--two"></span>
+      <span class="luro-loading-ring luro-loading-ring--three"></span>
+      <span class="luro-loading-core"></span>
+    </div>
+    <div class="luro-loading-copy">
+      <strong id="login-loading-title">Validando acceso</strong>
+      <span id="login-loading-message">Estamos preparando tu panel de control...</span>
+    </div>
+  </div>
+</div>
+
   <div id="login-overlay">
     <div class="login-box">
       <h2 class="brand-title-animated">
@@ -105,7 +120,7 @@
         </div>
         <label style="font-size:12px; color:#666; font-weight:700;">Mensaje predeterminado</label>
         <textarea id="dev-contact-message" rows="5" style="width:100%; margin-top:6px;"></textarea>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+        <div class="contact-dev-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
           <button class="btn btn-blue" onclick="enviarMensajeDesarrolladorWhatsapp()">WHATSAPP</button>
           <button class="btn btn-warning" onclick="enviarMensajeDesarrolladorEmail()">CORREO</button>
           <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalContactoDesarrollador()">CERRAR</button>
@@ -134,6 +149,75 @@
         <textarea id="reg_reason" placeholder="Motivo por el que utiliza el sistema" rows="3" style="width:100%;"></textarea>
       </div>
       <button class="btn btn-save" style="width:100%; padding:12px;" onclick="completarRegistroInicial()">GUARDAR REGISTRO E INGRESAR</button>
+    </div>
+  </div>
+
+  <div id="modal-editar-perfil-home" class="home-profile-modal" style="display:none;">
+    <div class="home-profile-modal-card">
+      <div class="home-profile-modal-head">
+        <div>
+          <span class="home-profile-panel-kicker">Perfil del negocio</span>
+          <strong>Editar perfil</strong>
+        </div>
+      </div>
+
+      <div class="home-profile-modal-body">
+        <div class="form-group">
+          <label>Usuario base</label>
+          <input type="text" id="home-edit-user" readonly>
+          <small class="home-profile-edit-help">Se mantiene protegido para no romper la propiedad de los datos existentes.</small>
+        </div>
+
+        <div class="home-profile-edit-grid">
+          <div class="form-group">
+            <label>Nueva contraseña</label>
+            <input type="password" id="home-edit-new-pass" placeholder="Opcional">
+          </div>
+          <div class="form-group">
+            <label>Confirmar nueva contraseña</label>
+            <input type="password" id="home-edit-new-pass-confirm" placeholder="Repita la nueva contraseña">
+          </div>
+        </div>
+
+        <div class="home-profile-edit-grid">
+          <div class="form-group">
+            <label>WhatsApp del negocio</label>
+            <input type="text" id="home-edit-phone" placeholder="Ej. 8090000000">
+          </div>
+          <div class="form-group">
+            <label>Nombre del negocio</label>
+            <input type="text" id="home-edit-business" placeholder="Nombre comercial">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Motivo de uso</label>
+          <textarea id="home-edit-reason" rows="4" placeholder="Describa brevemente el uso del sistema"></textarea>
+        </div>
+
+        <div class="home-profile-edit-media">
+          <div class="home-profile-edit-preview">
+            <div id="home-edit-logo-fallback" class="home-profile-edit-preview-fallback">LC</div>
+            <img id="home-edit-logo-preview" src="" alt="Vista previa del logo" style="display:none;">
+          </div>
+          <div class="home-profile-edit-media-controls">
+            <div class="form-group">
+              <label>Foto o logo del negocio</label>
+              <input type="file" id="home-edit-logo" accept="image/*" onchange="actualizarPreviewLogoPerfilInicio()">
+            </div>
+            <div class="home-profile-modal-actions home-profile-modal-actions--inline">
+              <button class="btn" onclick="cerrarModalEditarPerfilInicio()">Cancelar</button>
+              <button class="btn btn-warning" onclick="quitarLogoPerfilInicio()">Quitar logo</button>
+              <button class="btn btn-save" onclick="guardarPerfilDesdeInicio()">Guardar cambios</button>
+            </div>
+            <div class="home-profile-modal-close-row">
+              <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalEditarPerfilInicio()">X</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="home-edit-profile-status" class="home-profile-edit-status"></div>
+      </div>
     </div>
   </div>
 
@@ -202,6 +286,8 @@
     <a onclick="showPage('decomiso')" style="border-left: 15px solid var(--warning);">🗑️ Registrar Decomiso</a>
     <a onclick="showPage('produccion')" style="border-left: 15px solid var(--warning);">📊 Departamentos A-B-C</a>
     <a onclick="showPage('diagnostico')" style="border-left: 15px solid var(--blue);">🧠 Diagnóstico Inteligente</a>
+    <a class="sidebar-command-launch" onclick="showPage('comandos')" style="border-left: 15px solid var(--blue);">📜 COMANDOS</a>
+    <a id="sidebar-assistant-launch" class="sidebar-assistant-launch" onclick="toggleLuroAssistant(true)" style="border-left: 15px solid var(--blue);">🧠 Asistente LuRo</a>
     
     <a id="btn-config-nav" onclick="showPage('configuracion')" style="background: #1e272e; margin-top: 10px;">⚙️ Configuración</a>
     <a onclick="cerrarSesion()" style="background:var(--danger); margin-top:20px; text-align:center;">Cerrar Sesión</a>
@@ -211,83 +297,90 @@
 
   <div class="main" id="main-content">
     <div id="home" class="content-section active">
-        <div class="card">
-            <h2>Panel de Control General</h2>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div style="background:#f8f9fa; padding:15px; border-radius:10px;">
-                    <span style="color:gray; font-size:12px;">USUARIO ACTIVO</span><br>
-                    <strong id="session-user" style="font-size:18px;"></strong>
-                </div>
-                <div style="background:#f8f9fa; padding:15px; border-radius:10px;">
-                    <span style="color:gray; font-size:12px;">MODO ACTUAL</span><br>
-                    <strong id="current-module-display" style="font-size:18px;"></strong>
+        <div class="card home-profile-card">
+            <div class="home-profile-hero">
+                <div class="home-profile-hero-inner">
+                    <div class="home-profile-avatar-shell">
+                        <div id="home-profile-avatar-fallback" class="home-profile-avatar-fallback">LC</div>
+                        <img id="home-reg-logo" src="" alt="Perfil negocio" class="home-profile-avatar-image" style="display:none;">
+                    </div>
+
+                    <div class="home-profile-identity">
+                        <span class="home-profile-eyebrow">Inicio · Perfil profesional</span>
+                        <h2 class="home-profile-title"><span id="home-profile-display-name">LuRo Control</span></h2>
+                        <p id="home-profile-summary" class="home-profile-summary">Panel principal para administrar la cuenta, la membresía y la identidad operativa del negocio.</p>
+                        <span id="current-module-display" hidden>-</span>
+                    </div>
+
+                    <div class="home-profile-status">
+                        <div class="home-profile-status-card">
+                            <span>Plan actual</span>
+                            <strong id="home-plan-actual">-</strong>
+                        </div>
+                        <div class="home-profile-status-card">
+                            <span>Estado</span>
+                            <strong id="home-estado-suscripcion">-</strong>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div style="margin-top:18px; background:#f8f9fa; padding:15px; border-radius:10px; border-left:5px solid var(--accent);">
-                <span style="color:gray; font-size:12px;">DATOS DEL REGISTRO INICIAL</span>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px;">
-                    <div>
-                        <span style="color:gray; font-size:11px;">USUARIO REGISTRADO</span><br>
-                        <strong id="home-reg-user">-</strong>
+            <div class="home-profile-main-grid">
+                <section class="home-profile-panel">
+                    <div class="home-profile-panel-head">
+                        <div>
+                            <span class="home-profile-panel-kicker">Resumen de cuenta</span>
+                            <h3>Información principal</h3>
+                        </div>
                     </div>
-                    <div>
-                        <span style="color:gray; font-size:11px;">NEGOCIO</span><br>
-                        <strong id="home-reg-business">-</strong>
-                    </div>
-                    <div>
-                        <span style="color:gray; font-size:11px;">WHATSAPP DEL NEGOCIO</span><br>
-                        <strong id="home-reg-phone">-</strong>
-                    </div>
-                    <div>
-                        <span style="color:gray; font-size:11px;">FECHA DE REGISTRO</span><br>
-                        <strong id="home-reg-created">-</strong>
-                    </div>
-                </div>
-                <div style="margin-top:12px;">
-                    <span style="color:gray; font-size:11px;">MOTIVO DE USO</span><br>
-                    <span id="home-reg-reason" style="font-weight:600;">-</span>
-                </div>
-                <div style="margin-top:12px;">
-                    <span style="color:gray; font-size:11px;">PERFIL DEL NEGOCIO</span><br>
-                    <img id="home-reg-logo" src="" alt="Perfil negocio" style="display:none; width:88px; height:88px; object-fit:cover; border-radius:10px; border:1px solid #ddd; margin-top:6px;">
-                </div>
-                <div style="margin-top:12px; display:flex; justify-content:flex-end;">
-                    <button id="home-btn-eliminar-registro" class="btn btn-danger" onclick="eliminarRegistroInicialDesdeInicio()">🧨 ELIMINAR REGISTRO INICIAL</button>
-                </div>
-            </div>
 
-            <div style="margin-top:18px; background:#f8f9fa; padding:15px; border-radius:10px; border-left:5px solid var(--blue);">
-                <span style="color:gray; font-size:12px;">MEMBRESÍA Y SUSCRIPCIÓN</span>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px;">
-                    <div>
-                        <span style="color:gray; font-size:11px;">PLAN ACTUAL</span><br>
-                        <strong id="home-plan-actual">-</strong>
+                    <div class="home-profile-facts">
+                        <div class="home-profile-fact">
+                            <span>Cuenta activa</span>
+                            <strong id="session-user">-</strong>
+                        </div>
+                        <div class="home-profile-fact">
+                            <span>Usuario registrado</span>
+                            <strong id="home-reg-user">-</strong>
+                        </div>
+                        <div class="home-profile-fact">
+                            <span>Negocio</span>
+                            <strong id="home-reg-business">-</strong>
+                        </div>
+                        <div class="home-profile-fact">
+                            <span>WhatsApp del negocio</span>
+                            <strong id="home-reg-phone">-</strong>
+                        </div>
+                        <div class="home-profile-fact">
+                            <span>Fecha de registro</span>
+                            <strong id="home-reg-created">-</strong>
+                        </div>
                     </div>
-                    <div>
-                        <span style="color:gray; font-size:11px;">ESTADO</span><br>
-                        <strong id="home-estado-suscripcion">-</strong>
+
+                    <div class="home-profile-story">
+                        <span class="home-profile-panel-kicker">Motivo de uso</span>
+                        <p id="home-reg-reason">-</p>
                     </div>
-                </div>
-                <div id="home-trial-notice" style="display:none; margin-top:10px; font-size:12px; font-weight:700; color:#a66a00; background:#fff7e6; border:1px solid #ffe0a3; padding:8px 10px; border-radius:8px;"></div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-top:12px;">
-                    <select id="home-plan-select">
-                        <option value="basico">Plan Básico</option>
-                        <option value="profesional">Plan Profesional</option>
-                        <option value="empresarial">Plan Empresarial</option>
-                    </select>
-                    <select id="home-billing-day-select">
-                        <option value="1">Cobro día 1</option>
-                        <option value="5">Cobro día 5</option>
-                        <option value="10" selected>Cobro día 10</option>
-                        <option value="15">Cobro día 15</option>
-                        <option value="20">Cobro día 20</option>
-                        <option value="25">Cobro día 25</option>
-                        <option value="28">Cobro día 28</option>
-                    </select>
-                    <button class="btn btn-blue" onclick="iniciarCambioMembresiaDesdeInicio()">💳 CAMBIAR MEMBRESÍA</button>
-                </div>
-                <div id="home-membership-status" style="margin-top:10px; font-size:12px; color:#666;"></div>
+                </section>
+
+                <aside class="home-profile-panel home-profile-panel--security">
+                    <div class="home-profile-panel-head">
+                        <div>
+                            <span class="home-profile-panel-kicker">Seguridad del perfil</span>
+                            <h3>Zona de control</h3>
+                        </div>
+                    </div>
+
+                    <div class="home-profile-actions">
+                        <button id="home-btn-editar-perfil" class="btn btn-blue" onclick="abrirModalEditarPerfilInicio()">✏️ EDITAR PERFIL</button>
+                    </div>
+
+                    <div class="home-profile-danger-zone">
+                        <p>Desde aquí puede reiniciar el registro inicial del negocio si necesita volver a configurar la identidad principal de la cuenta.</p>
+                        <p>Es una acción sensible y debe usarse solo cuando realmente quiera rehacer ese perfil base.</p>
+                        <button id="home-btn-eliminar-registro" class="btn btn-danger" onclick="eliminarRegistroInicialDesdeInicio()">🧨 ELIMINAR REGISTRO INICIAL</button>
+                    </div>
+                </aside>
             </div>
         </div>
     </div>
@@ -304,9 +397,9 @@
         </div>
         <div class="tax-container">
           <span style="font-size: 12px; color: var(--secondary);">IMPUESTOS:</span>
-          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.13" onclick="recalcularCostoReceta()"> Cobertura 13%</label>
-          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.10" onclick="recalcularCostoReceta()"> Añadir 10%</label>
-          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.16" onclick="recalcularCostoReceta()"> Añadir 16%</label>
+          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.13" onclick="recalcularCostoReceta()" checked> Cobertura 13%</label>
+          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.10" onclick="recalcularCostoReceta()" checked> Añadir 10%</label>
+          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.16" onclick="recalcularCostoReceta()" checked> Añadir 16%</label>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
           <div class="form-group"><label>Costo Producción (RD$)</label><input type="number" id="p_costo" value="0.00" readonly style="background: #f1f2f6;"></div>
@@ -333,55 +426,57 @@
       <div class="card">
         <h2>📦 Almacén de Suministros</h2>
         
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="text" id="inv_nombre" placeholder="Nombre del Producto (ej. Yuca)">
-          <select id="inv_dist_select">
-            <option value="">Distribuidor / Proveedor</option>
-          </select>
-          <select id="inv_unidad">
-            <option value="" disabled selected>Unidad de Medida</option>
-            <option value="Lb">Libras (Lb)</option>
-            <option value="Oz">Onzas (Oz)</option>
-            <option value="g">Gramos (g)</option>
-            <option value="mL">Mililitros (mL)</option>
-            <option value="Litros">Litros</option>
-            <option value="Unidad">Unidad</option>
-          </select>
+        <div class="inventory-form-shell">
+          <div class="inventory-top-grid">
+            <input type="text" id="inv_nombre" placeholder="Nombre del Producto (ej. Yuca)">
+            <select id="inv_dist_select">
+              <option value="">Distribuidor / Proveedor</option>
+            </select>
+            <select id="inv_unidad">
+              <option value="" disabled selected>Unidad de Medida</option>
+              <option value="Lb">Libras (Lb)</option>
+              <option value="Oz">Onzas (Oz)</option>
+              <option value="g">Gramos (g)</option>
+              <option value="mL">Mililitros (mL)</option>
+              <option value="Litros">Litros</option>
+              <option value="Unidad">Unidad</option>
+            </select>
+          </div>
+
+          <div class="inventory-metrics-row">
+            <div class="inventory-metric-card" title="Cantidad que está entrando físicamente">
+               <label class="inventory-metric-label">CANT. ENTRADA</label>
+               <input type="number" id="inv_actual" placeholder="0.00">
+            </div>
+            <div class="inventory-metric-card" title="Nivel de stock que siempre deberías tener">
+               <label class="inventory-metric-label">STOCK IDEAL (META)</label>
+               <input type="number" id="inv_ideal" placeholder="0.00">
+            </div>
+            <div class="inventory-metric-card" title="Precio total pagado por esta entrada">
+               <label class="inventory-metric-label">COSTO TOTAL (RD$)</label>
+               <input type="number" id="inv_costo_total" placeholder="0.00">
+            </div>
+          </div>
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:15px;">
-          <div title="Cantidad que está entrando físicamente">
-             <label style="font-size: 10px; color: #666;">CANT. ENTRADA</label>
-             <input type="number" id="inv_actual" placeholder="0.00">
-          </div>
-          <div title="Nivel de stock que siempre deberías tener">
-             <label style="font-size: 10px; color: #666;">STOCK IDEAL (META)</label>
-             <input type="number" id="inv_ideal" placeholder="0.00">
-          </div>
-          <div title="Precio total pagado por esta entrada">
-             <label style="font-size: 10px; color: #666;">COSTO TOTAL (RD$)</label>
-             <input type="number" id="inv_costo_total" placeholder="0.00">
-          </div>
-        </div>
-
-        <button class="btn btn-save" style="width:100%" onclick="agregarAlmacen()">REGISTRAR ENTRADA</button>
-        <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; margin-top:10px;">
+        <button class="btn btn-save" style="width:100%; background:#d8f7e5; color:#136a43; border:1px solid #b8e8cb;" onclick="agregarAlmacen()">REGISTRAR ENTRADA</button>
+        <div class="inventory-provider-row" style="display:grid; grid-template-columns: 1fr auto; gap:10px; margin-top:10px;">
             <div style="font-size:12px; color:#666; align-self:center;">Puede seleccionar el mejor proveedor desde el comparador de distribuidores.</div>
-            <button class="btn btn-purple" onclick="buscarMejorProveedorEnAlmacen()">🏆 MEJOR PROVEEDOR</button>
+            <button class="btn btn-purple" style="background:#eedcff; color:#5d3b8c; border:1px solid #d8b7ff;" onclick="buscarMejorProveedorEnAlmacen()">🏆 MEJOR PROVEEDOR</button>
         </div>
         
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button class="btn" style="flex: 1; background-color: #3498db;" onclick="entradaAutomaticaMasiva()">
+        <div class="inventory-bulk-actions" style="display: flex; gap: 10px; margin-top: 10px;">
+            <button class="btn" style="flex: 1; background-color: #dceeff; color:#1d567f; border:1px solid #bddcff;" onclick="entradaAutomaticaMasiva()">
                 🧮 RELLENAR STOCK IDEAL
-            ></button>
-            <button class="btn btn-blue" style="flex: 1; background-color: #25D366;" onclick="enviarPedidoWhatsapp()">
+            </button>
+            <button class="btn btn-blue" style="flex: 1; background-color: #dcf7e6; color:#1e6e46; border:1px solid #bfeccc;" onclick="enviarPedidoWhatsapp()">
                 🛒 LISTA DE COMPRAS (WA)
-            ></button>
+            </button>
         </div>
 
-        <button class="btn btn-danger" style="width: 100%; margin-top: 10px; background-color: #ff5e57;" onclick="borrarTodoElAlmacen()">
+        <button class="btn btn-danger" style="width: 100%; margin-top: 10px; background-color: #ffcfc7; color:#8f2412; border:1px solid #ffb4aa;" onclick="borrarTodoElAlmacen()">
     🗑️ ELIMINAR TODO EL ALMACÉN
-></button>
+</button>
 
         <div style="margin-top: 20px; position: relative;">
             <input type="text" id="buscarProductoAlmacen" placeholder="🔎 Buscar producto en inventario..." 
@@ -390,7 +485,7 @@
         </div>
 
         <div style="overflow-x: auto; margin-top: 15px;">
-            <table>
+            <table class="luro-table luro-table--inventory">
                 <thead>
                     <tr>
                         <th>Producto (Existencia Ideal)</th>
@@ -411,26 +506,30 @@
     <div id="distribuidores" class="content-section">
       <div class="card">
         <h2>🚚 Gestión de Distribuidores</h2>
-        <div style="display:grid; grid-template-columns: 2fr 1fr auto; gap:10px; margin-bottom:10px;">
-          <input type="text" id="dist_nombre" placeholder="Nombre del distribuidor (ej. Pricesmart)">
-          <select id="dist_estado">
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-          </select>
-          <button class="btn btn-save" onclick="guardarDistribuidor()">GUARDAR</button>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
-          <input type="text" id="dist_contacto" placeholder="Contacto">
-          <input type="text" id="dist_telefono" placeholder="Teléfono">
-          <input type="email" id="dist_email" placeholder="Email">
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr auto auto; gap:10px; margin-bottom:10px;">
-          <input type="text" id="dist_direccion" placeholder="Dirección">
-          <button class="btn btn-warning" onclick="limpiarFormularioDistribuidor()">LIMPIAR</button>
-          <button class="btn btn-danger" onclick="eliminarDistribuidorSeleccionado()">ELIMINAR</button>
+        <div class="dist-form-shell">
+          <div class="dist-toolbar">
+            <div class="dist-toolbar-fields">
+              <input type="text" id="dist_nombre" placeholder="Nombre del distribuidor (ej. Pricesmart)">
+              <select id="dist_estado">
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="dist-contact-grid">
+            <input type="text" id="dist_contacto" placeholder="Contacto">
+            <input type="text" id="dist_telefono" placeholder="Teléfono">
+            <input type="email" id="dist_email" placeholder="Email">
+            <input type="text" id="dist_direccion" placeholder="Dirección">
+          </div>
+          <div class="dist-actions-row">
+            <button class="btn btn-save" onclick="guardarDistribuidor()">GUARDAR</button>
+            <button class="btn btn-warning" onclick="limpiarFormularioDistribuidor()">LIMPIAR</button>
+            <button class="btn btn-danger" onclick="eliminarDistribuidorSeleccionado()">ELIMINAR</button>
+          </div>
         </div>
         <input type="hidden" id="dist_edit_id">
-        <table>
+        <table class="luro-table luro-table--distribuidores">
           <thead><tr><th>Distribuidor</th><th>Estado</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th>Alerta Producto</th><th>Productos</th><th>Acción</th></tr></thead>
           <tbody id="tabla-distribuidores"></tbody>
         </table>
@@ -500,7 +599,7 @@
         <h2>🏭 Gestión de Producción (Semielaborados)</h2>
         <p style="font-size: 0.9em; color: #666;">Cree productos preparados a partir de insumos del almacén.</p>
         
-        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; margin-bottom:15px;">
+        <div class="production-builder-row" style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; margin-bottom:15px;">
           <input type="text" id="prod_nombre" placeholder="Nombre de la Producción (Ej: Salsa Boloñesa)">
           <input type="number" id="prod_cantidad" placeholder="Cant. Producida">
           <select id="prod_unidad">
@@ -519,7 +618,7 @@
         <button class="btn btn-save" style="width:100%" onclick="procesarNuevaProduccion()">FINALIZAR Y CARGAR A PRODUCCIÓN</button>
         
         <h3 style="margin-top:30px;">Inventario de Producción Actual</h3>
-        <table>
+        <table class="luro-table luro-table--produccion">
           <thead>
             <tr><th>Producto</th><th>Existencia Disponible</th><th>Costo Unit. (RD$)</th><th>Acciones</th></tr>
           </thead>
@@ -586,7 +685,7 @@
     <div class="card">
         <div class="card" style="border-top: 5px solid var(--blue); background: #f1f2f6;">
             <h3 style="font-size: 14px; color: var(--secondary); margin-bottom: 10px;">💹 AJUSTE MASIVO DE PRECIOS (COSTO DE VENTA)</h3>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <div class="availability-adjust-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.05)">+5%</button>
                 <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.10)">+10%</button>
                 <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.15)">+15%</button>
@@ -599,8 +698,11 @@
             </div>
         </div>
 
-        <h2>📋 Disponibilidad del Menú</h2>
-        <table>
+        <div class="availability-header-row" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0 10px;">
+            <h2 style="margin:0;">📋 Disponibilidad del Menú</h2>
+            <button class="btn btn-blue" onclick="abrirModalPlatoDirecto()">Añadir Directamente</button>
+        </div>
+        <table class="luro-table luro-table--disponibilidad">
             <thead id="thead-disponibilidad-full">
                 <tr>
                     <th>Plato / Receta</th>
@@ -612,6 +714,30 @@
             </thead>
             <tbody id="tabla-disponibilidad-full"></tbody>
         </table>
+    </div>
+</div>
+
+<div id="modal-plato-directo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3320; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:min(520px,96vw); background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
+            <strong style="font-size:18px; color:var(--primary);">Añadir Directamente</strong>
+            <button class="btn btn-danger" onclick="cerrarModalPlatoDirecto()">X</button>
+        </div>
+        <div style="padding:14px; display:grid; gap:12px;">
+            <div style="font-size:12px; color:#666;">Agregue un plato rápido con solo nombre y precio.</div>
+            <div>
+                <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Nombre</label>
+                <input id="plato-directo-nombre" type="text" placeholder="Ej. Chimi clásico">
+            </div>
+            <div>
+                <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Precio</label>
+                <input id="plato-directo-precio" type="number" min="0" step="0.01" placeholder="0.00">
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 14px; border-top:1px solid #eee;">
+            <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalPlatoDirecto()">CANCELAR</button>
+            <button class="btn btn-save" onclick="guardarPlatoDirecto()">GUARDAR</button>
+        </div>
     </div>
 </div>
 
@@ -703,25 +829,39 @@
     <div id="configuracion" class="content-section">
         <div class="card">
             <h2>⚙️ Configuración</h2>
-            <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
+            <div class="config-main-actions" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn btn-danger" onclick="realizarCierreTotalConCodigo()">CIERRE TOTAL</button>
               <button class="btn btn-warning" onclick="borrarBaseDatosConPassword()">Borrar base de datos</button>
             </div>
             <div id="section-cloud-masters" style="margin-bottom:20px; padding:12px; border:1px solid #dfe6e9; border-radius:10px; background:#f8fafc;">
               <h3 style="margin:0 0 10px; color:var(--blue);">☁️ Usuarios Maestros en la Nube</h3>
-              <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
+              <div class="cloud-owner-create-row" style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
                 <input id="cloud-owner-username" type="text" placeholder="Username">
                 <input id="cloud-owner-pass" type="password" placeholder="Contraseña">
                 <input id="cloud-owner-empresa" type="text" placeholder="Empresa">
                 <button class="btn btn-blue" onclick="crearOwner()">GUARDAR EN FIRESTORE</button>
               </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+              <div class="master-vault-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
                 <button class="btn btn-save" onclick="subirBaseActualAlCloud()">☁️ SUBIR BASE ACTUAL AL CLOUD</button>
                 <button class="btn btn-warning" onclick="descargarBaseDesdeCloud()">⬇️ DESCARGAR BASE DESDE CLOUD</button>
               </div>
               <div id="cloud-sync-status" style="font-size:12px; color:#666; margin-bottom:8px;">Sincronización manual disponible.</div>
               <div id="cloud-owner-status" style="font-size:12px; color:#666; margin-bottom:8px;">Conectando a Firebase...</div>
               <ul id="cloud-owner-lista" style="margin:0; padding-left:18px; max-height:180px; overflow:auto;"></ul>
+
+              <div id="section-github-deploy" style="margin-top:14px; padding:12px; border:1px solid #dfe6e9; border-radius:10px; background:#fff;">
+                <h3 style="margin:0 0 8px; color:#24292f;">🚀 Puente Firebase → GitHub</h3>
+                <div style="font-size:12px; color:#666; margin-bottom:10px;">Desde aquí puede lanzar despliegues remotos de GitHub Actions para trabajar también desde el móvil y mantener GitHub/Firebase conectados.</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                  <button class="btn btn-save" onclick="solicitarDeployGithub('hosting')">DEPLOY HOSTING</button>
+                  <button class="btn btn-blue" onclick="solicitarDeployGithub('functions')">DEPLOY FUNCTIONS</button>
+                  <button class="btn btn-warning" onclick="solicitarDeployGithub('all')">DEPLOY TODO</button>
+                  <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cargarEstadoDeployGithubUI()">ACTUALIZAR ESTADO</button>
+                </div>
+                <div id="github-deploy-connection" style="font-size:12px; color:#666; margin-bottom:8px;">Comprobando conexión con GitHub Actions...</div>
+                <div id="github-deploy-status" style="font-size:12px; color:#666; margin-bottom:8px;">Sin solicitudes remotas.</div>
+                <div id="github-deploy-last-run" style="font-size:12px; color:#57606f; line-height:1.55;">Sin ejecuciones detectadas todavía.</div>
+              </div>
             </div>
             <div id="section-servidor-master" style="display:none; margin-bottom:20px; padding:12px; border:2px solid #0b5ed7; border-radius:10px; background:#f5f9ff;">
               <h3 style="margin:0 0 10px; color:#0b5ed7;">🛡️ CONTROL TOTAL MASTER</h3>
@@ -735,7 +875,7 @@
                 <button type="button" onclick="abrirDetalleControlMaster('pay_pending')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Pagos pendientes</strong><div id="master-stat-pay-pending" style="font-size:20px; font-weight:800;">0</div></button>
                 <button type="button" onclick="abrirDetalleControlMaster('pay_failed')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Pagos fallidos</strong><div id="master-stat-pay-failed" style="font-size:20px; font-weight:800;">0</div></button>
               </div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+              <div class="cloud-sync-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
                 <button class="btn btn-blue" onclick="cargarBovedaMaster()">ACTUALIZAR BÓVEDA</button>
                 <span id="master-vault-status" style="font-size:12px; color:#666; align-self:center;">Sin cargar.</span>
               </div>
@@ -783,7 +923,7 @@
             </div>
             <div id="section-my-security" style="margin-bottom:30px; padding:15px; border:1px solid #eee; border-radius:10px;">
               <h3>🔒 Seguridad</h3>
-              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px;">
+              <div class="security-password-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px;">
                   <input type="password" id="my_old_pass" placeholder="Clave Actual">
                   <input type="password" id="my_new_pass" placeholder="Clave Nueva">
                   <input type="password" id="my_new_pass_confirm" placeholder="Confirmar Nueva">
@@ -803,7 +943,7 @@
                 </table>
             </div>            <div id="section-admin-master" style="display:none; margin-bottom:30px; padding:15px; border:2px solid var(--accent); border-radius:10px;">
                 <h3 style="color: var(--accent);">👑 Usuarios Maestros</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:10px;">
+                <div class="admin-master-create-row" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:10px;">
                     <input type="text" id="new_u_name" placeholder="Nuevo Admin">
                     <input type="password" id="new_u_pass" placeholder="Clave">
                     <div style="display:flex; gap:8px;">
@@ -816,7 +956,7 @@
             </div>
             <div id="section-user-colaboradores" style="padding:15px; border:1px solid #eee; border-radius:10px;">
                 <h3 style="color: var(--purple);">👥 Gestión de Mi Equipo</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr auto auto; gap:10px; margin-bottom:10px;">
+                <div class="team-create-row" style="display:grid; grid-template-columns: 1fr 1fr auto auto; gap:10px; margin-bottom:10px;">
                     <input type="text" id="colab_name" placeholder="Nombre Miembro">
                     <input type="password" id="colab_pass" placeholder="Clave Acceso">
                     <button id="btn-colab-guardar" class="btn btn-purple" onclick="crearColaborador()">AÑADIR</button>
@@ -882,22 +1022,31 @@
 <div id="salida" class="content-section">
     <div id="salida-layout" style="display:grid; grid-template-columns:1fr; gap:14px;">
         <div class="card" id="salida-selector-card">
-            <h2>🧪 Seleccionar Platos</h2>
-            <div style="margin-bottom:12px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
-                <strong id="mesas-total-label" style="display:block; margin-bottom:8px; color:var(--secondary);">Mesas (40)</strong>
-                <div id="mesas-grid" style="display:grid; grid-template-columns:repeat(8, minmax(72px, 1fr)); gap:6px; max-height:320px; overflow:auto;"></div>
+            <h2>💳 Espacios de Cobro</h2>
+            <div class="salida-mesas-shell" style="margin-bottom:12px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
+                <div class="salida-mesas-head">
+                    <div>
+                        <strong id="mesas-total-label" class="salida-mesas-label" style="display:block; margin-bottom:8px; color:var(--secondary);">Espacios de cobro (40)</strong>
+                        <span class="salida-selector-helper">Selecciona una tarjeta para abrir su detalle de cobro.</span>
+                    </div>
+                    <button id="mesas-mostrar-mas-btn" type="button" class="btn btn-blue" onclick="mostrarMasTarjetasSalida()" style="display:none; width:auto;">Mostrar más</button>
+                </div>
+                <div id="mesas-grid" class="salida-mesas-grid" style="display:grid; grid-template-columns:repeat(8, minmax(72px, 1fr)); gap:6px; max-height:320px; overflow:auto;"></div>
             </div>
-            <div style="position: relative;">
-                <input type="text" id="busqueda-plato" onkeyup="buscarPlatoVenta()" placeholder="Escriba nombre del plato..." style="width:100%; margin-bottom:10px; padding: 12px;">
-            </div>
-            <div id="contenedor-salidas-busqueda" style="max-height: 400px; overflow-y: auto; border-radius: 8px;">
+            <div id="salida-productos-shell" class="salida-productos-shell is-disabled">
+                <div id="salida-productos-hint" class="salida-productos-hint">El detalle de venta se abrirá cuando elijas una tarjeta de cobro.</div>
+                <div style="position: relative;">
+                    <input type="text" id="busqueda-plato" onkeyup="buscarPlatoVenta()" placeholder="Seleccione una tarjeta para comenzar a cobrar" style="width:100%; margin-bottom:10px; padding: 12px;" disabled>
+                </div>
+                <div id="contenedor-salidas-busqueda" style="max-height: 400px; overflow-y: auto; border-radius: 8px;">
+                </div>
                 </div>
         </div>
 
-        <div class="card" id="salida-facturacion-card" style="border-left: 5px solid var(--accent); background: #fff;">
+        <div class="card salida-card-hidden" id="salida-facturacion-card" style="border-left: 5px solid var(--accent); background: #fff;">
             <h2 style="color: #333;">🧾 Detalle de Venta</h2>
             <div style="margin:-6px 0 10px; font-weight:bold; color:var(--secondary);">Mesa activa: <span id="mesa-activa-label" style="color:var(--accent);">Mesa 1</span></div>
-            <div style="display:grid; grid-template-columns: 1fr auto; gap:8px; margin-bottom:10px;">
+            <div class="sale-rename-row" style="display:grid; grid-template-columns: 1fr auto; gap:8px; margin-bottom:10px;">
                 <input type="text" id="mesa-nombre-input" placeholder="Cambiar nombre de la mesa (cliente)">
                 <button class="btn btn-blue" onclick="renombrarMesaActiva()">RENOMBRAR</button>
             </div>
@@ -913,7 +1062,7 @@
                 <div style="font-size:12px; color:var(--secondary); margin-bottom:8px;">
                     Tiempo en uso: <strong id="mesa-tiempo-uso">00:00</strong>
                 </div>
-                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+                <div class="sale-table-actions" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
                     <button class="btn btn-warning" onclick="abrirModalMesaAccion('mover')">MOVILIZAR PLATOS</button>
                     <button class="btn btn-purple" onclick="abrirModalMesaAccion('unir')">UNIR MESAS</button>
                     <button class="btn btn-danger" onclick="abrirModalMesaAccion('separar')">SEPARAR MESA</button>
@@ -930,10 +1079,10 @@
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px;">
+            <div class="sale-submit-row" style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px;">
                 <button id="btn-registrar-salida" class="btn btn-save" onclick="finalizarVenta()" style="background: #2ed573;">
                     📤 REGISTRAR SALIDA
-                ></button>
+                </button>
             </div>
         </div>
     </div>
@@ -1182,16 +1331,119 @@
         </div>
       </div>
     </div>
+    <div id="comandos" class="content-section">
+      <div class="card comandos-module-card">
+        <div class="comandos-module-hero">
+          <div>
+            <span class="comandos-module-kicker">Centro de control</span>
+            <h2>📜 COMANDOS</h2>
+            <p>Consulta, busca y ejecuta comandos reales del sistema. Este módulo muestra únicamente órdenes conectadas a la lógica viva de LuRo Control.</p>
+          </div>
+          <button id="comandos-open-assistant-btn" class="btn btn-blue" type="button" onclick="toggleLuroAssistant(true)">ABRIR CONSOLA</button>
+        </div>
+
+        <div class="comandos-module-toolbar">
+          <div class="comandos-module-search">
+            <label for="comandos-buscar">Buscar comando o módulo</label>
+            <input id="comandos-buscar" type="text" placeholder="Ej. almacén, ganancias, distribuidor, decomiso..." oninput="filtrarModuloComandos()" onkeydown="handleComandosSearchKeydown(event)">
+          </div>
+          <div class="comandos-module-runner">
+            <label for="comandos-ejecutor-input">Probar comando</label>
+            <div class="comandos-module-runner-row">
+              <input id="comandos-ejecutor-input" type="text" placeholder="Ej. abre almacén, cuánto he ganado, busca tomate..." onkeydown="handleComandoModuloKeydown(event)">
+              <button class="btn btn-save" type="button" onclick="ejecutarComandoDesdeModulo()">EJECUTAR</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="comandos-module-meta">
+          <div id="comandos-resumen" class="comandos-module-summary">Cargando catálogo de comandos...</div>
+          <div id="comandos-estado" class="comandos-module-state">Centro de comandos listo. Escribe una orden o selecciona un ejemplo para prepararlo.</div>
+        </div>
+
+        <div id="comandos-lista" class="comandos-module-grid"></div>
+      </div>
+    </div>
+    <div id="comandos-editor-modal" class="comandos-editor-modal" aria-hidden="true" style="display:none;">
+      <div class="comandos-editor-card">
+        <div class="comandos-editor-head">
+          <div>
+            <span class="comandos-editor-kicker">Editor de comandos</span>
+            <strong>Editar tarjeta del módulo</strong>
+          </div>
+          <button type="button" class="btn btn-danger" onclick="cerrarEditorComandosModulo()">X</button>
+        </div>
+        <div class="comandos-editor-body">
+          <input type="hidden" id="comandos-editor-key">
+          <label class="comandos-editor-field">
+            <span>Título de la tarjeta</span>
+            <input id="comandos-editor-title" type="text" placeholder="Título visible del módulo" oninput="actualizarCabeceraEditorComandoModulo('title', this.value)">
+          </label>
+          <label class="comandos-editor-field">
+            <span>Descripción</span>
+            <textarea id="comandos-editor-description" rows="3" placeholder="Descripción breve de esta tarjeta" oninput="actualizarCabeceraEditorComandoModulo('description', this.value)"></textarea>
+          </label>
+          <div class="comandos-editor-list-head">
+            <div>
+              <strong>Acciones disponibles</strong>
+              <p>Edita el nombre de cada acción y la explicación de lo que hace dentro del sistema.</p>
+            </div>
+            <button type="button" class="btn btn-blue" onclick="agregarFilaEditorComandoModulo()">+ ACCIÓN</button>
+          </div>
+          <div id="comandos-editor-lista" class="comandos-editor-list"></div>
+        </div>
+        <div class="comandos-editor-foot">
+          <button type="button" class="btn btn-warning" onclick="restaurarEditorComandosModulo()">RESTAURAR</button>
+          <button type="button" class="btn" style="background:#7f8c8d;color:#fff;" onclick="cerrarEditorComandosModulo()">CANCELAR</button>
+          <button type="button" class="btn btn-save" onclick="guardarEditorComandosModulo()">GUARDAR CAMBIOS</button>
+        </div>
+      </div>
+    </div>
     <div id="decomiso" class="content-section"><div class="card"><h2>🗑️ Registrar Decomiso</h2><select id="tipo-decomiso" onchange="actualizarListaDecomiso()" style="width:100%; margin-bottom:10px;"><option value="plato">Producto Terminado</option><option value="almacen">Ingrediente</option></select><input type="text" id="busqueda-decomiso" onkeyup="actualizarListaDecomiso()" placeholder="Buscar..." style="width:100%; margin-bottom:15px;"><div id="lista-decomiso-items"></div></div></div>
     <div id="produccion" class="content-section"><div class="card"><h2>📊 Departamentos A-B-C</h2><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;"><button class="btn btn-danger" onclick="filtrarPlatosABC('rojo')">SIN STOCK (0)</button><button class="btn btn-warning" onclick="filtrarPlatosABC('amarillo')">POCO STOCK (1-5)</button><button class="btn btn-save" onclick="filtrarPlatosABC('verde')">STOCK OK (+6)</button></div><div id="resultado-filtro-abc"></div></div></div>
   </div>
 
-  <script src="assets/js/app.js?v=20260320-rollback-fix1"></script>
-  <script src="assets/js/cloud-bridge.js?v=20260313-2038"></script>
+  <button id="luro-assistant-fab" class="luro-assistant-fab" type="button" onclick="toggleLuroAssistant()" aria-controls="luro-assistant-panel" aria-expanded="false">
+    <span class="luro-assistant-fab-icon">🧠</span>
+    <span class="luro-assistant-fab-label">Asistente LuRo</span>
+  </button>
+
+  <section id="luro-assistant-panel" class="luro-assistant-panel" aria-hidden="true">
+    <div class="luro-assistant-shell">
+      <div class="luro-assistant-head">
+        <div class="luro-assistant-head-copy">
+          <span class="luro-assistant-kicker">Centro de comandos</span>
+          <strong>Asistente LuRo</strong>
+          <span class="luro-assistant-status">Ejecuta órdenes reales, consulta datos del sistema y navega entre módulos con comandos escritos.</span>
+        </div>
+        <div class="luro-assistant-head-actions">
+          <button type="button" class="btn luro-assistant-icon-btn" onclick="toggleLuroAssistantMinimize()" aria-label="Minimizar asistente">─</button>
+          <button type="button" class="btn btn-danger luro-assistant-icon-btn" onclick="toggleLuroAssistant(false)" aria-label="Cerrar asistente">X</button>
+        </div>
+      </div>
+
+      <div class="luro-assistant-body">
+        <div id="luro-assistant-messages" class="luro-assistant-messages"></div>
+        <div id="luro-assistant-suggestions" class="luro-assistant-suggestions"></div>
+      </div>
+
+      <div class="luro-assistant-compose">
+        <input id="luro-assistant-input" type="text" placeholder="Escribe un comando real. Ej.: abre distribuidores, cuánto he ganado, busca tomate..." onkeydown="handleLuroAssistantKeydown(event)">
+        <button type="button" class="btn btn-save" onclick="enviarMensajeAsistente()">EJECUTAR</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="assets/js/app.js?v=20260410-github-bridge-1"></script>
+  <script src="assets/js/cloud-bridge.js?v=20260410-github-bridge-1"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/service-worker.js').catch(function () {});
+        navigator.serviceWorker.register('/service-worker.js?v=20260410-github-bridge-1', {
+          updateViaCache: 'none'
+        }).then(function (registration) {
+          registration.update().catch(function () {});
+        }).catch(function () {});
       });
     }
   </script>

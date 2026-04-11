@@ -72,8 +72,11 @@
           errObj?.error?.message ||
           'Error interno del backend.'
         );
-        if (/usuario maestro no existe|usuario maestro suspendido|colaborador deshabilitado|inactivo|eliminado|permission[- ]denied|insufficient/i.test(message)) {
+        if (/usuario maestro no existe|usuario maestro suspendido|colaborador deshabilitado|inactivo|suspendido|eliminado|suscripci[oó]n inactiva/i.test(message)) {
           return MSG_USUARIO_INACTIVO;
+        }
+        if (/sin permisos|solo usuario|solo maestro|solo administradores|solo super master|permission[- ]denied|insufficient/i.test(message)) {
+          return 'No tiene permisos para realizar esta acción.';
         }
         if (/unauthenticated|auth|sesi[oó]n/i.test(message)) return 'Sesión cloud expirada. Inicie sesión nuevamente.';
         if (/credenciales|inv[aá]lid|incorrect/i.test(message)) return 'Datos incorrectos, verifique e intente nuevamente.';
@@ -82,7 +85,7 @@
 
       function shouldForceLogoutByCloudError(message) {
         const m = String(message || '').toLowerCase();
-        return /usuario inactivo|usuario suspendido|eliminado|credenciales inv[aá]lidas|sin permisos|permission[- ]denied|unauthenticated/i.test(m);
+        return /usuario inactivo|usuario suspendido|suscripci[oó]n inactiva|eliminado|sesi[oó]n cloud expirada|unauthenticated/i.test(m);
       }
 
       async function postCallable(name, data = {}, opts = {}) {
@@ -105,11 +108,6 @@
           return json?.result ?? null;
         } catch (e) {
           if (String(e?.name || '').toLowerCase() === 'aborterror') throw new Error('Tiempo de espera agotado al conectar con el backend.');
-          const msg = String(e?.message || '');
-          if (window.cuentaLoginActual && shouldForceLogoutByCloudError(msg) && typeof window.forzarLogoutPorRevocacion === 'function') {
-            const aviso = String(window.MSG_USUARIO_SUSPENDIDO || MSG_USUARIO_INACTIVO || 'Usuario suspendido, comuniquese con su proveedor');
-            setTimeout(() => window.forzarLogoutPorRevocacion(aviso), 0);
-          }
           throw e;
         } finally {
           clearTimeout(t);
@@ -252,7 +250,15 @@
           return mapCloud.has(user);
         });
         if (dbRef.usuarios.length !== before) cambios++;
-        if (cambios > 0 && typeof window.guardarDatos === 'function') window.guardarDatos();
+        if (cambios > 0 && typeof window.guardarDatos === 'function') {
+          const prevCloudApplying = !!window.__cloudApplyingRemote;
+          window.__cloudApplyingRemote = true;
+          try {
+            window.guardarDatos();
+          } finally {
+            window.__cloudApplyingRemote = prevCloudApplying;
+          }
+        }
         if (cambios > 0 && typeof window.actualizarTablaColaboradores === 'function') window.actualizarTablaColaboradores();
         if (typeof window.verificarColaboradorSesionRevocadaEnNube === 'function') {
           window.verificarColaboradorSesionRevocadaEnNube(ownerKey, collaborators);
@@ -374,15 +380,39 @@
             ? window.exportarDBParaCloud()
             : getDbRef();
           if (!payloadDb || typeof payloadDb !== 'object') throw new Error('Base local inválida.');
+          const localMeta = typeof window.obtenerMetaDbLocal === 'function'
+            ? (window.obtenerMetaDbLocal() || {})
+            : {};
+          const updatedAtClient = Number(localMeta?.updatedAtClient || window.__luroLastSavedAt || Date.now());
+          const syncKey = String(localMeta?.syncKey || window.__luroLastSyncKey || `${updatedAtClient}-${Math.random().toString(36).slice(2, 8)}`).trim();
+          const payloadSnapshot = JSON.stringify(payloadDb);
+          if (payloadSnapshot && payloadSnapshot === String(window.__cloudLastUploadedSnapshot || '')) {
+            if (!silent) window.setSyncStatusPublic('Sin cambios pendientes por subir.');
+            return true;
+          }
           await postCallableWithSession('upsertOwnerData', {
             db: payloadDb,
-            updatedAtClient: Date.now(),
-            syncKey: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+            updatedAtClient,
+            syncKey
           }, { timeoutMs: 9000 });
+          window.__cloudLastUploadedSnapshot = payloadSnapshot;
+          window.__cloudLastUploadedAtClient = updatedAtClient;
+          window.__cloudLastKnownRemoteAt = Math.max(Number(window.__cloudLastKnownRemoteAt || 0), updatedAtClient);
+          if (typeof window.guardarMetaDbLocal === 'function') {
+            window.guardarMetaDbLocal({
+              updatedAtClient,
+              syncKey,
+              uploadedAtClient: updatedAtClient,
+              lastSource: 'cloud-upload'
+            });
+          }
           window.setSyncStatusPublic('Base subida al cloud correctamente.');
           return true;
         } catch (e) {
           const m = String(e?.message || e || 'Error interno');
+          if (/versi[oó]n m[aá]s reciente|mas reciente/i.test(m) && typeof window.descargarBaseDesdeCloud === 'function') {
+            await window.descargarBaseDesdeCloud({ silent: true, reload: false, force: true });
+          }
           window.setSyncStatusPublic(`Error al subir: ${m}`, false);
           if (!silent) alert(`No se pudo subir al Cloud: ${m}`);
           return false;
@@ -393,6 +423,7 @@
         const silent = opts?.silent === true;
         const reload = opts?.reload !== false;
         const fromCloudListener = opts?.fromCloudListener === true;
+        const force = opts?.force === true;
         if (cloudDbPullInFlight) return false;
         cloudDbPullInFlight = true;
         try {
@@ -401,9 +432,15 @@
             window.setSyncStatusPublic('Cloud sin datos para esta cuenta.', false);
             return false;
           }
+          const remoteMeta = {
+            updatedAtClient: Number(result?.updatedAtClient || result?.raw?.updatedAtClient || 0),
+            syncKey: String(result?.syncKey || result?.raw?.syncKey || '').trim()
+          };
+          let imported = true;
           if (typeof window.importarDBDesdeCloud === 'function') {
-            window.importarDBDesdeCloud(result.db, { fromCloudListener });
+            imported = window.importarDBDesdeCloud(result.db, { fromCloudListener, force, remoteMeta });
           }
+          if (imported === false) return false;
           window.setSyncStatusPublic('Base descargada desde cloud.');
           if (reload && !fromCloudListener && typeof window.refrescarUITrasSyncCloud === 'function') {
             window.refrescarUITrasSyncCloud();
@@ -461,6 +498,14 @@
         }
       };
 
+      function getActiveContentSectionId() {
+        return document.querySelector('.content-section.active')?.id || '';
+      }
+
+      function shouldPollCloudManagement() {
+        return getActiveContentSectionId() === 'configuracion';
+      }
+
       window.iniciarListenerCloudTiempoReal = function () {
         window.detenerListenerCloudTiempoReal();
         cloudDbPollTimer = setInterval(() => {
@@ -469,12 +514,17 @@
           window.descargarBaseDesdeCloud({ silent: true, reload: false, fromCloudListener: true });
         }, POLL_DB_MS);
         cloudOwnersPollTimer = setInterval(() => {
+          if (document.hidden) return;
+          if (!shouldPollCloudManagement()) return;
           window.refrescarListaOwnersCloud({ silent: true });
         }, POLL_OWNERS_MS);
         cloudTeamPollTimer = setInterval(() => {
+          if (document.hidden) return;
+          if (!shouldPollCloudManagement()) return;
           window.refrescarColaboradoresCloud({ silent: true });
         }, POLL_TEAM_MS);
         cloudSessionPollTimer = setInterval(() => {
+          if (document.hidden) return;
           window.validarSesionActivaCloud({ silent: true });
         }, POLL_SESSION_MS);
         window.__cloudListenerActivo = true;
@@ -634,6 +684,17 @@
         }
         if (!silent) window.setStatusPublic(`Colaboradores sincronizados: ${okCount}/${list.length}`);
         return okCount;
+      };
+
+      window.obtenerEstadoDeployGithubCloud = async function (opts = {}) {
+        const branch = String(opts?.branch || '').trim();
+        return await postCallableWithSession('getGithubDeployStatus', { branch }, { timeoutMs: 12000 });
+      };
+
+      window.dispararDeployGithubCloud = async function (payload = {}) {
+        const target = String(payload?.target || 'hosting').trim().toLowerCase();
+        const ref = String(payload?.ref || '').trim();
+        return await postCallableWithSession('triggerGithubDeploy', { target, ref }, { timeoutMs: 15000 });
       };
 
       document.addEventListener('DOMContentLoaded', () => {

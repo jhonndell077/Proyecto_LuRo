@@ -659,6 +659,12 @@ async function toggleAccesoColaborador(nombreColab) {
 
 let masterVaultOwnerSelected = '';
 let masterVaultRefreshTimer = null;
+let masterVaultRefreshInFlight = false;
+let masterVaultLoadedOnce = false;
+let masterVaultLastSnapshot = '';
+let masterVaultLastMetaRefreshAt = 0;
+const MASTER_VAULT_REFRESH_MS = 3000;
+const MASTER_VAULT_META_REFRESH_MS = 15000;
 
 function formatoTiempoSistema(createdAtIso) {
     const txt = String(createdAtIso || '').trim();
@@ -680,8 +686,48 @@ function iniciarAutoRefreshBovedaMaster() {
     masterVaultRefreshTimer = setInterval(() => {
         const box = document.getElementById('section-servidor-master');
         if (!box || box.style.display === 'none') return;
-        cargarBovedaMaster();
-    }, 15000);
+        const includeExtras = (Date.now() - masterVaultLastMetaRefreshAt) >= MASTER_VAULT_META_REFRESH_MS;
+        cargarBovedaMaster({ silent: true, includeExtras, includeCollaborators: false });
+    }, MASTER_VAULT_REFRESH_MS);
+}
+
+function construirSnapshotBovedaMaster(owners = []) {
+    return JSON.stringify((Array.isArray(owners) ? owners : []).map((o) => ({
+        username: String(o?.username || '').trim().toLowerCase(),
+        empresa: String(o?.empresa || ''),
+        activo: o?.activo !== false,
+        createdAt: String(o?.createdAt || ''),
+        collaboratorsCount: Number(o?.collaboratorsCount || 0),
+        online: o?.online === true
+    })));
+}
+
+function renderRowsBovedaMaster(body, owners = []) {
+    if (!body) return;
+    body.innerHTML = owners.map((o) => {
+        const owner = String(o?.username || '').trim().toLowerCase();
+        const withColabs = Number(o?.collaboratorsCount || 0) > 0;
+        const isOnline = o?.online === true;
+        const rowClass = [withColabs ? 'master-owner-highlight' : '', isOnline ? 'master-owner-online' : ''].filter(Boolean).join(' ');
+        const estadoActivo = o?.activo !== false;
+        const estadoTxt = estadoActivo ? 'Activo' : 'Suspendido';
+        const estadoColor = estadoActivo ? '#1f8f4c' : '#c0392b';
+        const colabsTxt = `${Number(o?.collaboratorsCount || 0)} colaborador(es)`;
+        const marca = withColabs ? '<span class="master-owner-indicator"></span>' : '';
+        const onlineBadge = isOnline ? '<span class="master-owner-online-badge">EN LINEA</span>' : '';
+        const noDelete = owner === MASTER_USER;
+        return `<tr class="${rowClass}">
+          <td>${marca}<strong>${owner.toUpperCase()}</strong>${onlineBadge}</td>
+          <td>${String(o?.empresa || '---')}</td>
+          <td>${formatoTiempoSistema(o?.createdAt)}</td>
+          <td style="color:${estadoColor}; font-weight:700;">${estadoTxt}</td>
+          <td>${colabsTxt}</td>
+          <td style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-blue" onclick="verColaboradoresBoveda('${owner}')">Ver colaboradores</button>
+            ${noDelete ? '<em style="color:#777;">Sistema</em>' : `<button class="btn btn-danger" onclick="eliminarMaestroDesdeBoveda('${owner}')">Eliminar total</button>`}
+          </td>
+        </tr>`;
+    }).join('');
 }
 
 function pintarResumenControlMaster(stats) {
@@ -741,15 +787,18 @@ async function cargarNotificacionesPagoMaster() {
     }
 }
 
-async function verColaboradoresBoveda(owner) {
+async function verColaboradoresBoveda(owner, opts = {}) {
     const ownerKey = String(owner || '').trim().toLowerCase();
     if (!ownerKey) return;
+    const silent = opts?.silent === true;
     masterVaultOwnerSelected = ownerKey;
     const title = document.getElementById('master-vault-collab-title');
     const body = document.getElementById('master-vault-collab-body');
     if (title) title.textContent = `Colaboradores de ${ownerKey.toUpperCase()}`;
     if (!body) return;
-    body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Cargando...</td></tr>';
+    if (!silent) {
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Cargando...</td></tr>';
+    }
     if (typeof window.refrescarColaboradoresCloud !== 'function') {
         body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Backend no disponible.</td></tr>';
         return;
@@ -807,56 +856,71 @@ async function cargarBovedaMaster() {
     const statusEl = document.getElementById('master-vault-status');
     const body = document.getElementById('master-vault-body');
     if (!statusEl || !body) return;
-    statusEl.textContent = 'Cargando bóveda...';
-    statusEl.style.color = '#666';
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">Cargando...</td></tr>';
+    const opts = arguments[0] && typeof arguments[0] === 'object' ? arguments[0] : {};
+    const silent = opts?.silent === true;
+    const includeExtras = opts?.includeExtras !== false;
+    const includeCollaborators = opts?.includeCollaborators !== false;
+    if (masterVaultRefreshInFlight) return false;
+    masterVaultRefreshInFlight = true;
+    if (!masterVaultLoadedOnce) {
+        statusEl.textContent = 'Cargando bóveda...';
+        statusEl.style.color = '#666';
+        body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">Cargando...</td></tr>';
+    } else if (!silent) {
+        statusEl.textContent = 'Actualizando bóveda...';
+        statusEl.style.color = '#0b5ed7';
+    }
     if (typeof window.obtenerBovedaMasterCloud !== 'function') {
         statusEl.textContent = 'Backend cloud no disponible.';
         statusEl.style.color = '#c0392b';
-        return;
+        masterVaultRefreshInFlight = false;
+        return false;
     }
     try {
         const rs = await window.obtenerBovedaMasterCloud();
         const owners = Array.isArray(rs?.owners) ? rs.owners : [];
         if (!owners.length) {
-            body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">Sin usuarios maestros.</td></tr>';
+            if (!masterVaultLoadedOnce || masterVaultLastSnapshot !== '__EMPTY__') {
+                body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">Sin usuarios maestros.</td></tr>';
+                masterVaultLastSnapshot = '__EMPTY__';
+            }
             statusEl.textContent = 'Sin registros.';
+            statusEl.style.color = '#666';
+            masterVaultLoadedOnce = true;
+            if (includeExtras) {
+                masterVaultLastMetaRefreshAt = Date.now();
+                await Promise.all([cargarNotificacionesPagoMaster(), cargarResumenControlMaster()]);
+            }
+            masterVaultRefreshInFlight = false;
             return;
         }
-        body.innerHTML = owners.map((o) => {
-            const owner = String(o?.username || '').trim().toLowerCase();
-            const withColabs = Number(o?.collaboratorsCount || 0) > 0;
-            const isOnline = o?.online === true;
-            const rowClass = [withColabs ? 'master-owner-highlight' : '', isOnline ? 'master-owner-online' : ''].filter(Boolean).join(' ');
-            const estadoActivo = o?.activo !== false;
-            const estadoTxt = estadoActivo ? 'Activo' : 'Suspendido';
-            const estadoColor = estadoActivo ? '#1f8f4c' : '#c0392b';
-            const colabsTxt = `${Number(o?.collaboratorsCount || 0)} colaborador(es)`;
-            const marca = withColabs ? '<span class="master-owner-indicator"></span>' : '';
-            const onlineBadge = isOnline ? '<span class="master-owner-online-badge">EN LINEA</span>' : '';
-            const noDelete = owner === MASTER_USER;
-            return `<tr class="${rowClass}">
-              <td>${marca}<strong>${owner.toUpperCase()}</strong>${onlineBadge}</td>
-              <td>${String(o?.empresa || '---')}</td>
-              <td>${formatoTiempoSistema(o?.createdAt)}</td>
-              <td style="color:${estadoColor}; font-weight:700;">${estadoTxt}</td>
-              <td>${colabsTxt}</td>
-              <td style="display:flex; gap:6px; flex-wrap:wrap;">
-                <button class="btn btn-blue" onclick="verColaboradoresBoveda('${owner}')">Ver colaboradores</button>
-                ${noDelete ? '<em style="color:#777;">Sistema</em>' : `<button class="btn btn-danger" onclick="eliminarMaestroDesdeBoveda('${owner}')">Eliminar total</button>`}
-              </td>
-            </tr>`;
-        }).join('');
+        const snapshot = construirSnapshotBovedaMaster(owners);
+        if (!masterVaultLoadedOnce || snapshot !== masterVaultLastSnapshot) {
+            renderRowsBovedaMaster(body, owners);
+            masterVaultLastSnapshot = snapshot;
+        }
         const onlineCount = owners.filter((o) => o?.online === true).length;
-        statusEl.textContent = `Bóveda cargada (${owners.length} maestro(s), ${onlineCount} en línea).`;
+        statusEl.textContent = `Bóveda activa (${owners.length} maestro(s), ${onlineCount} en línea).`;
         statusEl.style.color = '#1f8f4c';
-        if (masterVaultOwnerSelected) await verColaboradoresBoveda(masterVaultOwnerSelected);
+        masterVaultLoadedOnce = true;
+        if (includeCollaborators && masterVaultOwnerSelected) {
+            await verColaboradoresBoveda(masterVaultOwnerSelected, { silent: true });
+        }
     } catch (e) {
-        body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#c0392b;">Error cargando bóveda.</td></tr>';
+        if (!masterVaultLoadedOnce) {
+            body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#c0392b;">Error cargando bóveda.</td></tr>';
+        }
         statusEl.textContent = `Error: ${String(e?.message || e || 'interno')}`;
         statusEl.style.color = '#c0392b';
+        masterVaultRefreshInFlight = false;
+        return false;
     }
-    await Promise.all([cargarNotificacionesPagoMaster(), cargarResumenControlMaster()]);
+    if (includeExtras) {
+        masterVaultLastMetaRefreshAt = Date.now();
+        await Promise.all([cargarNotificacionesPagoMaster(), cargarResumenControlMaster()]);
+    }
+    masterVaultRefreshInFlight = false;
+    return true;
 }
 
 const MASTER_DETAIL_LABELS = {
@@ -2814,7 +2878,12 @@ function generarFacturaVisualYResumen({ carritoVenta, nombreCliente, rncInput, t
     };
 
     const nombreNegocio = obtenerNombreNegocioActual();
-    document.getElementById('factura-negocio').innerText = nombreNegocio.toUpperCase();
+    const facturaBrand = document.getElementById('factura-negocio');
+    if (facturaBrand) {
+        const brandLabel = facturaBrand.querySelector('span');
+        if (brandLabel) brandLabel.innerText = nombreNegocio.toUpperCase();
+        else facturaBrand.innerText = nombreNegocio.toUpperCase();
+    }
     document.getElementById('factura-usuario').innerText = operadorActual || sesionUser?.user || '---';
 
     document.getElementById('factura-fecha').innerHTML = `
@@ -2874,6 +2943,11 @@ function generarFacturaVisualYResumen({ carritoVenta, nombreCliente, rncInput, t
 
     db.contadorNCF++;
     guardarDatos();
+}
+
+function cerrarFactura() {
+    const modal = document.getElementById('modal-factura');
+    if (modal) modal.style.display = 'none';
 }
 
 function buscarClienteRNCEnHistorial(rnc) {
@@ -3341,6 +3415,42 @@ function ajustarPrecioManual() {
     const MASTER_USER = "jssantana077";
     const MASTER_PASS = "852347";
     const USUARIO_ELIMINADO_FORZOSO = "__forced_removed_user_disabled__";
+    const LOCAL_DB_META_KEY = "LURO_CONTROL_DB_META";
+
+function leerMetaDbLocal() {
+    try {
+        const raw = localStorage.getItem(LOCAL_DB_META_KEY) || "";
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        return {
+            updatedAtClient: Number(parsed.updatedAtClient || 0),
+            syncKey: String(parsed.syncKey || '').trim(),
+            uploadedAtClient: Number(parsed.uploadedAtClient || 0),
+            lastSource: String(parsed.lastSource || '').trim()
+        };
+    } catch (_) {
+        return null;
+    }
+}
+
+function guardarMetaDbLocal(meta = {}) {
+    const current = leerMetaDbLocal() || {};
+    const next = {
+        ...current,
+        ...meta
+    };
+    try {
+        localStorage.setItem(LOCAL_DB_META_KEY, JSON.stringify(next));
+    } catch (_) {}
+    window.__luroLastSavedAt = Number(next.updatedAtClient || 0);
+    window.__luroLastSyncKey = String(next.syncKey || '').trim();
+    window.__cloudLastUploadedAtClient = Number(next.uploadedAtClient || 0);
+    return next;
+}
+
+window.obtenerMetaDbLocal = leerMetaDbLocal;
+window.guardarMetaDbLocal = guardarMetaDbLocal;
 
 function purgarUsuarioEliminadoForzoso() {
     const target = String(USUARIO_ELIMINADO_FORZOSO || '').trim().toLowerCase();
@@ -3426,14 +3536,50 @@ function normalizarDBSyncGlobal() {
             mesaMeta: (typeof mesaMeta !== 'undefined') ? mesaMeta : {},
             mesaUniones: (typeof mesaUniones !== 'undefined') ? mesaUniones : {}
         };
-        if (!window.__cloudApplyingRemote) {
-            window.__cloudLocalChangeAt = Date.now();
+        const serializedDb = JSON.stringify(db);
+        if (serializedDb === String(window.__luroLastSavedSnapshot || '')) {
+            return;
         }
-        localStorage.setItem('LURO_CONTROL_DB', JSON.stringify(db));
+        const importMeta = window.__cloudApplyingRemote ? (window.__cloudImportMeta || null) : null;
+        const now = Date.now();
+        const saveMeta = importMeta && Number(importMeta.updatedAtClient || 0) > 0
+            ? {
+                updatedAtClient: Number(importMeta.updatedAtClient || now),
+                syncKey: String(importMeta.syncKey || `remote-${Date.now()}`).trim(),
+                uploadedAtClient: Number(importMeta.updatedAtClient || 0),
+                lastSource: String(importMeta.lastSource || 'cloud').trim() || 'cloud'
+            }
+            : {
+                updatedAtClient: now,
+                syncKey: `local-${now}-${Math.random().toString(36).slice(2, 8)}`,
+                lastSource: 'local'
+            };
+        if (!window.__cloudApplyingRemote) {
+            window.__cloudLocalChangeAt = Number(saveMeta.updatedAtClient || now);
+        }
+        localStorage.setItem('LURO_CONTROL_DB', serializedDb);
+        window.__luroLastSavedSnapshot = serializedDb;
+        guardarMetaDbLocal(saveMeta);
         if (typeof window.autoSubirCloudDebounced === 'function') window.autoSubirCloudDebounced();
     }
 function cargarDatos() { 
-        const d = JSON.parse(localStorage.getItem('LURO_CONTROL_DB')); 
+        const rawDb = localStorage.getItem('LURO_CONTROL_DB') || '';
+        window.__luroLastSavedSnapshot = rawDb;
+        const localMeta = leerMetaDbLocal();
+        window.__luroLastSavedAt = Number(localMeta?.updatedAtClient || 0);
+        window.__luroLastSyncKey = String(localMeta?.syncKey || '').trim();
+        window.__cloudLastUploadedAtClient = Number(localMeta?.uploadedAtClient || 0);
+        let d = null;
+        if (rawDb) {
+            try {
+                d = JSON.parse(rawDb);
+            } catch (e) {
+                console.warn('No se pudo leer la base local guardada. Se intentará recuperar una copia limpia.', e);
+                try {
+                    localStorage.setItem(`LURO_CONTROL_DB_RECOVERY_${Date.now()}`, rawDb);
+                } catch (_) {}
+            }
+        }
         if(d) { 
           db = d; 
           normalizarDBSyncGlobal();
@@ -3678,7 +3824,15 @@ function sincronizarOwnersNubeALocal(registrosNube = []) {
             }
         });
     }
-    if (cambios > 0) guardarDatos();
+    if (cambios > 0) {
+        const prevCloudApplying = !!window.__cloudApplyingRemote;
+        window.__cloudApplyingRemote = true;
+        try {
+            guardarDatos();
+        } finally {
+            window.__cloudApplyingRemote = prevCloudApplying;
+        }
+    }
     if (typeof window.verificarSesionRevocadaEnNube === 'function') {
         window.verificarSesionRevocadaEnNube(registrosNube);
     }
@@ -3873,6 +4027,7 @@ function bloquearAccionAdministrativaColaborador(mensaje = "🚫 Esta acción no
 
 function tienePermisoPagina(pageId) {
     if (pageId === 'diagnostico') return true;
+    if (pageId === 'comandos') return true;
     if (pageId === 'clientes-puntos' && !puedeUsarClientesPuntosExclusivo()) return false;
     if (esMasterEnSesion()) return true;
     if (!esColaboradorSesion) return true;
@@ -4053,11 +4208,442 @@ function obtenerTelefonoNegocioActual() {
     return telRegistro || telDefault || "";
 }
 
+let homePerfilQuitarLogo = false;
+const LURO_PROFILE_MEDIA_DB = 'luro-profile-media';
+const LURO_PROFILE_MEDIA_STORE = 'profile-logos';
+let luroProfileMediaDbPromise = null;
+
+function obtenerOwnerClavePerfilInicio(reg) {
+    const fromReg = String(reg?.user || '').trim().toLowerCase();
+    const fromSession = String(window.obtenerOwnerSesionActual?.() || sesionUser?.owner || sesionUser?.user || cuentaLoginActual || '').trim().toLowerCase();
+    return fromReg || fromSession || '';
+}
+
+function abrirDbLogoPerfil() {
+    if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+    if (luroProfileMediaDbPromise) return luroProfileMediaDbPromise;
+    luroProfileMediaDbPromise = new Promise((resolve) => {
+        try {
+            const req = indexedDB.open(LURO_PROFILE_MEDIA_DB, 1);
+            req.onupgradeneeded = () => {
+                const dbLocal = req.result;
+                if (!dbLocal.objectStoreNames.contains(LURO_PROFILE_MEDIA_STORE)) {
+                    dbLocal.createObjectStore(LURO_PROFILE_MEDIA_STORE, { keyPath: 'owner' });
+                }
+            };
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+            req.onblocked = () => resolve(null);
+        } catch (_) {
+            resolve(null);
+        }
+    });
+    return luroProfileMediaDbPromise;
+}
+
+async function guardarLogoPerfilPersistente(ownerKey, logo, updatedAt) {
+    const owner = String(ownerKey || '').trim().toLowerCase();
+    if (!owner) return false;
+    const dbLocal = await abrirDbLogoPerfil();
+    if (!dbLocal) return false;
+    const payload = {
+        owner,
+        logo: String(logo || ''),
+        updatedAt: Number(updatedAt || Date.now())
+    };
+    return new Promise((resolve) => {
+        try {
+            const tx = dbLocal.transaction(LURO_PROFILE_MEDIA_STORE, 'readwrite');
+            tx.objectStore(LURO_PROFILE_MEDIA_STORE).put(payload);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+            tx.onabort = () => resolve(false);
+        } catch (_) {
+            resolve(false);
+        }
+    });
+}
+
+async function leerLogoPerfilPersistente(ownerKey) {
+    const owner = String(ownerKey || '').trim().toLowerCase();
+    if (!owner) return null;
+    const dbLocal = await abrirDbLogoPerfil();
+    if (!dbLocal) return null;
+    return new Promise((resolve) => {
+        try {
+            const tx = dbLocal.transaction(LURO_PROFILE_MEDIA_STORE, 'readonly');
+            const req = tx.objectStore(LURO_PROFILE_MEDIA_STORE).get(owner);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        } catch (_) {
+            resolve(null);
+        }
+    });
+}
+
+function aplicarLogoPerfilInicioEnUI(logoSrc) {
+    const logoEl = document.getElementById('home-reg-logo');
+    if (logoEl) {
+        if (logoSrc) {
+            logoEl.src = logoSrc;
+            logoEl.style.display = 'inline-block';
+        } else {
+            logoEl.src = '';
+            logoEl.style.display = 'none';
+        }
+    }
+    const avatarShell = document.querySelector('.home-profile-avatar-shell');
+    if (avatarShell) avatarShell.classList.toggle('has-logo', !!String(logoSrc || '').trim());
+}
+
+async function rehidratarLogoPerfilActivo(opts = {}) {
+    const reg = opts?.reg || obtenerRegistroInicialActivo();
+    const ownerKey = obtenerOwnerClavePerfilInicio(reg);
+    if (!reg || !ownerKey) return null;
+
+    const persisted = await leerLogoPerfilPersistente(ownerKey);
+    if (!persisted) {
+        const currentLogo = String(reg?.logo || '').trim();
+        if (currentLogo) {
+            const seedAt = Number(reg?.logoUpdatedAt || Date.now());
+            guardarLogoPerfilPersistente(ownerKey, currentLogo, seedAt).catch(() => {});
+        }
+        return null;
+    }
+
+    const persistedLogo = String(persisted?.logo || '');
+    const persistedAt = Number(persisted?.updatedAt || 0);
+    const currentLogo = String(reg?.logo || '');
+    const currentAt = Number(reg?.logoUpdatedAt || 0);
+    const shouldApply = persistedAt >= currentAt && (persistedLogo !== currentLogo || (!currentLogo && !!persistedLogo));
+
+    if (!shouldApply) {
+        if (currentLogo && (!persistedLogo || persistedAt < currentAt)) {
+            guardarLogoPerfilPersistente(ownerKey, currentLogo, currentAt || Date.now()).catch(() => {});
+        }
+        return null;
+    }
+
+    if (!db.registroInicialUsuarios || typeof db.registroInicialUsuarios !== 'object') db.registroInicialUsuarios = {};
+    if (db.registroInicialUsuarios[ownerKey] && typeof db.registroInicialUsuarios[ownerKey] === 'object') {
+        db.registroInicialUsuarios[ownerKey] = {
+            ...db.registroInicialUsuarios[ownerKey],
+            logo: persistedLogo,
+            logoUpdatedAt: persistedAt || Date.now()
+        };
+    }
+    if (ownerKey === MASTER_USER && db.registroInicial && typeof db.registroInicial === 'object') {
+        db.registroInicial = {
+            ...db.registroInicial,
+            logo: persistedLogo,
+            logoUpdatedAt: persistedAt || Date.now()
+        };
+    }
+
+    aplicarLogoPerfilInicioEnUI(persistedLogo);
+    try {
+        guardarDatos();
+    } catch (_) {}
+    return { logo: persistedLogo, updatedAt: persistedAt || Date.now() };
+}
+
+function leerArchivoComoDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        if (!file) return resolve('');
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('No se pudo leer la imagen seleccionada.'));
+        reader.readAsDataURL(file);
+    });
+}
+
+function cargarImagenDesdeDataUrl(src) {
+    return new Promise((resolve, reject) => {
+        if (!src) return reject(new Error('Imagen vacia.'));
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('No se pudo procesar la imagen.'));
+        img.src = src;
+    });
+}
+
+async function optimizarLogoPerfil(file) {
+    const source = await leerArchivoComoDataUrl(file);
+    if (!source) return '';
+    try {
+        const img = await cargarImagenDesdeDataUrl(source);
+        const maxSide = 320;
+        const scale = Math.min(1, maxSide / Math.max(img.width || maxSide, img.height || maxSide));
+        const width = Math.max(1, Math.round((img.width || maxSide) * scale));
+        const height = Math.max(1, Math.round((img.height || maxSide) * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return source;
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const attempts = [
+            ['image/webp', 0.86],
+            ['image/webp', 0.74],
+            ['image/jpeg', 0.82],
+            ['image/jpeg', 0.68]
+        ];
+        let best = source;
+        for (const [type, quality] of attempts) {
+            let candidate = '';
+            try {
+                candidate = canvas.toDataURL(type, quality);
+            } catch (_) {
+                candidate = '';
+            }
+            if (!candidate) continue;
+            if (!best || candidate.length < best.length) best = candidate;
+            if (candidate.length <= 160000) return candidate;
+        }
+        return best && best.length < source.length ? best : source;
+    } catch (_) {
+        return source;
+    }
+}
+
+function obtenerInicialesPerfilInicio() {
+    const values = Array.from(arguments)
+        .map(v => String(v || '').trim())
+        .filter(Boolean);
+    const base = values[0] || 'LC';
+    const parts = base.replace(/[_-]+/g, ' ').split(/\s+/).filter(Boolean);
+    const initials = parts.slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
+    return initials || base.slice(0, 2).toUpperCase();
+}
+
+function obtenerEtiquetaRolInicio(role) {
+    const r = String(role || '').trim().toLowerCase();
+    if (r === 'super-master') return 'Dirección general';
+    if (r === 'colaborador') return 'Colaborador autorizado';
+    return 'Administrador principal';
+}
+
+function renderHomePerfilHeader(reg) {
+    const info = obtenerOwnerCloudInfoInicio() || {};
+    const ownerUser = String(window.obtenerOwnerSesionActual?.() || sesionUser?.owner || sesionUser?.user || '').trim().toLowerCase();
+    const activeUser = String(cuentaLoginActual || operadorActual || sesionUser?.user || ownerUser || '').trim();
+    const businessName = String(reg?.businessName || info?.empresa || '').trim();
+    const roleKey = String(sesionUser?.role || info?.role || 'admin').trim().toLowerCase();
+    const roleLabel = obtenerEtiquetaRolInicio(roleKey);
+    const displayName = businessName || (activeUser ? `Perfil de ${activeUser}` : 'LuRo Control');
+    const handleLabel = activeUser ? `@${activeUser.toLowerCase()}` : (ownerUser ? `@${ownerUser}` : '@lurocontrol');
+    const moduleLabel = String(document.getElementById('current-module-display')?.textContent || moduloActual || '').trim();
+    const reason = String(reg?.reason || '').trim();
+    const summary = reason || `Centro principal de ${displayName}${moduleLabel ? ` para operar y supervisar ${moduleLabel}.` : '.'}`;
+
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value || '-';
+    };
+
+    setText('home-profile-display-name', displayName);
+    setText('home-profile-handle', handleLabel);
+    setText('home-profile-role', roleLabel);
+    setText('home-profile-owner', ownerUser || activeUser || '-');
+    setText('home-profile-summary', summary);
+
+    const roleEl = document.getElementById('home-profile-role');
+    if (roleEl) roleEl.dataset.role = roleKey || 'admin';
+
+    const avatarFallback = document.getElementById('home-profile-avatar-fallback');
+    if (avatarFallback) {
+        avatarFallback.textContent = obtenerInicialesPerfilInicio(businessName, activeUser, ownerUser);
+    }
+
+    const avatarShell = document.querySelector('.home-profile-avatar-shell');
+    if (avatarShell) {
+        avatarShell.classList.toggle('has-logo', !!String(reg?.logo || '').trim());
+    }
+}
+
+function setEstadoEditarPerfilInicio(msg, isError = false) {
+    const box = document.getElementById('home-edit-profile-status');
+    if (!box) return;
+    box.textContent = msg || '';
+    box.style.color = isError ? '#b03a2e' : '#556572';
+}
+
+function renderPreviewLogoPerfilInicio(src, fallbackBase) {
+    const preview = document.getElementById('home-edit-logo-preview');
+    const fallback = document.getElementById('home-edit-logo-fallback');
+    const hasSrc = !!String(src || '').trim();
+    if (preview) {
+        preview.src = hasSrc ? String(src).trim() : '';
+        preview.style.display = hasSrc ? 'block' : 'none';
+    }
+    if (fallback) {
+        fallback.textContent = obtenerInicialesPerfilInicio(fallbackBase, document.getElementById('home-edit-user')?.value || '');
+        fallback.style.display = hasSrc ? 'none' : 'flex';
+    }
+}
+
+function abrirModalEditarPerfilInicio() {
+    if (bloquearAccionAdministrativaColaborador()) return;
+    const reg = obtenerRegistroInicialActivo();
+    if (!reg) return alert('No hay perfil registrado para editar.');
+
+    homePerfilQuitarLogo = false;
+    const modal = document.getElementById('modal-editar-perfil-home');
+    const userField = document.getElementById('home-edit-user');
+    const businessField = document.getElementById('home-edit-business');
+    const phoneField = document.getElementById('home-edit-phone');
+    const reasonField = document.getElementById('home-edit-reason');
+    const newPassField = document.getElementById('home-edit-new-pass');
+    const confirmField = document.getElementById('home-edit-new-pass-confirm');
+    const fileField = document.getElementById('home-edit-logo');
+
+    if (userField) userField.value = reg.user || cuentaLoginActual || sesionUser?.user || '';
+    if (businessField) businessField.value = reg.businessName || '';
+    if (phoneField) phoneField.value = reg.phone || '';
+    if (reasonField) reasonField.value = reg.reason || '';
+    if (newPassField) newPassField.value = '';
+    if (confirmField) confirmField.value = '';
+    if (fileField) fileField.value = '';
+    renderPreviewLogoPerfilInicio(reg.logo || '', reg.businessName || reg.user || 'LC');
+    setEstadoEditarPerfilInicio('');
+    if (modal) modal.style.display = 'flex';
+}
+
+function cerrarModalEditarPerfilInicio() {
+    const modal = document.getElementById('modal-editar-perfil-home');
+    const newPassField = document.getElementById('home-edit-new-pass');
+    const confirmField = document.getElementById('home-edit-new-pass-confirm');
+    const fileField = document.getElementById('home-edit-logo');
+    homePerfilQuitarLogo = false;
+    if (newPassField) newPassField.value = '';
+    if (confirmField) confirmField.value = '';
+    if (fileField) fileField.value = '';
+    setEstadoEditarPerfilInicio('');
+    if (modal) modal.style.display = 'none';
+}
+
+function actualizarPreviewLogoPerfilInicio() {
+    const reg = obtenerRegistroInicialActivo() || {};
+    const input = document.getElementById('home-edit-logo');
+    const file = input?.files?.[0] || null;
+    const fallbackBase = document.getElementById('home-edit-business')?.value || reg.businessName || reg.user || 'LC';
+    if (!file) {
+        renderPreviewLogoPerfilInicio(homePerfilQuitarLogo ? '' : (reg.logo || ''), fallbackBase);
+        return;
+    }
+    homePerfilQuitarLogo = false;
+    const reader = new FileReader();
+    reader.onload = () => renderPreviewLogoPerfilInicio(reader.result || '', fallbackBase);
+    reader.onerror = () => renderPreviewLogoPerfilInicio(reg.logo || '', fallbackBase);
+    reader.readAsDataURL(file);
+}
+
+function quitarLogoPerfilInicio() {
+    homePerfilQuitarLogo = true;
+    const input = document.getElementById('home-edit-logo');
+    if (input) input.value = '';
+    renderPreviewLogoPerfilInicio('', document.getElementById('home-edit-business')?.value || document.getElementById('home-edit-user')?.value || 'LC');
+}
+
+async function guardarPerfilDesdeInicio() {
+    if (bloquearAccionAdministrativaColaborador()) return;
+    const ownerKey = String(window.obtenerOwnerSesionActual?.() || sesionUser?.owner || sesionUser?.user || cuentaLoginActual || '').trim().toLowerCase();
+    const reg = obtenerRegistroInicialActivo();
+    if (!ownerKey || !reg) return alert('No hay perfil activo para actualizar.');
+
+    const newPass = String(document.getElementById('home-edit-new-pass')?.value || '').trim();
+    const confirmPass = String(document.getElementById('home-edit-new-pass-confirm')?.value || '').trim();
+    const phoneRaw = String(document.getElementById('home-edit-phone')?.value || '').trim();
+    const businessName = String(document.getElementById('home-edit-business')?.value || '').trim();
+    const reason = String(document.getElementById('home-edit-reason')?.value || '').trim();
+    const logoFile = document.getElementById('home-edit-logo')?.files?.[0] || null;
+
+    if (!phoneRaw || !businessName || !reason) {
+        setEstadoEditarPerfilInicio('Complete negocio, WhatsApp y motivo de uso.', true);
+        return;
+    }
+    const phone = normalizarTelefonoWhatsapp(phoneRaw);
+    if (!phone) {
+        setEstadoEditarPerfilInicio('Número de WhatsApp inválido. Ingrese solo dígitos.', true);
+        return;
+    }
+    if ((newPass || confirmPass) && newPass !== confirmPass) {
+        setEstadoEditarPerfilInicio('La nueva contraseña y su confirmación no coinciden.', true);
+        return;
+    }
+
+    const cuentaActualKey = String(cuentaLoginActual || sesionUser?.user || ownerKey).trim().toLowerCase();
+    const cuenta = (db.usuarios || []).find(u => String(u?.user || '').trim().toLowerCase() === cuentaActualKey);
+    const sessionPass = String(loginClave || sesionUser?.pass || '').trim();
+
+    const aplicarCambios = async (logoData) => {
+        setEstadoEditarPerfilInicio('Guardando perfil...');
+        if (newPass) {
+            if (typeof window.actualizarPasswordCloud === 'function') {
+                if (!sessionPass) {
+                    setEstadoEditarPerfilInicio('No se pudo validar la sesión actual para cambiar la contraseña.', true);
+                    return;
+                }
+                const okCloud = await window.actualizarPasswordCloud(sessionPass, newPass);
+                if (!okCloud) {
+                    setEstadoEditarPerfilInicio('No se pudo actualizar la contraseña en la nube.', true);
+                    return;
+                }
+            }
+            if (cuenta) cuenta.pass = newPass;
+            if (sesionUser) sesionUser.pass = newPass;
+            loginClave = newPass;
+            window.loginClave = newPass;
+        }
+
+        const nextLogo = homePerfilQuitarLogo ? '' : (typeof logoData === 'string' ? logoData : (reg.logo || ''));
+        const currentLogo = String(reg.logo || '');
+        const nextLogoUpdatedAt = (nextLogo !== currentLogo || !Number(reg.logoUpdatedAt || 0))
+            ? Date.now()
+            : Number(reg.logoUpdatedAt || 0);
+
+        if (!db.registroInicialUsuarios || typeof db.registroInicialUsuarios !== 'object') db.registroInicialUsuarios = {};
+        db.registroInicialUsuarios[ownerKey] = {
+            ...reg,
+            completado: true,
+            user: reg.user || ownerKey,
+            phone,
+            businessName,
+            reason,
+            logo: nextLogo,
+            logoUpdatedAt: nextLogoUpdatedAt
+        };
+        if (ownerKey === MASTER_USER) db.registroInicial = { ...db.registroInicialUsuarios[ownerKey] };
+        await guardarLogoPerfilPersistente(ownerKey, nextLogo, nextLogoUpdatedAt);
+
+        WHATSAPP_DEFAULT = phone;
+        localStorage.setItem('LURO_WHATSAPP_DEFAULT', phone);
+        guardarDatos();
+        renderHomeRegistroInfo();
+        cerrarModalEditarPerfilInicio();
+        alert('Perfil actualizado correctamente.');
+    };
+
+    try {
+        if (logoFile) {
+            const logoData = await optimizarLogoPerfil(logoFile);
+            await aplicarCambios(logoData || '');
+            return;
+        }
+        await aplicarCambios(undefined);
+    } catch (e) {
+        setEstadoEditarPerfilInicio(String(e?.message || e || 'No se pudo actualizar el perfil.'), true);
+    }
+}
+
 function renderHomeRegistroInfo() {
     const reg = obtenerRegistroInicialActivo();
     const btnDel = document.getElementById("home-btn-eliminar-registro");
-    const logoEl = document.getElementById("home-reg-logo");
+    const btnEdit = document.getElementById("home-btn-editar-perfil");
     if (btnDel) btnDel.style.display = reg ? "inline-block" : "none";
+    if (btnEdit) btnEdit.style.display = reg ? "inline-flex" : "none";
 
     const setText = (id, value) => {
         const el = document.getElementById(id);
@@ -4070,7 +4656,8 @@ function renderHomeRegistroInfo() {
         setText('home-reg-phone', '-');
         setText('home-reg-created', '-');
         setText('home-reg-reason', '-');
-        if (logoEl) { logoEl.style.display = 'none'; logoEl.src = ''; }
+        aplicarLogoPerfilInicioEnUI('');
+        renderHomePerfilHeader(null);
         renderEstadoMembresiaInicio();
         return;
     }
@@ -4081,11 +4668,10 @@ function renderHomeRegistroInfo() {
     setText('home-reg-phone', reg.phone || '-');
     setText('home-reg-created', fecha);
     setText('home-reg-reason', reg.reason || '-');
-    if (logoEl) {
-        if (reg.logo) { logoEl.src = reg.logo; logoEl.style.display = 'inline-block'; }
-        else { logoEl.style.display = 'none'; logoEl.src = ''; }
-    }
+    aplicarLogoPerfilInicioEnUI(reg.logo || '');
+    renderHomePerfilHeader(reg);
     renderEstadoMembresiaInicio();
+    rehidratarLogoPerfilActivo({ reg }).catch(() => {});
 }
 
 function obtenerOwnerCloudInfoInicio() {
@@ -4130,7 +4716,7 @@ function renderEstadoMembresiaInicio() {
     const statusEl = document.getElementById('home-membership-status');
     const planSelect = document.getElementById('home-plan-select');
     const daySelect = document.getElementById('home-billing-day-select');
-    if (!planEl || !estadoEl || !noticeEl || !statusEl) return;
+    if (!planEl || !estadoEl) return;
 
     const info = obtenerOwnerCloudInfoInicio() || {};
     const plan = String(info?.plan || 'basico').trim().toLowerCase();
@@ -4145,14 +4731,16 @@ function renderEstadoMembresiaInicio() {
     if (planSelect) planSelect.value = plan;
     if (daySelect && billingDay >= 1 && billingDay <= 28) daySelect.value = String(billingDay);
 
-    if (diasTrial > 0 || estado === 'trial') {
+    if (noticeEl && (diasTrial > 0 || estado === 'trial')) {
         noticeEl.style.display = 'block';
         noticeEl.textContent = `🎁 Prueba gratis activa: le quedan ${diasTrial} día(s). Después debe completar su pago para mantener acceso.`;
-    } else {
+    } else if (noticeEl) {
         noticeEl.style.display = 'none';
         noticeEl.textContent = '';
     }
-    statusEl.textContent = 'Puede cambiar de membresía aquí y completar el pago adicional para activar el nuevo plan.';
+    if (statusEl) {
+        statusEl.textContent = 'Puede cambiar de membresía aquí y completar el pago adicional para activar el nuevo plan.';
+    }
 }
 
 async function iniciarCambioMembresiaDesdeInicio() {
@@ -4352,7 +4940,7 @@ function inicializarFlujoRegistro() {
     }
 }
 
-function completarRegistroInicial() {
+async function completarRegistroInicial() {
     const userRaw = (document.getElementById('reg_user')?.value || '').trim();
     const pass = (document.getElementById('reg_pass')?.value || '').trim();
     const phoneRaw = (document.getElementById('reg_phone')?.value || '').trim();
@@ -4392,6 +4980,8 @@ function completarRegistroInicial() {
     }
 
     const finalizarRegistro = (logoData) => {
+        const logo = String(logoData || '');
+        const logoUpdatedAt = Date.now();
         if (!db.registroInicialUsuarios || typeof db.registroInicialUsuarios !== 'object') db.registroInicialUsuarios = {};
         db.registroInicialUsuarios[user] = {
             completado: true,
@@ -4399,10 +4989,12 @@ function completarRegistroInicial() {
             phone,
             businessName,
             reason,
-            logo: logoData || '',
+            logo,
+            logoUpdatedAt,
             createdAt: new Date().toISOString()
         };
         if (user === MASTER_USER) db.registroInicial = { ...db.registroInicialUsuarios[user] };
+        guardarLogoPerfilPersistente(user, logo, logoUpdatedAt).catch(() => {});
         const usr = db.usuarios.find(u => u.user === user);
         if (usr) usr.requiereRegistroInicial = false;
 
@@ -4422,10 +5014,12 @@ function completarRegistroInicial() {
     };
 
     if (logoFile) {
-        const fr = new FileReader();
-        fr.onload = () => finalizarRegistro(fr.result || '');
-        fr.onerror = () => finalizarRegistro('');
-        fr.readAsDataURL(logoFile);
+        try {
+            const logoData = await optimizarLogoPerfil(logoFile);
+            finalizarRegistro(logoData || '');
+        } catch (_) {
+            finalizarRegistro('');
+        }
         return;
     }
     finalizarRegistro('');
@@ -4508,11 +5102,29 @@ window.exportarDBParaCloud = function () {
 };
 
 window.importarDBDesdeCloud = function (remoteDb, opts = {}) {
-    const { fromCloudListener = false } = opts;
+    const { fromCloudListener = false, force = false } = opts;
+    const remoteMeta = opts?.remoteMeta && typeof opts.remoteMeta === 'object' ? opts.remoteMeta : {};
     if (!remoteDb || typeof remoteDb !== 'object') return false;
     const serializedRemote = JSON.stringify(remoteDb);
     const now = Date.now();
+    const remoteUpdatedAt = Number(remoteMeta.updatedAtClient || 0);
+    const remoteSyncKey = String(remoteMeta.syncKey || '').trim();
+    const localUpdatedAt = Number(window.__luroLastSavedAt || 0);
     if (fromCloudListener && window.__cloudLocalChangeAt && (now - window.__cloudLocalChangeAt) < (window.__cloudRemoteSettleMs || 2200)) {
+        return false;
+    }
+    if (!force && remoteUpdatedAt > 0 && localUpdatedAt > 0 && remoteUpdatedAt < localUpdatedAt && serializedRemote !== String(window.__luroLastSavedSnapshot || '')) {
+        window.__cloudLastUploadedSnapshot = '';
+        window.__cloudLastUploadedAtClient = 0;
+        if (typeof window.guardarMetaDbLocal === 'function') {
+            window.guardarMetaDbLocal({ uploadedAtClient: 0 });
+        }
+        if (typeof window.setSyncStatusPublic === 'function') {
+            window.setSyncStatusPublic('Se conservo la base local porque la copia cloud era mas antigua.', true);
+        }
+        if (typeof window.autoSubirCloudUrgente === 'function') {
+            setTimeout(() => window.autoSubirCloudUrgente(), 0);
+        }
         return false;
     }
     if (serializedRemote === window.__cloudLastAppliedSnapshot) {
@@ -4527,12 +5139,25 @@ window.importarDBDesdeCloud = function (remoteDb, opts = {}) {
     if (typeof mesaMeta !== 'undefined') mesaMeta = db.mesasEstado.mesaMeta || {};
     if (typeof mesaUniones !== 'undefined') mesaUniones = db.mesasEstado.mesaUniones || {};
     window.__cloudApplyingRemote = true;
+    window.__cloudImportMeta = {
+        updatedAtClient: remoteUpdatedAt || Date.now(),
+        syncKey: remoteSyncKey || `remote-${Date.now()}`,
+        lastSource: 'cloud'
+    };
     try {
         window.__cloudLastAppliedSnapshot = serializedRemote;
         guardarDatos();
+        window.__cloudLastUploadedSnapshot = String(window.__luroLastSavedSnapshot || serializedRemote || '');
+        window.__cloudLastKnownRemoteAt = Number(remoteUpdatedAt || window.__cloudLastKnownRemoteAt || 0);
     } finally {
+        window.__cloudImportMeta = null;
         window.__cloudApplyingRemote = false;
     }
+    rehidratarLogoPerfilActivo().then((restored) => {
+        if (restored && typeof window.refrescarUITrasSyncCloud === 'function') {
+            window.refrescarUITrasSyncCloud();
+        }
+    }).catch(() => {});
     if (fromCloudListener && typeof window.refrescarUITrasSyncCloud === 'function') {
         window.refrescarUITrasSyncCloud();
     }
@@ -4550,9 +5175,13 @@ window.__cloudLocalChangeAt = 0;
 window.__cloudRemoteSettleMs = 2200;
 window.__cloudLastAppliedSnapshot = '';
 window.__cloudUiLastRefreshAt = 0;
-window.__cloudUiRefreshMinMs = 450;
-window.__cloudDebounceMs = 90;
+window.__cloudUiRefreshMinMs = 240;
+window.__cloudUiRefreshTimer = null;
+window.__cloudDebounceMs = 60;
 window.__cloudQueueRetryMs = 20;
+window.__cloudLastKnownRemoteAt = 0;
+window.__luroLastSavedAt = Number(window.__luroLastSavedAt || 0);
+window.__luroLastSyncKey = String(window.__luroLastSyncKey || '').trim();
 
 window.__ejecutarSubidaCloudAuto = async function () {
     if (window.__cloudSaveInFlight) {
@@ -4621,67 +5250,70 @@ document.addEventListener('visibilitychange', () => {
 
 window.refrescarUITrasSyncCloud = function () {
     const now = Date.now();
-    if ((now - (window.__cloudUiLastRefreshAt || 0)) < (window.__cloudUiRefreshMinMs || 450)) return;
-    window.__cloudUiLastRefreshAt = now;
-    try {
-        const active = document.querySelector('.content-section.active')?.id || '';
+    const waitMs = Math.max(0, (window.__cloudUiRefreshMinMs || 450) - (now - (window.__cloudUiLastRefreshAt || 0)));
+    if (window.__cloudUiRefreshTimer) return;
+    window.__cloudUiRefreshTimer = setTimeout(() => {
+        window.__cloudUiRefreshTimer = null;
+        window.__cloudUiLastRefreshAt = Date.now();
+        requestAnimationFrame(() => {
+            try {
+                const active = document.querySelector('.content-section.active')?.id || '';
+                const moduleSelectorVisible = (() => {
+                    const el = document.getElementById('module-selector');
+                    return !!(el && el.style.display !== 'none');
+                })();
 
-        // Refresco directo de la sección activa para que los cambios remotos aparezcan al instante
-        // sin exigir navegación entre pestañas/renglones.
-        const refrescarActivaLigero = (pageId) => {
-            if (!pageId) return;
-            if (pageId === 'configuracion' && typeof renderConfig === 'function') {
-                renderConfig({ deferHeavy: true });
-                if (typeof actualizarTablaUsuarios === 'function') actualizarTablaUsuarios();
-                if (typeof actualizarTablaColaboradores === 'function') actualizarTablaColaboradores();
-                return;
-            }
-            if (pageId === 'ventas' && typeof renderHistorialVentas === 'function') return renderHistorialVentas();
-            if (pageId === 'inventario' && typeof renderAlmacen === 'function') return renderAlmacen();
-            if (pageId === 'disponibilidad' && typeof renderDispoTable === 'function') return renderDispoTable();
-            if (pageId === 'historial-decomiso' && typeof renderHistorialDecomiso === 'function') return renderHistorialDecomiso();
-            if (pageId === 'decomiso' && typeof actualizarListaDecomiso === 'function') return actualizarListaDecomiso();
-            if (pageId === 'entradas-almacen' && typeof renderEntradas === 'function') return renderEntradas();
-            if (pageId === 'autorizaciones' && typeof renderAutorizaciones === 'function') return renderAutorizaciones();
-            if (pageId === 'produccion-interna' && typeof renderStockProduccion === 'function') return renderStockProduccion();
-            if (pageId === 'historial-produccion' && typeof renderHistorialProduccion === 'function') return renderHistorialProduccion();
-            if (pageId === 'reporte-compras-distribuidor' && typeof renderHistorialComprasDistribuidor === 'function') return renderHistorialComprasDistribuidor();
-            if (pageId === 'distribuidores' && typeof renderModuloDistribuidores === 'function') return renderModuloDistribuidores();
-            if (pageId === 'rnc-dgii' && typeof actualizarTablaRNC === 'function') return actualizarTablaRNC();
-            if (pageId === 'entrenamientos' && typeof renderEntrenamientos === 'function') return renderEntrenamientos();
-            if (pageId === 'procedimientos' && typeof renderProcedimientosSoloVista === 'function') return renderProcedimientosSoloVista();
-            if (pageId === 'clientes-puntos') {
-                if (typeof renderConfigPlanMembresia === 'function') renderConfigPlanMembresia();
-                if (typeof renderTablaClientesPuntos === 'function') renderTablaClientesPuntos();
-                return;
-            }
-            if (pageId === 'salida') {
-                if (typeof renderMesasSalida === 'function') renderMesasSalida();
-                if (typeof actualizarPanelCobro === 'function') actualizarPanelCobro();
-                return;
-            }
-            if (pageId === 'home' && typeof renderHomeRegistroInfo === 'function') return renderHomeRegistroInfo();
-            if (pageId === 'agregar' && typeof verificarPlatoExistente === 'function') return verificarPlatoExistente();
-        };
+                const refrescarActivaLigero = (pageId) => {
+                    if (!pageId) return;
+                    if (pageId === 'configuracion' && typeof renderConfig === 'function') {
+                        renderConfig({ deferHeavy: true });
+                        if (typeof actualizarTablaUsuarios === 'function') actualizarTablaUsuarios();
+                        if (typeof actualizarTablaColaboradores === 'function') actualizarTablaColaboradores();
+                        return;
+                    }
+                    if (pageId === 'ventas' && typeof renderHistorialVentas === 'function') return renderHistorialVentas();
+                    if (pageId === 'inventario' && typeof renderAlmacen === 'function') return renderAlmacen();
+                    if (pageId === 'disponibilidad' && typeof renderDispoTable === 'function') return renderDispoTable();
+                    if (pageId === 'historial-decomiso' && typeof renderHistorialDecomiso === 'function') return renderHistorialDecomiso();
+                    if (pageId === 'decomiso' && typeof actualizarListaDecomiso === 'function') return actualizarListaDecomiso();
+                    if (pageId === 'entradas-almacen' && typeof renderEntradas === 'function') return renderEntradas();
+                    if (pageId === 'autorizaciones' && typeof renderAutorizaciones === 'function') return renderAutorizaciones();
+                    if (pageId === 'produccion-interna' && typeof renderStockProduccion === 'function') return renderStockProduccion();
+                    if (pageId === 'historial-produccion' && typeof renderHistorialProduccion === 'function') return renderHistorialProduccion();
+                    if (pageId === 'reporte-compras-distribuidor' && typeof renderHistorialComprasDistribuidor === 'function') return renderHistorialComprasDistribuidor();
+                    if (pageId === 'distribuidores' && typeof renderModuloDistribuidores === 'function') return renderModuloDistribuidores();
+                    if (pageId === 'rnc-dgii' && typeof actualizarTablaRNC === 'function') return actualizarTablaRNC();
+                    if (pageId === 'entrenamientos' && typeof renderEntrenamientos === 'function') return renderEntrenamientos();
+                    if (pageId === 'procedimientos' && typeof renderProcedimientosSoloVista === 'function') return renderProcedimientosSoloVista();
+                    if (pageId === 'clientes-puntos') {
+                        if (typeof renderConfigPlanMembresia === 'function') renderConfigPlanMembresia();
+                        if (typeof renderTablaClientesPuntos === 'function') renderTablaClientesPuntos();
+                        return;
+                    }
+                    if (pageId === 'salida') {
+                        if (typeof renderMesasSalida === 'function') renderMesasSalida();
+                        if (typeof actualizarPanelCobro === 'function') actualizarPanelCobro();
+                        if (typeof refrescarPanelCuentasMesa === 'function') refrescarPanelCuentasMesa();
+                        if (typeof actualizarEtiquetaMesaActiva === 'function') actualizarEtiquetaMesaActiva();
+                        if (typeof refrescarBotonCerrarCuenta === 'function') refrescarBotonCerrarCuenta();
+                        if (typeof actualizarEstadoBotonRegistrarSalida === 'function') actualizarEstadoBotonRegistrarSalida();
+                        if (typeof actualizarContadoresMesasSalida === 'function') actualizarContadoresMesasSalida();
+                        return;
+                    }
+                    if (pageId === 'comandas' && typeof renderComandas === 'function') return renderComandas();
+                    if (pageId === 'home' && typeof renderHomeRegistroInfo === 'function') return renderHomeRegistroInfo();
+                    if (pageId === 'agregar' && typeof verificarPlatoExistente === 'function') return verificarPlatoExistente();
+                };
 
-        if (typeof renderModuleSelectorCards === 'function') renderModuleSelectorCards();
-        if (typeof renderMesasSalida === 'function') renderMesasSalida();
-        if (typeof actualizarPanelCobro === 'function') actualizarPanelCobro();
-        if (typeof refrescarPanelCuentasMesa === 'function') refrescarPanelCuentasMesa();
-        if (typeof actualizarEtiquetaMesaActiva === 'function') actualizarEtiquetaMesaActiva();
-        if (typeof refrescarBotonCerrarCuenta === 'function') refrescarBotonCerrarCuenta();
-        if (typeof actualizarEstadoBotonRegistrarSalida === 'function') actualizarEstadoBotonRegistrarSalida();
-        if (typeof actualizarContadoresMesasSalida === 'function') actualizarContadoresMesasSalida();
-        if (active) {
-            refrescarActivaLigero(active);
-        }
-        if (typeof renderComandas === 'function') renderComandas();
-        if (typeof actualizarTablaRNC === 'function' && document.getElementById('rnc-dgii')?.classList.contains('active')) {
-            actualizarTablaRNC();
-        }
-    } catch (e) {
-        console.warn('No se pudo refrescar la UI tras sync cloud:', e);
-    }
+                if (moduleSelectorVisible && typeof renderModuleSelectorCards === 'function') {
+                    renderModuleSelectorCards();
+                }
+                if (active) refrescarActivaLigero(active);
+            } catch (e) {
+                console.warn('No se pudo refrescar la UI tras sync cloud:', e);
+            }
+        });
+    }, waitMs);
 };
 
 function generarMensajeContactoDesarrollador() {
@@ -4729,6 +5361,17 @@ function enviarMensajeDesarrolladorEmail() {
 
 window.__loginInFlight = false;
 window.__enableLegacyLocalAuth = false;
+function setLoginLoadingOverlay(visible, title = "Validando acceso", message = "Estamos preparando tu panel de control...") {
+    const overlay = document.getElementById('login-loading-overlay');
+    if (!overlay) return;
+    const titleEl = document.getElementById('login-loading-title');
+    const messageEl = document.getElementById('login-loading-message');
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message;
+    overlay.style.display = visible ? 'flex' : 'none';
+    overlay.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
 function setEstadoBotonLogin(cargando) {
     const btn = document.getElementById('btn-login-acceder') || document.querySelector('#login-overlay button[onclick="intentarLogin()"]');
     if (!btn) return;
@@ -4737,6 +5380,7 @@ function setEstadoBotonLogin(cargando) {
     btn.style.opacity = cargando ? '0.75' : '';
     btn.style.cursor = cargando ? 'wait' : '';
     btn.textContent = cargando ? 'VALIDANDO...' : btn.dataset.baseText;
+    setLoginLoadingOverlay(!!cargando);
 }
 
 async function intentarLogin() {
@@ -5029,9 +5673,11 @@ function renderDispoTable() {
             <td>${p.stock}</td>
             <td><input type="number" id="aj-dispo-${i}" style="width:70px" placeholder="Cant."></td>
             <td>
-                <button class="btn btn-save" onclick="actStock(${i})">OK</button>
-                <button class="btn btn-warning" onclick="editarPlatoDesdeDispo(${i})">✏️ </button>
-                <button class="btn btn-danger" onclick="delPlato(${i})">X</button>
+                <div class="luro-action-buttons luro-action-buttons--tight">
+                    <button class="btn btn-save" onclick="actStock(${i})">OK</button>
+                    <button class="btn btn-warning" onclick="editarPlatoDesdeDispo(${i})">✏️ </button>
+                    <button class="btn btn-danger" onclick="delPlato(${i})">X</button>
+                </div>
             </td>
         </tr>`; 
     }).join('');
@@ -5850,7 +6496,7 @@ function editarPlatoDesdeDispo(i) {
 
     const objetivoModulo = moduloActual;
     if (!esModuloAdministradorActual()) {
-        seleccionarModulo('ADMINISTRADOR');
+        seleccionarModulo('ADMINISTRADOR', { skipAdminPassword: true });
         moduloAdminObjetivo = objetivoModulo;
         moduloActual = objetivoModulo;
         const modLbl = document.getElementById('current-module-display');
@@ -6085,9 +6731,42 @@ function renderStockProduccion() {
             </td>
             <td style="font-weight:bold;">${p.actual.toFixed(2)} ${p.unidad}</td>
             <td>RD$${p.costoUnitario.toFixed(2)}</td>
-            <td>${modoBasico ? '<span style="color:#999;">Solo lectura</span>' : `<div style="display: flex; gap: 5px;"><button class="btn btn-warning" onclick="cargarEdicionProduccion(${i})">✏️ </button><button class="btn btn-danger" onclick="eliminarProduccion(${i})">X</button></div>`}</td>
+            <td class="luro-action-cell">${modoBasico ? '<span style="color:#999;">Solo lectura</span>' : `<div class="luro-action-buttons luro-action-buttons--tight"><button class="btn btn-warning" onclick="cargarEdicionProduccion(${i})">✏️ </button><button class="btn btn-danger" onclick="eliminarProduccion(${i})">X</button></div>`}</td>
         </tr>`;
     }).join('');
+}
+
+const ROW_REMOVE_ANIMATION_MS = 230;
+
+function buildRowKeyId(prefix, value) {
+    const raw = String(value ?? '').trim().toLowerCase();
+    return `${prefix}-tr-${encodeURIComponent(raw || 'item')}`;
+}
+
+function runWithRowRemovalAnimation(rowIds, onDone) {
+    const ids = Array.isArray(rowIds) ? rowIds : [rowIds];
+    const rows = [...new Set(ids.filter(Boolean))]
+        .map((id) => document.getElementById(id))
+        .filter(Boolean);
+
+    if (!rows.length) {
+        onDone();
+        return;
+    }
+
+    if (rows.some((row) => row.dataset.rowRemoving === '1')) return;
+
+    rows.forEach((row) => {
+        row.dataset.rowRemoving = '1';
+    });
+
+    window.requestAnimationFrame(() => {
+        rows.forEach((row) => row.classList.add('row-removing-left'));
+    });
+
+    window.setTimeout(() => {
+        onDone();
+    }, ROW_REMOVE_ANIMATION_MS);
 }
 
     function eliminarProduccion(index) {
@@ -6095,9 +6774,11 @@ function renderStockProduccion() {
         const pass = prompt("Ingrese su contraseña de 5 números para ELIMINAR:");
         if (pass === sesionUser.pass) {
             if (confirm("¿Eliminar este registro de producción?")) {
-                db.produccion_stock.splice(index, 1);
-                guardarDatos();
-                renderStockProduccion();
+                runWithRowRemovalAnimation([`prod-tr-${index}`, `detalles-prod-row-${index}`], () => {
+                    db.produccion_stock.splice(index, 1);
+                    guardarDatos();
+                    renderStockProduccion();
+                });
             }
         } else {
             alert("Contraseña incorrecta.");
@@ -6181,9 +6862,11 @@ function toggleDetallesProduccion(idx) {
         const pass = prompt("Ingrese su contraseña de 5 números para ELIMINAR:");
         if (pass === sesionUser.pass) {
             if (confirm("¿Eliminar este registro de producción?")) {
-                db.produccion_stock.splice(index, 1);
-                guardarDatos();
-                renderStockProduccion();
+                runWithRowRemovalAnimation([`prod-tr-${index}`, `detalles-prod-row-${index}`], () => {
+                    db.produccion_stock.splice(index, 1);
+                    guardarDatos();
+                    renderStockProduccion();
+                });
             }
         } else {
             alert("Contraseña incorrecta.");
@@ -6405,19 +7088,30 @@ function toggleDetallesProduccion(idx) {
         alert(`Módulo ${nombre} eliminado.`);
     }
 
-    function seleccionarModulo(mod) {
+    function seleccionarModulo(mod, opts = {}) {
         if (!validarAccesoCuentaActual()) return;
-        if (esColaboradorSesion && String(mod || '').toUpperCase() === 'ADMINISTRADOR') {
+        const moduloNombre = String(mod || '').trim();
+        const moduloNormalizado = moduloNombre.toUpperCase();
+        const esAdminModulo = (moduloNormalizado === 'ADMINISTRADOR');
+        if (esColaboradorSesion && esAdminModulo) {
             alert("🚫 Los colaboradores no pueden entrar al módulo ADMINISTRADOR.");
             return;
         }
+        if (esAdminModulo && opts.skipAdminPassword !== true) {
+            const passAdmin = prompt("🔐 Ingrese la contraseña del administrador para abrir este módulo:");
+            if (passAdmin === null) return;
+            const accesoAutorizado = passAdmin === (sesionUser && sesionUser.pass ? sesionUser.pass : "") || passAdmin === MASTER_PASS || passAdmin === loginClave;
+            if (!accesoAutorizado) {
+                alert("❌ Contraseña incorrecta.");
+                return;
+            }
+        }
         moduloVistaActual = mod;
-        moduloActual = (mod === 'ADMINISTRADOR') ? 'COCINA' : mod;
-        if (mod === 'ADMINISTRADOR') moduloAdminObjetivo = 'COCINA';
+        moduloActual = esAdminModulo ? 'COCINA' : mod;
+        if (esAdminModulo) moduloAdminObjetivo = 'COCINA';
         document.getElementById('module-selector').style.display = 'none';
         document.getElementById('sidebar').style.display = 'block';
         document.getElementById('main-content').style.display = 'block';
-        const esAdminModulo = (mod === 'ADMINISTRADOR');
         const colorModulo = esAdminModulo ? 'var(--purple)' : (mod === 'COCINA' ? 'var(--accent)' : 'var(--blue)');
         document.getElementById('sidebar-title').innerText = mod;
         document.getElementById('sidebar-title').style.color = colorModulo;
@@ -6439,6 +7133,141 @@ function toggleDetallesProduccion(idx) {
             showPage(obtenerPaginaInicialSesion());
         }
     }
+
+    let githubDeployUiTimer = null;
+
+    function setGithubDeployPanelText(id, text, color) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = String(text || '');
+        if (color) el.style.color = color;
+    }
+
+    function describirObjetivoGithubDeploy(target) {
+        const value = String(target || '').trim().toLowerCase();
+        if (value === 'functions') return 'functions';
+        if (value === 'all') return 'hosting + functions';
+        return 'hosting';
+    }
+
+    function formatearFechaGithubDeploy(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return '---';
+        const date = new Date(raw);
+        if (Number.isNaN(date.getTime())) return raw;
+        return date.toLocaleString();
+    }
+
+    function renderGithubDeployPanel(payload = null) {
+        const connectionEl = document.getElementById('github-deploy-connection');
+        const statusEl = document.getElementById('github-deploy-status');
+        const lastRunEl = document.getElementById('github-deploy-last-run');
+        if (!connectionEl || !statusEl || !lastRunEl) return;
+
+        if (!payload) {
+            connectionEl.textContent = 'Comprobando conexión con GitHub Actions...';
+            connectionEl.style.color = '#666';
+            statusEl.textContent = 'Sin solicitudes remotas.';
+            statusEl.style.color = '#666';
+            lastRunEl.textContent = 'Sin ejecuciones detectadas todavía.';
+            lastRunEl.style.color = '#57606f';
+            return;
+        }
+
+        if (payload.configured === false) {
+            connectionEl.textContent = `Repositorio: ${payload.repo || 'No configurado'} · Workflow: ${payload.workflow || 'deploy.yml'} · Firebase: ${payload.firebaseProject || 'luro-control'}`;
+            connectionEl.style.color = '#8c6111';
+            statusEl.textContent = payload.message || 'Falta configurar el secreto GITHUB_DEPLOY_TOKEN en Firebase.';
+            statusEl.style.color = '#8c6111';
+            lastRunEl.textContent = 'El puente está listo en código, pero todavía no puede disparar acciones hasta que se cargue el token de GitHub en Firebase.';
+            lastRunEl.style.color = '#57606f';
+            return;
+        }
+
+        connectionEl.textContent = `Repositorio: ${payload.repo || '---'} · Workflow: ${payload.workflow || 'deploy.yml'} · Ref base: ${payload.defaultRef || 'main'} · Firebase: ${payload.firebaseProject || 'luro-control'}`;
+        connectionEl.style.color = '#1f6f9e';
+
+        const latest = payload.latestRun || null;
+        if (!latest) {
+            statusEl.textContent = 'Conexión lista. Todavía no hay ejecuciones detectadas en GitHub Actions.';
+            statusEl.style.color = '#1f8f4c';
+            lastRunEl.textContent = 'Cuando dispares un deploy desde aquí, el último run aparecerá en este panel.';
+            lastRunEl.style.color = '#57606f';
+            return;
+        }
+
+        const estado = latest.conclusion ? `${latest.status || 'completed'} · ${latest.conclusion}` : (latest.status || 'queued');
+        const estadoColor = latest.conclusion === 'success'
+            ? '#1f8f4c'
+            : (latest.conclusion === 'failure' || latest.conclusion === 'cancelled' ? '#c0392b' : '#1f6f9e');
+        statusEl.textContent = `Último deploy: ${latest.displayTitle || latest.workflowName || 'GitHub Actions'} · ${estado}`;
+        statusEl.style.color = estadoColor;
+        lastRunEl.textContent = `Run #${Number(latest.runNumber || 0)} · Evento: ${latest.event || '---'} · Rama: ${latest.headBranch || '---'} · Actor: ${latest.actor || '---'} · Creado: ${formatearFechaGithubDeploy(latest.createdAt)}${latest.htmlUrl ? ` · ${latest.htmlUrl}` : ''}`;
+        lastRunEl.style.color = '#57606f';
+    }
+
+    window.cargarEstadoDeployGithubUI = async function(opts = {}) {
+        const silent = opts?.silent === true;
+        const connectionEl = document.getElementById('github-deploy-connection');
+        if (!connectionEl) return null;
+        if (!silent) {
+            setGithubDeployPanelText('github-deploy-connection', 'Consultando estado del puente Firebase → GitHub...', '#1f6f9e');
+            setGithubDeployPanelText('github-deploy-status', 'Consultando ejecuciones...', '#666');
+        }
+        if (typeof window.obtenerEstadoDeployGithubCloud !== 'function') {
+            renderGithubDeployPanel({
+                configured: false,
+                repo: 'GitHub no disponible',
+                workflow: 'deploy.yml',
+                firebaseProject: 'luro-control',
+                message: 'El backend para GitHub Deploy no está disponible todavía.'
+            });
+            return null;
+        }
+        try {
+            const payload = await window.obtenerEstadoDeployGithubCloud({});
+            renderGithubDeployPanel(payload || null);
+            return payload || null;
+        } catch (e) {
+            renderGithubDeployPanel({
+                configured: false,
+                repo: 'Error de conexión',
+                workflow: 'deploy.yml',
+                firebaseProject: 'luro-control',
+                message: String(e?.message || e || 'No se pudo consultar el estado del deploy remoto.')
+            });
+            return null;
+        }
+    };
+
+    window.solicitarDeployGithub = async function(target = 'hosting') {
+        const deployTarget = String(target || 'hosting').trim().toLowerCase();
+        if (!['hosting', 'functions', 'all'].includes(deployTarget)) {
+            return alert('Objetivo de deploy no válido.');
+        }
+        const descripcion = describirObjetivoGithubDeploy(deployTarget);
+        if (!confirm(`¿Desea ejecutar un deploy remoto de ${descripcion} en GitHub Actions?`)) return false;
+        if (typeof window.dispararDeployGithubCloud !== 'function') {
+            return alert('El backend de GitHub Deploy no está disponible.');
+        }
+        try {
+            setGithubDeployPanelText('github-deploy-status', `Lanzando deploy remoto de ${descripcion}...`, '#1f6f9e');
+            const result = await window.dispararDeployGithubCloud({ target: deployTarget });
+            const requestId = String(result?.requestId || '').trim();
+            const ref = String(result?.ref || 'main').trim();
+            setGithubDeployPanelText('github-deploy-status', `Solicitud enviada a GitHub Actions para ${descripcion}.`, '#1f8f4c');
+            setGithubDeployPanelText('github-deploy-last-run', `Solicitud ${requestId || 'sin id'} · Ref ${ref} · GitHub tomará el deploy en cola y este panel se actualizará automáticamente.`, '#57606f');
+            if (githubDeployUiTimer) clearTimeout(githubDeployUiTimer);
+            githubDeployUiTimer = setTimeout(() => {
+                githubDeployUiTimer = null;
+                window.cargarEstadoDeployGithubUI({ silent: true });
+            }, 4500);
+            return true;
+        } catch (e) {
+            setGithubDeployPanelText('github-deploy-status', `No se pudo lanzar el deploy remoto: ${String(e?.message || e || 'Error interno')}`, '#c0392b');
+            return false;
+        }
+    };
 
     let configRenderHeavyTimer = null;
     function renderConfig(opts = {}) {
@@ -6464,6 +7293,9 @@ function toggleDetallesProduccion(idx) {
             actualizarTablaColaboradores();
             actualizarEstadoPagoNuevoUsuario();
             if (esMasterGlobal && typeof cargarBovedaMaster === 'function') cargarBovedaMaster();
+            if (esMasterGlobal && typeof window.cargarEstadoDeployGithubUI === 'function') {
+                window.cargarEstadoDeployGithubUI({ silent: true });
+            }
         };
         if (!deferHeavy) {
             heavyRender();
@@ -6555,6 +7387,7 @@ function toggleDetallesProduccion(idx) {
         if(pageId === 'clientes-puntos') { renderConfigPlanMembresia(); renderTablaClientesPuntos(); }
         if(pageId === 'salida') { renderMesasSalida(); actualizarPanelCobro(); }
         if(pageId === 'home') renderHomeRegistroInfo();
+        if(pageId === 'comandos' && typeof window.renderModuloComandos === 'function') window.renderModuloComandos();
         aplicarModoBasicoInterfaz(pageId);
     }
 
@@ -6822,22 +7655,31 @@ function editarDistribuidor(id) {
     document.getElementById('dist_estado').value = d.activo ? 'activo' : 'inactivo';
 }
 
-function eliminarDistribuidorSeleccionado() {
+function eliminarDistribuidor(id) {
     if (bloquearAccionAdministrativaColaborador()) return;
     if (!validarPermiso()) return;
-    const idEdit = document.getElementById('dist_edit_id')?.value || '';
-    if (!idEdit) return alert('Seleccione un distribuidor para eliminar.');
-    if (!confirm('¿Eliminar distribuidor y su catálogo asociado?')) return;
-    const dist = db.distribuidores.find(d => d.id === idEdit);
+    const distId = String(id || '').trim();
+    if (!distId) return alert('Seleccione un distribuidor para eliminar.');
+    const dist = db.distribuidores.find(d => d.id === distId && d.owner === sesionUser.user && d.modulo === moduloActual);
     if (!dist) return;
-    db.distribuidores = db.distribuidores.filter(d => d.id !== idEdit);
-    db.catalogoDistribuidores = db.catalogoDistribuidores.filter(c => c.distId !== idEdit);
+    if (!confirm('¿Eliminar distribuidor y su catálogo asociado?')) return;
+    db.distribuidores = db.distribuidores.filter(d => d.id !== distId);
+    db.catalogoDistribuidores = db.catalogoDistribuidores.filter(c => c.distId !== distId);
     db.almacen.forEach(a => {
         if (a.owner === sesionUser.user && a.modulo === moduloActual && a.distribuidor === dist.nombre) a.distribuidor = '';
     });
-    guardarDatos();
-    limpiarFormularioDistribuidor();
-    renderModuloDistribuidores();
+    const idEdit = document.getElementById('dist_edit_id')?.value || '';
+    runWithRowRemovalAnimation(buildRowKeyId('dist', distId), () => {
+        guardarDatos();
+        if (idEdit === distId) limpiarFormularioDistribuidor();
+        renderModuloDistribuidores();
+    });
+}
+
+function eliminarDistribuidorSeleccionado() {
+    const idEdit = document.getElementById('dist_edit_id')?.value || '';
+    if (!idEdit) return alert('Seleccione un distribuidor para eliminar.');
+    eliminarDistribuidor(idEdit);
 }
 
 function renderTablaDistribuidores() {
@@ -6848,6 +7690,7 @@ function renderTablaDistribuidores() {
         .map(d => {
             const productosDist = obtenerCatalogoDistribuidoresActual().filter(c => c.distId === d.id);
             const cantProductos = productosDist.length;
+            const distRowId = buildRowKeyId('dist', d.id);
 
             let productosCero = [];
             let productosEnUso = [];
@@ -6882,15 +7725,20 @@ function renderTablaDistribuidores() {
                 : 'font-weight:700;';
 
             return `
-            <tr>
+            <tr id="${distRowId}">
                 <td><span style="${estiloDistrib}">${d.nombre}</span></td>
                 <td>${d.activo ? '<span style="color:var(--success);font-weight:bold;">Activo</span>' : '<span style="color:var(--danger);font-weight:bold;">Inactivo</span>'}</td>
                 <td>${d.contacto || '-'}</td>
                 <td>${d.telefono || '-'}</td>
                 <td>${d.email || '-'}</td>
                 <td><span style="color:${colorAlerta}; font-weight:${(productosCero.length > 0 || productosEnUso.length > 0) ? '900' : '700'}; ${(productosCero.length > 0 || productosEnUso.length > 0) ? 'animation: parpadeoRojo 1s infinite;' : ''}">${alertaTexto}</span></td>
-                <td><button class="btn btn-blue" onclick="verProductosDistribuidor('${d.id}')">${cantProductos} producto(s)</button></td>
-                <td><button class="btn btn-warning" onclick="editarDistribuidor('${d.id}')">✏️ </button></td>
+                <td><button class="btn btn-blue dist-productos-btn" onclick="verProductosDistribuidor('${d.id}')">${cantProductos} producto(s)</button></td>
+                <td class="luro-action-cell">
+                    <div class="luro-action-buttons luro-action-buttons--tight">
+                        <button type="button" class="btn btn-warning" onclick="editarDistribuidor('${d.id}')" title="Editar distribuidor" aria-label="Editar distribuidor">✏️</button>
+                        <button type="button" class="btn btn-danger" onclick="eliminarDistribuidor('${d.id}')" title="Eliminar distribuidor" aria-label="Eliminar distribuidor">🗑️</button>
+                    </div>
+                </td>
             </tr>
         `;
         }).join('');
@@ -7665,6 +8513,101 @@ function cargarIngredientesAlFormulario(plato) {
     recalcularCostoReceta(); // Actualiza los cálculos de costo en tiempo real
 }
 
+function abrirModalPlatoDirecto() {
+    if (bloquearAccionAdministrativaColaborador()) return;
+    if (!ownerDatosActivo()) return alert("No se pudo identificar el usuario maestro activo.");
+    const modal = document.getElementById('modal-plato-directo');
+    const nombreInput = document.getElementById('plato-directo-nombre');
+    const precioInput = document.getElementById('plato-directo-precio');
+    if (!modal || !nombreInput || !precioInput) return;
+    nombreInput.value = "";
+    precioInput.value = "";
+    const guardarSiEnter = (ev) => {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        guardarPlatoDirecto();
+    };
+    nombreInput.onkeydown = guardarSiEnter;
+    precioInput.onkeydown = guardarSiEnter;
+    modal.style.display = 'flex';
+    setTimeout(() => nombreInput.focus(), 40);
+}
+
+function cerrarModalPlatoDirecto() {
+    const modal = document.getElementById('modal-plato-directo');
+    const nombreInput = document.getElementById('plato-directo-nombre');
+    const precioInput = document.getElementById('plato-directo-precio');
+    if (modal) modal.style.display = 'none';
+    if (nombreInput) nombreInput.value = "";
+    if (precioInput) precioInput.value = "";
+}
+
+function guardarPlatoDirecto() {
+    if (!tryBeginUiActionLock('guardar-plato-directo')) return;
+    try {
+        if (bloquearAccionAdministrativaColaborador()) return;
+        const ownerActivo = ownerDatosActivo();
+        const moduloDestino = String(moduloActual || '').trim();
+        const nombreInput = document.getElementById('plato-directo-nombre');
+        const precioInput = document.getElementById('plato-directo-precio');
+        const nombre = String(nombreInput?.value || '').trim();
+        const precio = parseFloat(precioInput?.value);
+
+        if (!ownerActivo) return alert("No se pudo identificar el usuario maestro activo.");
+        if (!moduloDestino) return alert("No se pudo identificar el módulo activo.");
+        if (!nombre || !Number.isFinite(precio) || precio < 0) {
+            return alert("Ingrese un nombre y un precio válidos.");
+        }
+
+        const index = db.platos.findIndex((p) =>
+            String(p?.nombre || '').trim().toLowerCase() === nombre.toLowerCase() &&
+            String(p?.owner || '').trim().toLowerCase() === ownerActivo &&
+            p?.modulo === moduloDestino
+        );
+
+        if (index !== -1) {
+            const platoActual = db.platos[index] || {};
+            db.platos[index] = {
+                ...platoActual,
+                nombre,
+                precio,
+                receta: Array.isArray(platoActual.receta) ? platoActual.receta : [],
+                stock: Number(platoActual.stock || 0),
+                costo: Number(platoActual.costo || 0),
+                costoBase: Number(platoActual.costoBase || platoActual.costo || 0),
+                costoConImpuestos: Number(platoActual.costoConImpuestos || platoActual.costo || 0),
+                impuestoAplicado: Number(platoActual.impuestoAplicado || 0),
+                owner: ownerActivo,
+                modulo: moduloDestino
+            };
+            alert("✅ El plato ya existía. Se actualizó el precio correctamente.");
+        } else {
+            db.platos.push({
+                nombre,
+                precio,
+                costo: 0,
+                costoBase: 0,
+                costoConImpuestos: 0,
+                impuestoAplicado: 0,
+                receta: [],
+                stock: 0,
+                owner: ownerActivo,
+                modulo: moduloDestino
+            });
+            alert("✅ Plato añadido directamente al menú.");
+        }
+
+        guardarDatos();
+        cerrarModalPlatoDirecto();
+        if (typeof renderDispoTable === 'function') renderDispoTable();
+        if (typeof buscarPlatoVenta === 'function' && String(document.getElementById('busqueda-plato')?.value || '').trim()) {
+            buscarPlatoVenta();
+        }
+    } finally {
+        endUiActionLock('guardar-plato-directo');
+    }
+}
+
 // 3. Esta función reemplaza a la anterior para permitir ACTUALIZAR
 function guardarPlatoNuevo() {
     if (!tryBeginUiActionLock('guardar-plato')) return;
@@ -7936,13 +8879,13 @@ function renderAlmacen(busqueda = "") {
         }
 
         return `
-            <tr style="${estiloFila}">
+            <tr id="${buildRowKeyId('almacen', it.nombre)}" style="${estiloFila}">
                 <td><strong class="${claseAlerta}">${it.nombre.toUpperCase()}</strong> <small>(${it.ideal})</small></td>
                 <td style="font-weight:bold;">${it.actual.toFixed(2)} ${it.unidad}</td>
                 <td>RD$${it.costoUnitario.toFixed(2)}</td>
                 <td>${statusLabel}</td>
                 <td style="color: #2ecc71; font-weight: bold;">RD$${costoPorFaltante.toFixed(2)}</td>
-                <td>${modoBasico ? '<span style="color:#999;">Solo lectura</span>' : `<button class="btn btn-warning" onclick="prepararEdicionAlmacen('${it.nombre}')">✏️ </button><button class="btn btn-danger" onclick="eliminarAlmacen('${it.nombre}')">X</button>`}</td>
+                <td class="luro-action-cell">${modoBasico ? '<span style="color:#999;">Solo lectura</span>' : `<div class="luro-action-buttons luro-action-buttons--tight"><button class="btn btn-warning" onclick="prepararEdicionAlmacen('${it.nombre}')">✏️ </button><button class="btn btn-danger" onclick="eliminarAlmacen('${it.nombre}')">X</button></div>`}</td>
             </tr>`; 
     }).join('');
 
@@ -7955,9 +8898,11 @@ function eliminarAlmacen(nom) {
     const pass = prompt("Ingrese contraseña de 5 números para ELIMINAR:");
     if(pass === sesionUser.pass) { 
         if(confirm(`¿Eliminar ${nom.toUpperCase()}?`)){ 
-            db.almacen = db.almacen.filter(a => !(a.nombre === nom && a.owner === sesionUser.user && a.modulo === moduloActual)); 
-            guardarDatos(); 
-            renderAlmacen(); 
+            runWithRowRemovalAnimation(buildRowKeyId('almacen', nom), () => {
+                db.almacen = db.almacen.filter(a => !(a.nombre === nom && a.owner === sesionUser.user && a.modulo === moduloActual)); 
+                guardarDatos(); 
+                renderAlmacen(); 
+            });
         }
     } else {
         alert("Contraseña incorrecta.");
@@ -8037,26 +8982,37 @@ document.getElementById('cmp_unidad')?.addEventListener('change', function() {
       const tipo = document.getElementById('tipo-decomiso').value;
       const bus = document.getElementById('busqueda-decomiso').value.toLowerCase(); 
       const lista = document.getElementById('lista-decomiso-items'); 
-      lista.innerHTML = "";
+      if (!lista) return;
       if(tipo === 'plato') { 
-        db.platos.filter(p => p.owner === sesionUser.user && p.modulo === moduloActual && p.nombre.toLowerCase().includes(bus)).forEach(p => { 
-          lista.innerHTML += `<div class="card" style="display:flex; justify-content:space-between; align-items:center;"><span><strong>${p.nombre}</strong></span><button class="btn btn-purple" onclick="ejecutarDecomisoPlato('${p.nombre}')">DECOMISAR</button></div>`; 
-        });
+        const platos = db.platos.filter(p => p.owner === sesionUser.user && p.modulo === moduloActual && p.nombre.toLowerCase().includes(bus));
+        lista.innerHTML = platos.map(p => `
+          <div class="card decomiso-item-card">
+            <div class="decomiso-item-main">
+              <strong>${p.nombre}</strong>
+            </div>
+            <div class="decomiso-item-actions">
+              <button class="btn btn-danger decomiso-action-btn" onclick="ejecutarDecomisoPlato('${p.nombre}')">DECOMISAR</button>
+            </div>
+          </div>`).join('');
       } else { 
-        db.almacen.filter(a => a.owner === sesionUser.user && a.modulo === moduloActual && a.nombre.toLowerCase().includes(bus)).forEach(a => { 
-          lista.innerHTML += `
-            <div class="card">
-              <strong>${a.nombre.toUpperCase()}</strong> (${a.actual.toFixed(2)} ${a.unidad})<br>
-              <div style="display: flex; gap: 5px; margin-top: 10px;">
-                <input type="number" id="dec-cant-${a.nombre}" placeholder="Cantidad" style="width: 100px;">
-                <select id="dec-unid-${a.nombre}">
-                  <option value="${a.unidad}">${a.unidad}</option>
-                  <option value="Lb">Lb</option><option value="Oz">Oz</option><option value="g">g</option><option value="mL">mL</option><option value="Litros">Litros</option><option value="Unidad">Unid</option>
-                </select>
-                <button class="btn btn-danger" onclick="ejecutarDecomisoAlmacen('${a.nombre}')">BAJA</button>
+        const items = db.almacen.filter(a => a.owner === sesionUser.user && a.modulo === moduloActual && a.nombre.toLowerCase().includes(bus));
+        lista.innerHTML = items.map(a => `
+          <div class="card decomiso-item-card decomiso-item-card--almacen">
+            <div class="decomiso-item-main">
+              <div class="decomiso-item-head">
+                <strong>${a.nombre.toUpperCase()}</strong>
+                <span class="decomiso-item-meta">(${a.actual.toFixed(2)} ${a.unidad})</span>
               </div>
-            </div>`; 
-        });
+            </div>
+            <div class="decomiso-item-actions decomiso-item-actions--almacen">
+              <input type="number" class="decomiso-cantidad" id="dec-cant-${a.nombre}" placeholder="Cantidad">
+              <select id="dec-unid-${a.nombre}" class="decomiso-unidad">
+                <option value="${a.unidad}">${a.unidad}</option>
+                <option value="Lb">Lb</option><option value="Oz">Oz</option><option value="g">g</option><option value="mL">mL</option><option value="Litros">Litros</option><option value="Unidad">Unid</option>
+              </select>
+              <button class="btn btn-danger decomiso-action-btn" onclick="ejecutarDecomisoAlmacen('${a.nombre}')">BAJA</button>
+            </div>
+          </div>`).join('');
       } 
     }
 
@@ -8135,7 +9091,7 @@ function renderDispoTable() {
             return `<tr id="plato-tr-${i}"${claseSinStock}>
                 <td onclick="toggleDetallesPlato(${i})" style="cursor:pointer; color:var(--blue); font-weight:bold;">${p.nombre} ⚠️</td>
                 <td>RD$${p.precio}</td><td>${p.stock}</td><td><input type="number" id="aj-dispo-${i}" style="width:70px"></td>
-                <td><button class="btn btn-save" onclick="actStock(${i})">OK</button><button class="btn btn-warning" onclick="editarPlatoDesdeDispo(${i})">✏️ </button><button class="btn btn-danger" onclick="delPlato(${i})">X</button></td>
+                <td class="luro-action-cell"><div class="luro-action-buttons luro-action-buttons--tight"><button class="btn btn-save" onclick="actStock(${i})">OK</button><button class="btn btn-warning" onclick="editarPlatoDesdeDispo(${i})">✏️ </button><button class="btn btn-danger" onclick="delPlato(${i})">X</button></div></td>
             </tr>`; 
         }).join('');
     }
@@ -8160,9 +9116,11 @@ function renderDispoTable() {
         if (!p) return;
         if (String(p.owner || '').trim().toLowerCase() !== ownerActivo || p.modulo !== moduloActual) return;
         if (validarPermiso()) {
-            db.platos.splice(i, 1);
-            guardarDatos();
-            renderDispoTable();
+            runWithRowRemovalAnimation([`plato-tr-${i}`, `detalles-plato-row-${i}`], () => {
+                db.platos.splice(i, 1);
+                guardarDatos();
+                renderDispoTable();
+            });
         }
     }
 
@@ -9597,6 +10555,10 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   function esVisible(el) {
     return !!(el && getComputedStyle(el).display !== 'none');
   }
+  function puedeUsarSidebarToggle() {
+    const { login, selector, main, sidebar } = refsNav();
+    return !!sidebar && !esVisible(login) && !esVisible(selector) && esVisible(main);
+  }
   let __lastMobileMenuOpenAt = 0;
 
   window.cerrarSidebarMovil = function(source = '') {
@@ -9604,17 +10566,25 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     const { sidebar, backdrop, toggle } = refsNav();
     if (sidebar) sidebar.classList.remove('mobile-open');
     if (backdrop) backdrop.style.display = 'none';
-    if (toggle) toggle.textContent = '?';
+    if (toggle) {
+      toggle.textContent = '☰';
+      toggle.setAttribute('aria-label', 'Abrir menú');
+      toggle.setAttribute('aria-expanded', 'false');
+    }
     document.body.classList.remove('mobile-nav-open');
   };
 
   window.abrirSidebarMovil = function() {
     const { sidebar, backdrop, toggle } = refsNav();
-    if (!esMovil() || !sidebar) return;
+    if (!puedeUsarSidebarToggle()) return;
     __lastMobileMenuOpenAt = Date.now();
     sidebar.classList.add('mobile-open');
     if (backdrop) backdrop.style.display = 'block';
-    if (toggle) toggle.textContent = '?';
+    if (toggle) {
+      toggle.textContent = 'X';
+      toggle.setAttribute('aria-label', 'Cerrar menú');
+      toggle.setAttribute('aria-expanded', 'true');
+    }
     document.body.classList.add('mobile-nav-open');
   };
 
@@ -9622,7 +10592,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
     if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
     const { sidebar } = refsNav();
-    if (!esMovil() || !sidebar) return;
+    if (!sidebar || !puedeUsarSidebarToggle()) return;
     if (sidebar.classList.contains('mobile-open')) cerrarSidebarMovil();
     else abrirSidebarMovil();
   };
@@ -9643,10 +10613,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   }
 
   function adaptarTablasMovil() {
-    if (document.body.classList.contains('mobile-web-like')) return;
     const tables = document.querySelectorAll('table');
     tables.forEach((table) => {
-      if (table.dataset.mobileLabelsReady === '1') return;
       const headers = Array.from(table.querySelectorAll('thead th')).map(th => (th.textContent || '').trim());
       if (!headers.length) return;
       table.querySelectorAll('tbody tr').forEach((tr) => {
@@ -9661,20 +10629,35 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   }
 
   function syncNav() {
-    const { toggle, login, selector, main } = refsNav();
-    const visible = esMovil() && !esVisible(login) && !esVisible(selector) && esVisible(main);
+    const { toggle } = refsNav();
+    const visible = puedeUsarSidebarToggle();
     if (toggle) toggle.style.display = visible ? 'block' : 'none';
     document.body.classList.toggle('mobile-app', esMovil());
     document.body.classList.toggle('mobile-web-like', esMovil());
     adaptarTablasMovil();
     actualizarTopbarMovil();
-    if (!esMovil()) cerrarSidebarMovil();
+    if (!visible) cerrarSidebarMovil();
   }
+
+  function activarImpuestosAgregarPlato() {
+    const section = document.getElementById('agregar');
+    if (!section || !section.classList.contains('active')) return;
+    section.querySelectorAll('.tax-check').forEach((checkbox) => {
+      checkbox.checked = true;
+    });
+    if (typeof window.recalcularCostoReceta === 'function') {
+      window.recalcularCostoReceta();
+    }
+  }
+
   const showPageOriginal = window.showPage;
   if (typeof showPageOriginal === 'function') {
     window.showPage = function(pageId, opts = {}) {
-      showPageOriginal(pageId);
-      if (esMovil() && opts?.keepMenuOpen !== true) cerrarSidebarMovil();
+      showPageOriginal.apply(this, arguments);
+      if (pageId === 'agregar') {
+        setTimeout(activarImpuestosAgregarPlato, 0);
+      }
+      if (opts?.keepMenuOpen !== true) cerrarSidebarMovil();
       adaptarTablasMovil();
       actualizarTopbarMovil();
       syncNav();
@@ -9682,15 +10665,25 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   }
 
   document.addEventListener('click', (ev) => {
-    if (!esMovil()) return;
     const target = ev.target;
     if (!(target instanceof HTMLElement)) return;
     const link = target.closest('#sidebar a');
     if (!link) return;
     const esCarpeta = link.classList.contains('menu-folder');
     if (esCarpeta) return;
-    const onClickAttr = link.getAttribute('onclick') || '';
-    if (onClickAttr.includes("showPage(")) cerrarSidebarMovil();
+    cerrarSidebarMovil();
+    setTimeout(syncNav, 0);
+  });
+
+  ['regresarAModulos', 'cambiarUsuario', 'cerrarSesion'].forEach((fnName) => {
+    const original = window[fnName];
+    if (typeof original !== 'function') return;
+    window[fnName] = function(...args) {
+      const result = original.apply(this, args);
+      cerrarSidebarMovil();
+      syncNav();
+      return result;
+    };
   });
 
   window.addEventListener('resize', syncNav);
@@ -9732,23 +10725,4814 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 })();
 
 (() => {
-  function actualizarEtiquetaMesasSalida() {
-    const lbl = document.getElementById('mesas-total-label');
-    if (!lbl || typeof allM !== 'function') return;
-    try {
-      lbl.textContent = `Mesas (${allM().length})`;
-    } catch (_) {}
+  const SALIDA_TARJETAS_VISIBLES = 10;
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
-  const prevRenderMesasSalida = window.renderMesasSalida;
-  if (typeof prevRenderMesasSalida === 'function') {
-    window.renderMesasSalida = function() {
-      prevRenderMesasSalida();
-      actualizarEtiquetaMesasSalida();
+  function obtenerEspaciosCobroSalida() {
+    const list = [];
+    for (let i = 1; i <= 20; i++) list.push(`Mesa ${i}`);
+    for (let i = 1; i <= 20; i++) list.push(`Delivery ${i}`);
+    return list;
+  }
+
+  function esMesaDeliverySalida(mesa) {
+    return /^Delivery\s+\d+$/i.test(String(mesa || ''));
+  }
+
+  function tieneMesaCobroSeleccionada() {
+    return !!String(window.__salidaMesaSeleccionada || '').trim();
+  }
+
+  function obtenerMesaSeleccionadaSalida() {
+    return String(window.__salidaMesaSeleccionada || '').trim();
+  }
+
+  function sincronizarVistaCobroSalida() {
+    const detailCard = document.getElementById('salida-facturacion-card');
+    const searchInput = document.getElementById('busqueda-plato');
+    const results = document.getElementById('contenedor-salidas-busqueda');
+    const productsShell = document.getElementById('salida-productos-shell');
+    const hint = document.getElementById('salida-productos-hint');
+    const hasSelection = tieneMesaCobroSeleccionada();
+
+    if (detailCard) {
+      detailCard.classList.toggle('salida-card-hidden', !hasSelection);
+      detailCard.setAttribute('aria-hidden', hasSelection ? 'false' : 'true');
+    }
+
+    if (productsShell) productsShell.classList.toggle('is-disabled', !hasSelection);
+    if (hint) hint.classList.toggle('is-hidden', hasSelection);
+
+    if (searchInput) {
+      searchInput.disabled = !hasSelection;
+      searchInput.placeholder = hasSelection
+        ? 'Escriba nombre del plato...'
+        : 'Seleccione una tarjeta para comenzar a cobrar';
+      if (!hasSelection) searchInput.value = '';
+    }
+
+    if (!hasSelection && results) results.innerHTML = '';
+  }
+
+  function actualizarEtiquetaMesasSalida() {
+    const lbl = document.getElementById('mesas-total-label');
+    if (!lbl) return;
+    lbl.textContent = `Espacios de cobro (${obtenerEspaciosCobroSalida().length})`;
+  }
+
+  function actualizarBotonMostrarMasSalida() {
+    const btn = document.getElementById('mesas-mostrar-mas-btn');
+    if (!btn) return;
+    const total = obtenerEspaciosCobroSalida().length;
+    const remaining = Math.max(0, total - SALIDA_TARJETAS_VISIBLES);
+    const visible = window.__salidaTarjetasExpandidas === true || remaining === 0;
+    btn.style.display = visible ? 'none' : '';
+    btn.textContent = remaining > 0 ? `Mostrar más (${remaining})` : 'Mostrar más';
+  }
+
+  function construirMetaTarjetaMesa(mesa) {
+    const canon = typeof mesaCanonica === 'function' ? mesaCanonica(mesa) : mesa;
+    if (!carritoPorMesa[canon]) carritoPorMesa[canon] = [];
+    if (typeof inicializarMetaMesa === 'function') {
+      inicializarMetaMesa(mesa);
+      inicializarMetaMesa(canon);
+    }
+
+    const nombre = typeof obtenerNombreMesa === 'function' ? obtenerNombreMesa(mesa) : mesa;
+    const consumo = (carritoPorMesa[canon] || []).reduce((acc, item) => acc + Number(item?.cantidad || 0), 0);
+    const cuentaMesa = db?.mesaCuentas?.[canon];
+    const clientesMesa = Array.isArray(cuentaMesa?.personas) ? cuentaMesa.personas.length : 0;
+    const delivery = db?.deliveryMeta?.[canon] || null;
+    const reservada = !!(mesaMeta?.[mesa]?.reservaNombre || mesaMeta?.[canon]?.reservaNombre);
+    const reservaNombre = String(mesaMeta?.[mesa]?.reservaNombre || mesaMeta?.[canon]?.reservaNombre || '').trim();
+    const esDelivery = esMesaDeliverySalida(mesa);
+    const facturada = !!delivery?.facturada;
+    const entregada = !!delivery?.entregada;
+
+    let tone = 'idle';
+    let badge = 'Disponible';
+    if (esDelivery && facturada) {
+      tone = 'facturada';
+      badge = 'Facturada';
+    } else if (esDelivery && entregada) {
+      tone = 'idle';
+      badge = 'Entregada';
+    } else if (consumo > 0) {
+      tone = esDelivery ? 'delivery' : 'busy';
+      badge = esDelivery ? 'Delivery activo' : 'En cobro';
+    } else if (reservada) {
+      tone = 'reserved';
+      badge = 'Reservada';
+    }
+
+    let meta = consumo > 0
+      ? `${consumo} producto(s) en la cuenta`
+      : 'Sin productos agregados';
+    if (!esDelivery && clientesMesa > 0) {
+      meta += ` · ${clientesMesa} cliente(s)`;
+    }
+
+    let foot = consumo > 0
+      ? `Tiempo en uso: ${typeof formatearTiempoMesa === 'function' ? formatearTiempoMesa(canon) : '00:00'}`
+      : 'Toca para abrir el cobro';
+    if (reservada && reservaNombre && consumo === 0) {
+      foot = `Reserva: ${reservaNombre}`;
+    }
+    if (esDelivery && delivery?.nombre && consumo === 0) {
+      foot = `Cliente: ${delivery.nombre}`;
+    }
+    if (esDelivery && facturada) {
+      foot = 'Pendiente de entrega';
+    }
+
+    return {
+      nombre,
+      badge,
+      meta,
+      foot,
+      tone,
+      type: esDelivery ? 'Delivery' : 'Mesa',
+      icon: esDelivery ? '🚚' : '🍽️'
     };
   }
 
-  document.addEventListener('DOMContentLoaded', actualizarEtiquetaMesasSalida);
+  function renderizarTarjetaMesaSalida(btn, activa) {
+    if (!(btn instanceof HTMLElement)) return;
+    const mesa = btn.dataset.mesa || '';
+    const meta = construirMetaTarjetaMesa(mesa);
+    btn.classList.add('salida-mesa-card');
+    btn.dataset.tone = meta.tone;
+    btn.classList.toggle('is-active', !!activa);
+    btn.innerHTML = `
+      <span class="salida-mesa-card__top">
+        <span class="salida-mesa-card__type">${escapeHtml(meta.icon)} ${escapeHtml(meta.type)}</span>
+        <span class="salida-mesa-card__badge">${escapeHtml(meta.badge)}</span>
+      </span>
+      <strong class="salida-mesa-card__title">${escapeHtml(meta.nombre)}</strong>
+      <span class="salida-mesa-card__meta">${escapeHtml(meta.meta)}</span>
+      <span class="salida-mesa-card__foot">${escapeHtml(meta.foot)}</span>
+    `;
+  }
+
+  function refrescarTarjetasSalida() {
+    const seleccionada = obtenerMesaSeleccionadaSalida();
+    document.querySelectorAll('#mesas-grid .btn-mesa-salida').forEach((btn) => {
+      renderizarTarjetaMesaSalida(btn, btn.dataset.mesa === seleccionada);
+    });
+    actualizarEtiquetaMesasSalida();
+    actualizarBotonMostrarMasSalida();
+  }
+
+  window.mostrarMasTarjetasSalida = function() {
+    window.__salidaTarjetasExpandidas = true;
+    if (typeof window.renderMesasSalida === 'function') window.renderMesasSalida();
+  };
+
+  window.renderMesasSalida = function() {
+    const grid = document.getElementById('mesas-grid');
+    if (!grid) return;
+
+    const espacios = obtenerEspaciosCobroSalida();
+    if (!espacios.includes(mesaActiva)) mesaActiva = 'Mesa 1';
+
+    espacios.forEach((mesa) => {
+      const canon = typeof mesaCanonica === 'function' ? mesaCanonica(mesa) : mesa;
+      if (!carritoPorMesa[canon]) carritoPorMesa[canon] = [];
+      if (typeof inicializarMetaMesa === 'function') {
+        inicializarMetaMesa(mesa);
+        inicializarMetaMesa(canon);
+      }
+    });
+
+    const seleccionada = obtenerMesaSeleccionadaSalida();
+    grid.innerHTML = '';
+
+    espacios.forEach((mesa, index) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-mesa-salida salida-mesa-card';
+      btn.dataset.mesa = mesa;
+      if (window.__salidaTarjetasExpandidas !== true && index >= SALIDA_TARJETAS_VISIBLES) {
+        btn.classList.add('salida-mesa-card--hidden');
+      }
+      btn.onclick = () => window.seleccionarMesaSalida(mesa);
+      grid.appendChild(btn);
+      renderizarTarjetaMesaSalida(btn, mesa === seleccionada);
+    });
+
+    sincronizarVistaCobroSalida();
+    actualizarEtiquetaMesasSalida();
+    actualizarBotonMostrarMasSalida();
+
+    if (!mesaTimerInterval) {
+      mesaTimerInterval = setInterval(() => {
+        if (typeof actualizarTiempoMesaActiva === 'function') actualizarTiempoMesaActiva();
+        refrescarTarjetasSalida();
+        if (document.getElementById('comandas')?.classList.contains('active') && typeof renderComandas === 'function') {
+          renderComandas();
+        }
+      }, 1000);
+    }
+  };
+
+  window.actualizarContadoresMesasSalida = function() {
+    refrescarTarjetasSalida();
+  };
+
+  const prevSeleccionarMesaSalida = window.seleccionarMesaSalida;
+  if (typeof prevSeleccionarMesaSalida === 'function') {
+    window.seleccionarMesaSalida = function(mesa) {
+      window.__salidaMesaSeleccionada = mesa;
+      const result = prevSeleccionarMesaSalida.apply(this, arguments);
+      sincronizarVistaCobroSalida();
+      refrescarTarjetasSalida();
+      const detailCard = document.getElementById('salida-facturacion-card');
+      if (detailCard && window.matchMedia('(max-width: 900px)').matches) {
+        detailCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return result;
+    };
+  }
+
+  const prevActualizarPanelCobro = window.actualizarPanelCobro;
+  if (typeof prevActualizarPanelCobro === 'function') {
+    window.actualizarPanelCobro = function() {
+      const result = prevActualizarPanelCobro.apply(this, arguments);
+      sincronizarVistaCobroSalida();
+      refrescarTarjetasSalida();
+      return result;
+    };
+  }
+
+  const prevBuscarPlatoVenta = window.buscarPlatoVenta;
+  if (typeof prevBuscarPlatoVenta === 'function') {
+    window.buscarPlatoVenta = function() {
+      if (!tieneMesaCobroSeleccionada()) {
+        const results = document.getElementById('contenedor-salidas-busqueda');
+        if (results) results.innerHTML = '';
+        return;
+      }
+      return prevBuscarPlatoVenta.apply(this, arguments);
+    };
+  }
+
+  const prevTransferirAFactura = window.transferirAFactura;
+  if (typeof prevTransferirAFactura === 'function') {
+    window.transferirAFactura = function(index) {
+      if (!tieneMesaCobroSeleccionada()) {
+        alert('Seleccione una tarjeta de cobro antes de agregar platos.');
+        return;
+      }
+      return prevTransferirAFactura.apply(this, arguments);
+    };
+  }
+
+  const prevShowPageSalida = window.showPage;
+  if (typeof prevShowPageSalida === 'function') {
+    window.showPage = function(pageId) {
+      if (pageId === 'salida') {
+        window.__salidaMesaSeleccionada = '';
+        window.__salidaTarjetasExpandidas = false;
+      }
+      const result = prevShowPageSalida.apply(this, arguments);
+      if (pageId === 'salida') {
+        sincronizarVistaCobroSalida();
+        refrescarTarjetasSalida();
+      }
+      return result;
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    window.__salidaMesaSeleccionada = '';
+    window.__salidaTarjetasExpandidas = false;
+    sincronizarVistaCobroSalida();
+    actualizarEtiquetaMesasSalida();
+    actualizarBotonMostrarMasSalida();
+  });
+})();
+
+
+// ============================
+// Centro de comandos LuRo
+// Consola desacoplada + motor determinista de órdenes
+// ============================
+(() => {
+  const ASSISTANT_PAGES = [
+    {
+      page: 'home',
+      label: 'Inicio',
+      aliases: ['inicio', 'home', 'panel principal', 'pantalla principal', 'abrir inicio', 'ir a inicio', 'ver perfil del negocio', 'perfil del negocio'],
+      description: 'Muestra el perfil del negocio, el estado general de la cuenta y los datos base del sistema.'
+    },
+    {
+      page: 'agregar',
+      label: 'Agregar Plato',
+      aliases: ['agregar plato', 'crear plato', 'nuevo plato', 'nueva receta', 'agregar receta', 'abrir agregar plato', 'ir a agregar plato', 'crear plato nuevo'],
+      description: 'Permite crear platos o recetas, calcular costos y guardarlos en el menú.'
+    },
+    {
+      page: 'inventario',
+      label: 'Almacén',
+      aliases: ['almacen', 'inventario', 'suministros', 'stock de almacen'],
+      description: 'Gestiona las existencias del almacén, entradas, costos y niveles ideales de cada producto.'
+    },
+    {
+      page: 'distribuidores',
+      label: 'Distribuidores',
+      aliases: ['distribuidores', 'proveedores', 'proveedor', 'catalogo de distribuidores'],
+      description: 'Administra distribuidores, sus contactos, productos asociados y apoyo de compras.'
+    },
+    {
+      page: 'produccion-interna',
+      label: 'Producción Interna',
+      aliases: ['produccion interna', 'produccion', 'semielaborados', 'produccion de cocina'],
+      description: 'Registra producciones internas, consume insumos del almacén y controla semielaborados.'
+    },
+    {
+      page: 'disponibilidad',
+      label: 'Disponibilidad',
+      aliases: ['disponibilidad', 'menu disponible', 'existencia del menu', 'disponibilidad del menu'],
+      description: 'Permite revisar el stock disponible de platos y ajustar existencias del menú.'
+    },
+    {
+      page: 'salida',
+      label: 'Registrar Salida',
+      aliases: ['registrar salida', 'salida', 'facturacion', 'cobro', 'detalle de venta', 'abrir registrar salida', 'ir a salida', 'mostrar detalle de venta'],
+      description: 'Gestiona mesas, ventas, clientes y el cierre operativo de una salida o factura.'
+    },
+    {
+      page: 'procedimientos',
+      label: 'Procedimientos',
+      aliases: ['procedimientos', 'manuales', 'protocolos', 'proceso operativo', 'abrir procedimientos', 'ir a procedimientos', 'ver protocolos'],
+      description: 'Muestra procedimientos y protocolos operativos en modo consulta.'
+    },
+    {
+      page: 'clientes-puntos',
+      label: 'Clientes y Puntos',
+      aliases: ['clientes y puntos', 'clientes puntos', 'puntos', 'fidelizacion'],
+      description: 'Administra clientes, puntos acumulados y datos de fidelización.'
+    },
+    {
+      page: 'historial-produccion',
+      label: 'Historial Producción',
+      aliases: ['historial produccion', 'revisar historial de produccion', 'produccion historial'],
+      description: 'Consulta el historial operativo de producciones internas y sus costos.'
+    },
+    {
+      page: 'entradas-almacen',
+      label: 'Entradas Almacén',
+      aliases: ['entradas almacen', 'historial de entradas', 'registro de entradas', 'entradas de almacen'],
+      description: 'Muestra el historial de entradas registradas en el almacén.'
+    },
+    {
+      page: 'ventas',
+      label: 'Historial de Ventas',
+      aliases: ['historial de ventas', 'ventas historial', 'revisar ventas', 'ver ventas'],
+      description: 'Presenta el historial de ventas, totales y ganancias acumuladas.'
+    },
+    {
+      page: 'reporte-compras-distribuidor',
+      label: 'Reporte Compras Distribuidor',
+      aliases: ['reporte compras distribuidor', 'compras distribuidor', 'reporte de compras', 'historial compras distribuidor', 'abrir reporte compras distribuidor', 'ver compras por distribuidor', 'compras por distribuidor'],
+      description: 'Resume entradas y montos comprados por distribuidor.'
+    },
+    {
+      page: 'rnc-dgii',
+      label: 'Resumen de facturas',
+      aliases: ['resumen de facturas', 'facturas', 'rnc dgii', 'dgii', 'resumen facturas'],
+      description: 'Centraliza facturas, RNC, NCF y datos de clientes facturados.'
+    },
+    {
+      page: 'comandas',
+      label: 'Comandas',
+      aliases: ['comandas', 'hoja de comandas', 'ordenes de cocina', 'comanda'],
+      description: 'Muestra comandas activas, tiempos de preparación e historial reciente.'
+    },
+    {
+      page: 'autorizaciones',
+      label: 'Autorizaciones',
+      aliases: ['autorizaciones', 'historial autorizaciones', 'autorizacion', 'abrir autorizaciones', 'ver historial de autorizaciones'],
+      description: 'Permite revisar autorizaciones operativas registradas en el sistema.'
+    },
+    {
+      page: 'historial-decomiso',
+      label: 'Historial Decomiso',
+      aliases: ['historial decomiso', 'decomisos historial', 'ver decomisos'],
+      description: 'Consulta el historial de decomisos y las pérdidas registradas.'
+    },
+    {
+      page: 'decomiso',
+      label: 'Registrar Decomiso',
+      aliases: ['registrar decomiso', 'decomiso', 'decomisar'],
+      description: 'Permite registrar decomisos de productos terminados o ingredientes del almacén.'
+    },
+    {
+      page: 'produccion',
+      label: 'Departamentos A-B-C',
+      aliases: ['departamentos a b c', 'departamentos abc', 'abc', 'a b c'],
+      description: 'Clasifica platos por nivel de stock para una lectura rápida por colores.'
+    },
+    {
+      page: 'diagnostico',
+      label: 'Diagnóstico Inteligente',
+      aliases: ['diagnostico inteligente', 'diagnostico', 'revisar errores', 'errores del sistema'],
+      description: 'Analiza el DOM y resalta alertas operativas o visuales dentro del sistema.'
+    },
+    {
+      page: 'comandos',
+      label: 'Comandos',
+      aliases: ['comandos', 'lista de comandos', 'centro de comandos', 'catalogo de comandos', 'ver comandos', 'ayuda'],
+      description: 'Centraliza los comandos reales disponibles del sistema y permite ejecutarlos desde una sola vista.'
+    },
+    {
+      page: 'configuracion',
+      label: 'Configuración',
+      aliases: ['configuracion', 'ajustes', 'opciones del sistema', 'configurar sistema', 'abrir configuracion', 'ir a configuracion', 'ver seguridad', 'seguridad'],
+      description: 'Reúne controles de seguridad, sincronización, usuarios y parámetros administrativos.'
+    },
+    {
+      page: 'entrenamientos',
+      label: 'Entrenamientos',
+      aliases: ['entrenamientos', 'entrenamiento', 'equipos', 'capacitacion'],
+      description: 'Organiza equipos, platos asignados y procedimientos de formación.'
+    }
+  ];
+
+  const ASSISTANT_ACTIONS = [
+    {
+      id: 'open-assistant',
+      label: 'Asistente LuRo',
+      aliases: ['abrir asistente', 'abre asistente', 'abrir asistente luro', 'abre asistente luro', 'mostrar asistente luro'],
+      help: 'Abre la consola flotante de comandos de LuRo Control.',
+      response: 'Abriendo Asistente LuRo.',
+      run: () => {
+        if (typeof window.abrirAsistente === 'function') window.abrirAsistente();
+      }
+    },
+    {
+      id: 'switch-module',
+      label: 'Cambiar módulo',
+      aliases: ['cambiar modulo', 'cambiar de modulo', 'volver a modulos', 'selector de modulos'],
+      help: 'Puedo llevarte al selector de módulos para elegir otro entorno de trabajo.',
+      response: 'Te llevo al selector de módulos.',
+      run: () => {
+        if (typeof window.regresarAModulos === 'function') window.regresarAModulos();
+      }
+    },
+    {
+      id: 'switch-user',
+      label: 'Cambiar de Usuario',
+      aliases: ['cambiar usuario', 'cambiar de usuario', 'otro usuario', 'iniciar con otro usuario'],
+      help: 'Puedo abrir el cambio de usuario para volver al acceso principal del sistema.',
+      response: 'Abriendo cambio de usuario.',
+      run: () => {
+        if (typeof window.cambiarUsuario === 'function') window.cambiarUsuario();
+      }
+    },
+    {
+      id: 'logout',
+      label: 'Cerrar Sesión',
+      aliases: ['cerrar sesion', 'cerrar la sesion', 'salir de la sesion', 'terminar sesion'],
+      help: 'Si quieres cerrar tu sesión actual, puedo ejecutar la salida segura del sistema.',
+      response: 'Cerrando sesión segura de LuRo Control.',
+      run: () => {
+        if (typeof window.cerrarSesion === 'function') window.cerrarSesion();
+      }
+    }
+  ];
+  const ASSISTANT_RESTRICTED_PAGES = new Set();
+
+  const ASSISTANT_MODULE_GUIDES = {
+    home: 'Desde Inicio puedes revisar el perfil del negocio, la cuenta activa y editar los datos base del sistema.',
+    inventario: 'En Almacén registras entradas, costos, stock ideal y controlas faltantes de insumos o ingredientes.',
+    distribuidores: 'En Distribuidores registras suplidores, contacto, estado y puedes consultar los productos asociados a cada uno.',
+    'produccion-interna': 'Producción Interna sirve para fabricar semielaborados desde insumos del almacén y controlar su costo y existencia.',
+    disponibilidad: 'Disponibilidad te permite controlar los platos activos para venta y ajustar su existencia disponible.',
+    salida: 'Registrar Salida gestiona mesas, clientes, facturación y el cierre operativo de una venta.',
+    procedimientos: 'Procedimientos muestra protocolos y guías de trabajo para consulta rápida del equipo.',
+    'clientes-puntos': 'Clientes y Puntos administra la fidelización, el historial del cliente y sus puntos acumulados.',
+    'historial-produccion': 'Historial Producción te deja consultar operaciones ya registradas, con fechas, cantidades y costos.',
+    'entradas-almacen': 'Entradas Almacén muestra el historial de entradas manuales y te ayuda a auditar movimientos de inventario.',
+    ventas: 'Historial de Ventas centraliza ventas anteriores, totales cobrados y ganancia acumulada.',
+    'reporte-compras-distribuidor': 'Este reporte resume compras por distribuidor y cuánto se ha invertido con cada suplidor.',
+    'rnc-dgii': 'Resumen de facturas reúne datos fiscales, NCF, RNC o cédula, mesa, total y cliente.',
+    comandas: 'Comandas muestra órdenes activas de cocina, sus tiempos y el historial reciente.',
+    autorizaciones: 'Autorizaciones te permite revisar permisos operativos concedidos dentro del sistema.',
+    'historial-decomiso': 'Historial Decomiso guarda pérdidas, fechas y operadores asociados a cada decomiso.',
+    decomiso: 'Registrar Decomiso sirve para dar baja a productos o ingredientes y dejar trazabilidad de la pérdida.',
+    produccion: 'Departamentos A-B-C clasifica platos según su stock para una lectura rápida por colores.',
+    diagnostico: 'Diagnóstico Inteligente revisa alertas operativas y visuales dentro del sistema.',
+    comandos: 'Comandos reúne las órdenes reales conectadas al sistema, las organiza por módulo y te deja probarlas desde un solo lugar.',
+    configuracion: 'Configuración concentra seguridad, sincronización, usuarios y parámetros sensibles del sistema.',
+    entrenamientos: 'Entrenamientos organiza equipos, platos asignados y procedimientos de capacitación.'
+  };
+  const ASSISTANT_COMMAND_LIBRARY = [
+    {
+      page: 'home',
+      title: '🏠 Inicio',
+      description: 'Comandos para volver al panel principal y revisar el perfil del negocio.',
+      commands: ['abrir inicio', 'ir a inicio', 'panel principal']
+    },
+    {
+      page: 'agregar',
+      title: '🧪 Agregar Plato',
+      description: 'Accesos para crear o revisar recetas desde el módulo de platos.',
+      commands: ['abrir agregar plato', 'ir a agregar plato', 'crear plato nuevo']
+    },
+    {
+      page: 'inventario',
+      title: '📦 Almacén',
+      description: 'Órdenes conectadas al almacén y al inventario real.',
+      commands: ['abre almacén', 'agrega [cantidad] [unidad] de [producto]', 'elimina [producto]', 'busca [producto]', 'cuánto queda de [producto]', 'qué productos están bajos']
+    },
+    {
+      page: 'distribuidores',
+      title: '🚚 Distribuidores',
+      description: 'Comandos para suplidores, catálogos y faltantes por distribuidor.',
+      commands: ['abre distribuidores', 'crea un nuevo distribuidor [nombre], [contacto], [teléfono]', 'elimina distribuidor [nombre]', 'qué productos tiene [distribuidor]', 'muéstrame los faltantes del distribuidor [nombre]']
+    },
+    {
+      page: 'produccion-interna',
+      title: '🏭 Producción Interna',
+      description: 'Consultas sobre producciones internas, composición y faltantes.',
+      commands: ['ir a producción interna', 'cuáles son mis producciones', 'de qué está compuesta la producción [nombre]', 'qué me falta para completar la producción [nombre]', 'qué debo producir hoy']
+    },
+    {
+      page: 'disponibilidad',
+      title: '👁️ Disponibilidad',
+      description: 'Comandos sobre platos activos, faltantes y bloqueos por stock.',
+      commands: ['abrir disponibilidad', 'qué producto falta para completar [plato]', 'qué plato no puede salir por falta de ingredientes', 'cuáles productos están bajos']
+    },
+    {
+      page: 'salida',
+      title: '📤 Registrar Salida',
+      description: 'Accesos rápidos al módulo de ventas operativas.',
+      commands: ['abrir registrar salida', 'registrar salida de [cantidad] platos mesa [número]', 'cobrar mesa [número]', 'dividir cuenta mesa [número]']
+    },
+    {
+      page: 'procedimientos',
+      title: '📘 Procedimientos',
+      description: 'Navegación a guías y protocolos del sistema.',
+      commands: ['abrir procedimientos', 'ir a procedimientos', 'ver protocolos de [equipo o plato]']
+    },
+    {
+      page: 'clientes-puntos',
+      title: '👥 Clientes y Puntos',
+      description: 'Búsqueda y análisis de clientes dentro del módulo real.',
+      commands: ['abrir clientes y puntos', 'buscar cliente [nombre]', 'cuántos puntos tiene [cliente]', 'quién tiene más puntos acumulados', 'qué cliente compra más']
+    },
+    {
+      page: 'historial-produccion',
+      title: '📜 Historial Producción',
+      description: 'Comandos para revisar el historial productivo.',
+      commands: ['abrir historial producción', 'mostrar historial de producción', 'producción desde [fecha] hasta [fecha]']
+    },
+    {
+      page: 'entradas-almacen',
+      title: '📥 Entradas Almacén',
+      description: 'Acceso al historial de entradas del almacén.',
+      commands: ['abrir entradas almacén', 'ver historial de entradas', 'entradas de [producto]']
+    },
+    {
+      page: 'ventas',
+      title: '📊 Historial de Ventas',
+      description: 'Consultas reales de ventas, ganancias y productos con movimiento.',
+      commands: ['abrir historial de ventas', 'ventas de hoy', 'cuánto he ganado', 'cuál es mi total de ganancias', 'cuál es el producto que más se vende', 'qué plato deja más ganancia']
+    },
+    {
+      page: 'reporte-compras-distribuidor',
+      title: '📑 Reporte Compras Distribuidor',
+      description: 'Acceso al resumen histórico de compras por distribuidor.',
+      commands: ['abrir reporte compras distribuidor', 'compras del distribuidor [nombre]']
+    },
+    {
+      page: 'rnc-dgii',
+      title: '🧾 Resumen de facturas',
+      description: 'Consultas de facturación y facturas registradas.',
+      commands: ['abrir resumen de facturas', 'muéstrame las facturas de hoy', 'cuánto se ha facturado', 'cuál factura fue la más alta', 'busca la factura de [cliente]']
+    },
+    {
+      page: 'comandas',
+      title: '🧾 Comandas',
+      description: 'Navegación al tablero operativo de comandas.',
+      commands: ['abrir comandas', 'ver comandas activas', 'comandas de [mesa]']
+    },
+    {
+      page: 'autorizaciones',
+      title: '✅ Autorizaciones',
+      description: 'Acceso al historial de autorizaciones.',
+      commands: ['abrir autorizaciones', 'historial autorizaciones', 'autorizaciones de [usuario]']
+    },
+    {
+      page: 'historial-decomiso',
+      title: '📑 Historial Decomiso',
+      description: 'Consultas reales de pérdidas y decomisos registrados.',
+      commands: ['abrir historial decomiso', 'cuáles son mis pérdidas', 'cuánto he perdido', 'decomisos de [fecha]']
+    },
+    {
+      page: 'decomiso',
+      title: '🗑️ Registrar Decomiso',
+      description: 'Órdenes para decomisar platos, ingredientes y producciones.',
+      commands: ['abrir decomiso', 'decomisa [plato]', 'decomisa [cantidad] [unidad] de [ingrediente]', 'decomisa [cantidad] [unidad] de [producto]']
+    },
+    {
+      page: 'produccion',
+      title: '📊 Departamentos A-B-C',
+      description: 'Acceso al módulo ABC para revisar stock por colores.',
+      commands: ['abrir departamentos a b c', 'ver departamentos abc']
+    },
+    {
+      page: 'diagnostico',
+      title: '🧠 Diagnóstico Inteligente',
+      description: 'Comandos para abrir el módulo de diagnóstico.',
+      commands: ['abrir diagnóstico inteligente', 'ir a diagnóstico']
+    },
+    {
+      page: 'entrenamientos',
+      title: '🎓 Entrenamientos',
+      description: 'Acceso a equipos, platos y procedimientos de capacitación.',
+      commands: ['abrir entrenamientos', 'ir a entrenamientos', 'ver entrenamientos de [equipo]']
+    },
+    {
+      page: 'configuracion',
+      title: '⚙️ Configuración',
+      description: 'Comandos de acceso a la configuración general del sistema.',
+      commands: ['abrir configuración', 'mostrar usuarios', 'autorizar usuario [nombre]']
+    },
+    {
+      page: '',
+      title: '🧠 Asistente LuRo',
+      description: 'Controles globales y acciones del sistema fuera de un módulo específico.',
+      commands: ['abrir asistente luro', 'abrir comandos', 'cerrar sesión', 'cambiar módulo', 'cambiar de usuario']
+    }
+  ];
+  const ASSISTANT_GREETING = 'Centro de comandos listo. Escribe una orden real del sistema o abre el módulo 📜 COMANDOS.';
+  const ASSISTANT_HELP = 'Abre el módulo 📜 COMANDOS para ver y probar las órdenes reales disponibles.';
+  const ASSISTANT_UNKNOWN_COMMAND = 'Comando no reconocido.';
+  const ASSISTANT_SUGGESTIONS_STORAGE_KEY = 'LURO_ASSISTANT_ACTIVE_COMMAND_SECTIONS_V1';
+  const ASSISTANT_COMMAND_LIBRARY_STORAGE_KEY = 'LURO_ASSISTANT_COMMAND_LIBRARY_OVERRIDES_V1';
+  const ASSISTANT_SUGGESTION_DEFAULT_KEYS = ['comandos', 'inventario', 'distribuidores', 'produccion-interna', 'historial-decomiso'];
+  const ASSISTANT_SUGGESTION_OVERRIDES = {
+    comandos: { label: '📜 Comandos', command: 'Abre comandos' },
+    inventario: { label: '📦 Almacén', command: 'Abre almacén' },
+    distribuidores: { label: '🚚 Distribuidores', command: 'Abre distribuidores' },
+    'produccion-interna': { label: '🏭 Producción', command: 'Ir a producción interna' },
+    ventas: { label: '📊 Ventas', command: 'Ventas de hoy' },
+    disponibilidad: { label: '👁️ Disponibilidad', command: 'Abrir disponibilidad' },
+    'historial-decomiso': { label: '📉 Pérdidas', command: '¿Cuál es mi total de pérdidas?' }
+  };
+  const ASSISTANT_IDLE_CLEAR_MS = 5 * 60 * 1000;
+  let assistantSeeded = false;
+  let assistantPendingAction = null;
+  let assistantIdleTimer = null;
+  let assistantSuggestionPreviewKey = '';
+  let comandosEditorState = null;
+  const assistantDebugState = {
+    traceId: 0,
+    current: [],
+    history: []
+  };
+  const ASSISTANT_CONTEXT_DEFAULTS = {
+    lastIntent: '',
+    lastModule: '',
+    lastEntityType: '',
+    lastEntityName: '',
+    lastReference: '',
+    lastProduct: '',
+    lastDistributor: '',
+    lastClient: '',
+    lastPlate: '',
+    lastQuantity: null,
+    lastUnit: '',
+    lastCost: null,
+    lastIdeal: null,
+    lastQueryTopic: ''
+  };
+  const assistantConversationContext = { ...ASSISTANT_CONTEXT_DEFAULTS };
+  function assistantRefs() {
+    return {
+      panel: document.getElementById('luro-assistant-panel'),
+      fab: document.getElementById('luro-assistant-fab'),
+      sidebarLaunch: document.getElementById('sidebar-assistant-launch'),
+      comandosLaunch: document.getElementById('comandos-open-assistant-btn'),
+      input: document.getElementById('luro-assistant-input'),
+      messages: document.getElementById('luro-assistant-messages'),
+      suggestions: document.getElementById('luro-assistant-suggestions')
+    };
+  }
+
+  function resetearContextoConversacionAsistente() {
+    Object.keys(ASSISTANT_CONTEXT_DEFAULTS).forEach((key) => {
+      assistantConversationContext[key] = ASSISTANT_CONTEXT_DEFAULTS[key];
+    });
+    return obtenerContextoConversacionAsistente();
+  }
+
+  function programarLimpiezaInactividadAsistente() {
+    if (assistantIdleTimer) {
+      clearTimeout(assistantIdleTimer);
+    }
+    assistantIdleTimer = setTimeout(() => {
+      reiniciarConversacionAsistente('idle');
+    }, ASSISTANT_IDLE_CLEAR_MS);
+  }
+
+  function registrarActividadAsistente() {
+    programarLimpiezaInactividadAsistente();
+  }
+
+  function reiniciarConversacionAsistente(motivo = 'manual') {
+    const { messages, input, panel } = assistantRefs();
+    if (assistantIdleTimer) {
+      clearTimeout(assistantIdleTimer);
+      assistantIdleTimer = null;
+    }
+    if (messages) {
+      messages.innerHTML = '';
+    }
+    if (input) {
+      input.value = '';
+    }
+    assistantPendingAction = null;
+    assistantSeeded = false;
+    resetearContextoConversacionAsistente();
+    sembrarAsistenteSiHaceFalta(panel?.classList.contains('is-open'));
+    if (motivo === 'idle') {
+      actualizarEstadoModuloComandos('La conversación se reinició después de 5 minutos de inactividad.');
+    } else {
+      actualizarEstadoModuloComandos(ASSISTANT_HELP);
+    }
+    if (panel?.classList.contains('is-open')) {
+      registrarActividadAsistente();
+    }
+  }
+
+  function esDisparadorAsistente(target) {
+    if (!(target instanceof Element)) return false;
+    const { fab, sidebarLaunch, comandosLaunch } = assistantRefs();
+    return !!(
+      (fab && fab.contains(target)) ||
+      (sidebarLaunch && sidebarLaunch.contains(target)) ||
+      (comandosLaunch && comandosLaunch.contains(target))
+    );
+  }
+
+  function comandosRefs() {
+    return {
+      search: document.getElementById('comandos-buscar'),
+      runnerInput: document.getElementById('comandos-ejecutor-input'),
+      summary: document.getElementById('comandos-resumen'),
+      state: document.getElementById('comandos-estado'),
+      list: document.getElementById('comandos-lista'),
+      editorModal: document.getElementById('comandos-editor-modal'),
+      editorKey: document.getElementById('comandos-editor-key'),
+      editorTitle: document.getElementById('comandos-editor-title'),
+      editorDescription: document.getElementById('comandos-editor-description'),
+      editorList: document.getElementById('comandos-editor-lista')
+    };
+  }
+
+  function describirComandoCatalogoAsistente(section, commandText) {
+    const texto = normalizarTextoAsistente(commandText);
+    const modulo = section?.title || 'este módulo';
+    if (!texto) return `Ejecuta una orden dentro de ${modulo}.`;
+    if (/^(abre|abrir|ir a|ve a|panel principal|abrir )/.test(texto)) return `Abre o enfoca ${modulo}.`;
+    if (/(crea|nuevo distribuidor|agrega .* distribuidor|registra .* distribuidor)/.test(texto)) return 'Prepara la creación de un distribuidor nuevo con sus datos principales.';
+    if (/(elimina|borra|quita|remueve)/.test(texto)) return 'Prepara una eliminación y pedirá confirmación antes de ejecutarla.';
+    if (/(busca|buscar|encuentra|localiza)/.test(texto)) return `Busca información real dentro de ${modulo}.`;
+    if (/(cuanto|cuanta|cual|que|quien|muestrame|mostrar|ver)/.test(texto)) return `Consulta datos reales del sistema dentro de ${modulo}.`;
+    if (/(decomisa|decomisar|decomiso)/.test(texto)) return 'Prepara un decomiso usando la lógica real del sistema y pide confirmación.';
+    if (/(cobrar|registrar salida|dividir cuenta)/.test(texto)) return 'Prepara una acción operativa de ventas o salida dentro del sistema.';
+    return `Ejecuta o prepara esta acción dentro de ${modulo}.`;
+  }
+
+  function normalizarComandoCatalogoAsistente(section, command) {
+    if (typeof command === 'string') {
+      const text = String(command || '').trim();
+      if (!text) return null;
+      return {
+        text,
+        help: describirComandoCatalogoAsistente(section, text)
+      };
+    }
+    if (!command || typeof command !== 'object') return null;
+    const text = String(command.text || command.label || '').trim();
+    if (!text) return null;
+    return {
+      text,
+      help: String(command.help || command.description || describirComandoCatalogoAsistente(section, text)).trim()
+    };
+  }
+
+  function normalizarSeccionCatalogoAsistente(section = {}) {
+    const base = {
+      ...section,
+      title: String(section.title || '').trim(),
+      description: String(section.description || '').trim()
+    };
+    base.commands = (Array.isArray(section.commands) ? section.commands : [])
+      .map((command) => normalizarComandoCatalogoAsistente(base, command))
+      .filter(Boolean);
+    return base;
+  }
+
+  function obtenerCatalogoBaseComandosSistema() {
+    return ASSISTANT_COMMAND_LIBRARY.map((section) => normalizarSeccionCatalogoAsistente(section));
+  }
+
+  function obtenerOverridesComandosAsistente() {
+    try {
+      const raw = localStorage.getItem(ASSISTANT_COMMAND_LIBRARY_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function guardarOverridesComandosAsistente(overrides = {}) {
+    try {
+      localStorage.setItem(ASSISTANT_COMMAND_LIBRARY_STORAGE_KEY, JSON.stringify(overrides || {}));
+    } catch (_) {}
+  }
+
+  function obtenerCatalogoComandosSistema() {
+    const baseCatalog = obtenerCatalogoBaseComandosSistema();
+    const overrides = obtenerOverridesComandosAsistente();
+    return baseCatalog.map((baseSection) => {
+      const key = obtenerClaveSeccionComandos(baseSection);
+      const override = overrides[key];
+      if (!override || typeof override !== 'object') return baseSection;
+      const merged = {
+        ...baseSection,
+        title: String(override.title || baseSection.title || '').trim() || baseSection.title,
+        description: String(override.description || baseSection.description || '').trim() || baseSection.description
+      };
+      if (Array.isArray(override.commands) && override.commands.length) {
+        merged.commands = override.commands
+          .map((command) => normalizarComandoCatalogoAsistente(merged, command))
+          .filter(Boolean);
+      }
+      return merged;
+    });
+  }
+
+  function obtenerTextoPrimarioComandoSeccion(section = {}) {
+    const commands = Array.isArray(section.commands) ? section.commands : [];
+    return commands[0]?.text || '';
+  }
+
+  function buscarSeccionComandosPorKey(sectionKey, catalog = obtenerCatalogoComandosSistema()) {
+    const key = String(sectionKey || '').trim();
+    if (!key) return null;
+    return (Array.isArray(catalog) ? catalog : []).find((section) => obtenerClaveSeccionComandos(section) === key) || null;
+  }
+
+  function obtenerClaveSeccionComandos(section = {}) {
+    const base = String(section.page || normalizarTextoAsistente(section.title || '') || '').trim();
+    return base || `section-${Math.abs(String(section.title || 'comandos').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0))}`;
+  }
+
+  function obtenerConfigSugerenciaSeccion(section = {}) {
+    const key = obtenerClaveSeccionComandos(section);
+    const override = ASSISTANT_SUGGESTION_OVERRIDES[key] || {};
+    return {
+      key,
+      label: override.label || section.title || 'Comando',
+      command: override.command || section.suggestionCommand || obtenerTextoPrimarioComandoSeccion(section)
+    };
+  }
+
+  function obtenerClavesValidasSugerenciasAsistente() {
+    return obtenerCatalogoComandosSistema()
+      .map((section) => obtenerConfigSugerenciaSeccion(section).key)
+      .filter(Boolean);
+  }
+
+  function normalizarClavesSugerenciasAsistente(keys = []) {
+    const validas = new Set(obtenerClavesValidasSugerenciasAsistente());
+    return Array.from(new Set((Array.isArray(keys) ? keys : []).map((key) => String(key || '').trim()).filter((key) => validas.has(key))));
+  }
+
+  function obtenerClavesSugerenciasActivasAsistente() {
+    try {
+      const raw = localStorage.getItem(ASSISTANT_SUGGESTIONS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const normalizadas = normalizarClavesSugerenciasAsistente(parsed);
+        if (normalizadas.length || Array.isArray(parsed)) {
+          return normalizadas;
+        }
+      }
+    } catch (_) {}
+    return normalizarClavesSugerenciasAsistente(ASSISTANT_SUGGESTION_DEFAULT_KEYS);
+  }
+
+  function guardarClavesSugerenciasActivasAsistente(keys = []) {
+    const normalizadas = normalizarClavesSugerenciasAsistente(keys);
+    try {
+      localStorage.setItem(ASSISTANT_SUGGESTIONS_STORAGE_KEY, JSON.stringify(normalizadas));
+    } catch (_) {}
+    return normalizadas;
+  }
+
+  function seccionSugerenciaActivaAsistente(section) {
+    const key = obtenerConfigSugerenciaSeccion(section).key;
+    return obtenerClavesSugerenciasActivasAsistente().includes(key);
+  }
+
+  function renderSugerenciasAsistente() {
+    const { suggestions } = assistantRefs();
+    if (!suggestions) return;
+    suggestions.innerHTML = '';
+
+    const activas = new Set(obtenerClavesSugerenciasActivasAsistente());
+    const secciones = obtenerCatalogoComandosSistema()
+      .map((section) => ({
+        section,
+        suggestion: obtenerConfigSugerenciaSeccion(section)
+      }))
+      .filter((item) => activas.has(item.suggestion.key) && item.suggestion.command);
+
+    if (assistantSuggestionPreviewKey && !secciones.some((item) => item.suggestion.key === assistantSuggestionPreviewKey)) {
+      assistantSuggestionPreviewKey = '';
+    }
+
+    if (!secciones.length) {
+      const empty = document.createElement('div');
+      empty.className = 'luro-assistant-suggestions-empty';
+      empty.textContent = 'Activa accesos desde el módulo 📜 COMANDOS para mostrarlos aquí.';
+      suggestions.appendChild(empty);
+      return;
+    }
+
+    const rail = document.createElement('div');
+    rail.className = 'luro-assistant-suggestion-rail';
+    let previewPayload = null;
+
+    secciones.forEach(({ section, suggestion }) => {
+      const item = document.createElement('div');
+      item.className = 'luro-assistant-suggestion-item';
+      item.dataset.sectionKey = suggestion.key;
+      const isOpen = assistantSuggestionPreviewKey === suggestion.key;
+      if (isOpen) item.classList.add('is-open');
+      item.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'luro-assistant-chip';
+      btn.textContent = suggestion.label;
+      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      btn.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.toggleVistaPreviaSugerenciaAsistente(suggestion.key);
+      };
+      item.appendChild(btn);
+      rail.appendChild(item);
+      if (isOpen) previewPayload = { section, suggestion };
+    });
+
+    suggestions.appendChild(rail);
+
+    if (previewPayload) {
+      const previewHost = document.createElement('div');
+      previewHost.className = 'luro-assistant-suggestion-preview';
+      previewHost.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+
+      const popover = document.createElement('div');
+      popover.className = 'luro-assistant-suggestion-popover';
+
+      const popoverTitle = document.createElement('strong');
+      popoverTitle.className = 'luro-assistant-suggestion-popover-title';
+      popoverTitle.textContent = previewPayload.section.title || previewPayload.suggestion.label;
+
+      const popoverCopy = document.createElement('p');
+      popoverCopy.className = 'luro-assistant-suggestion-popover-copy';
+      popoverCopy.textContent = previewPayload.section.description || 'Comandos disponibles de esta sección.';
+
+      const popoverCommands = document.createElement('div');
+      popoverCommands.className = 'luro-assistant-suggestion-popover-commands';
+
+      (Array.isArray(previewPayload.section.commands) ? previewPayload.section.commands : []).forEach((commandText) => {
+        const commandBtn = document.createElement('button');
+        commandBtn.type = 'button';
+        commandBtn.className = 'luro-assistant-suggestion-command';
+        commandBtn.textContent = commandText.text;
+        if (commandText.help) commandBtn.title = commandText.help;
+        commandBtn.onclick = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          window.usarSugerenciaAsistente(commandText.text);
+        };
+        popoverCommands.appendChild(commandBtn);
+      });
+
+      popover.appendChild(popoverTitle);
+      popover.appendChild(popoverCopy);
+      popover.appendChild(popoverCommands);
+      previewHost.appendChild(popover);
+      suggestions.appendChild(previewHost);
+    }
+  }
+
+  const ASSISTANT_SYNONYM_REPLACEMENTS = [
+    [/\bmuestreme\b/g, 'muestrame'],
+    [/\bmostrarme\b/g, 'muestrame'],
+    [/\bborralo\b/g, 'eliminalo'],
+    [/\bborralo\b/g, 'eliminalo'],
+    [/\bborra\b/g, 'elimina'],
+    [/\bquitalo\b/g, 'eliminalo'],
+    [/\bquitarlo\b/g, 'eliminalo'],
+    [/\bquita\b/g, 'elimina'],
+    [/\bremuevelo\b/g, 'eliminalo'],
+    [/\bremueve\b/g, 'elimina'],
+    [/\bremover\b/g, 'eliminar'],
+    [/\bsacalo\b/g, 'eliminalo'],
+    [/\bsaca\b/g, 'elimina'],
+    [/\banade\b/g, 'agrega'],
+    [/\banadir\b/g, 'agregar'],
+    [/\bmete\b/g, 'agrega'],
+    [/\bmeter\b/g, 'agregar'],
+    [/\bsuma\b/g, 'agrega'],
+    [/\bsumar\b/g, 'agregar'],
+    [/\bpon\b/g, 'agrega'],
+    [/\bingresa\b/g, 'agrega'],
+    [/\bcambiale\b/g, 'edita'],
+    [/\bcambiarle\b/g, 'editar'],
+    [/\bmodifica\b/g, 'edita'],
+    [/\bmodificar\b/g, 'editar'],
+    [/\bactualiza\b/g, 'edita'],
+    [/\bactualizar\b/g, 'editar'],
+    [/\bproveedor\b/g, 'distribuidor'],
+    [/\bproveedores\b/g, 'distribuidores']
+  ];
+
+  function normalizarSinonimosAsistente(texto) {
+    let valor = String(texto || '');
+    ASSISTANT_SYNONYM_REPLACEMENTS.forEach(([pattern, replacement]) => {
+      valor = valor.replace(pattern, replacement);
+    });
+    return valor.replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizarTextoAsistente(texto) {
+    const limpio = String(texto || '')
+      .toLowerCase()
+      .replace(/ã¡/g, 'a')
+      .replace(/ã©/g, 'e')
+      .replace(/ã­/g, 'i')
+      .replace(/ã³/g, 'o')
+      .replace(/ãº/g, 'u')
+      .replace(/ã±/g, 'n')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return normalizarSinonimosAsistente(limpio);
+  }
+
+  function textoIncluyeAlias(textoNormalizado, aliases = []) {
+    return aliases.some(alias => textoNormalizado.includes(normalizarTextoAsistente(alias)));
+  }
+
+  function detectarNavegacionExplicitaAsistente(textoNormalizado) {
+    if (!textoNormalizado) return null;
+    const match = textoNormalizado.match(/^(?:abre|abrir|ir a|ve a|mostrar|muestrame|muestrame el modulo|mostrar el modulo|llename a|llevame a)\s+(.+)$/);
+    if (!match) return null;
+    const destinoNormalizado = normalizarTextoAsistente(match[1] || '');
+    if (!destinoNormalizado) return null;
+    if (/(productos?|faltantes?|ganancias?|perdidas?|facturas?|puntos|telefono|numero|contacto|pedido|cliente|cuanto|cual|que|decomisa|elimina|crea|actualiza|busca)/.test(destinoNormalizado)) {
+      return null;
+    }
+    return ASSISTANT_PAGES.find((item) => {
+      const aliases = Array.isArray(item.aliases) ? item.aliases : [];
+      return aliases.some((alias) => {
+        const aliasNormalizado = normalizarTextoAsistente(alias);
+        return destinoNormalizado === aliasNormalizado || destinoNormalizado.includes(aliasNormalizado);
+      });
+    }) || null;
+  }
+
+  function detectarIntencionAyuda(textoNormalizado) {
+    return /(ayuda|ayudame|ayudarme|que puedes hacer|que haces|comandos|opciones|soporte|orientame|orientacion)/.test(textoNormalizado);
+  }
+
+  function detectarConsultaGananciasAsistente(textoNormalizado) {
+    const hablaDeGanancias = /(ganancia|ganancias|ganado|total ganado|dinero ganado|cuanto he ganado|cuanto llevo ganado|total de ganancias)/.test(textoNormalizado);
+    const tonoConsulta = /(cual|cuanto|muestrame|muest[r]?ame|mostrar|dime|consulta|ver|total|actual|he ganado|llevo ganado)/.test(textoNormalizado);
+    return hablaDeGanancias && (tonoConsulta || /\bganancia(s)?\b/.test(textoNormalizado) || /\bganado\b/.test(textoNormalizado));
+  }
+
+  function detectarConsultaPerdidasAsistente(textoNormalizado) {
+    const hablaDePerdidas = /(perdida|perdidas|perdido|dinero perdido|total perdido|total de perdidas|cuanto he perdido|cuanto llevo perdido|mis perdidas)/.test(textoNormalizado);
+    const tonoConsulta = /(cual|cuanto|muestrame|muest[r]?ame|mostrar|dime|consulta|ver|total|actual|he perdido|llevo perdido)/.test(textoNormalizado);
+    return hablaDePerdidas && (tonoConsulta || /\bperdida(s)?\b/.test(textoNormalizado) || /\bperdido\b/.test(textoNormalizado));
+  }
+
+  function detectarIntencionExplicacion(textoNormalizado) {
+    return /(que hace|para que sirve|explica|explicame|como funciona|que es|que hace el modulo|como uso|que hace esta opcion|explicame esta pantalla)/.test(textoNormalizado);
+  }
+
+  function detectarIntencionProcedimiento(textoNormalizado) {
+    return /(como registro|como agrego|como creo|como entro|como uso|como hago|pasos|guia|guiame)/.test(textoNormalizado);
+  }
+
+  function detectarSaludo(textoNormalizado) {
+    return /^(hola|buenas|hey|saludos|hola asistente|hola luro)$/.test(textoNormalizado);
+  }
+
+  function esConfirmacionAsistente(textoNormalizado) {
+    return /^(si|sí|confirmo|confirmar|dale|ok|okay|hazlo|procede|adelante|correcto|de acuerdo|afirmativo)$/.test(textoNormalizado);
+  }
+
+  function esCancelacionAsistente(textoNormalizado) {
+    return /^(no|cancelar|cancela|deten|detener|mejor no|olvidalo|olvidalo por ahora|descarta)$/.test(textoNormalizado);
+  }
+
+  function pareceNuevoComandoAsistente(textoNormalizado) {
+    return !!(
+      detectarConsultaSistemaAvanzadaAsistente(textoNormalizado) ||
+      detectarConsultaGananciasAsistente(textoNormalizado) ||
+      detectarIntencionExplicacion(textoNormalizado) ||
+      detectarIntencionProcedimiento(textoNormalizado) ||
+      /(abre|abrir|ve a|ir a|ll[eé]vame|muestrame|mu[eé]strame|quiero ver|agrega|agregar|anade|anadir|registra|registrar|mete|meter|suma|sumar|pon|ponle|ingresa|ingresar|elimina|eliminar|eliminalo|borra|borrar|borralo|quita|quitar|quitalo|remueve|remover|remuevelo|edita|editar|modifica|modificar|cambia|cambiar|actualiza|actualizar|busca|buscar|decomisa|decomisar|decomiso|pedido|prepara|genera|que hace|para que sirve|explica|explicame|como|ganancia|ganancias|ganado|perdida|perdidas|perdido|factura|facturas|puntos|cliente|clientes|queda|stock|productos|distribuidor|plato|produccion)/.test(textoNormalizado)
+    );
+  }
+
+  function formatearNumeroAsistente(valor) {
+    const numero = Number(valor);
+    if (!Number.isFinite(numero)) return '';
+    if (Math.abs(numero - Math.round(numero)) < 0.0001) return String(Math.round(numero));
+    return numero.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  function formatearMonedaAsistente(valor) {
+    const numero = Number(valor);
+    if (!Number.isFinite(numero)) return 'RD$0';
+    return `RD$${formatearNumeroAsistente(numero)}`;
+  }
+
+  function capitalizarTextoAsistente(texto) {
+    return String(texto || '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(parte => parte.charAt(0).toUpperCase() + parte.slice(1))
+      .join(' ');
+  }
+
+  function limpiarNombreEntidadAsistente(texto) {
+    return normalizarTextoAsistente(texto)
+      .replace(/\b(?:producto|productos|ingrediente|ingredientes|insumo|insumos|distribuidor|distribuidores|proveedor|proveedores)\b/g, ' ')
+      .replace(/\b(?:del?|en el|en la|en|de la|de)\s+(?:almacen|inventario|distribuidor(?:es)?|proveedor(?:es)?)\b/g, ' ')
+      .replace(/\b(?:el|la|lo|los|las|un|una|unos|unas|este|esta|esto|ese|esa|eso|aquel|aquella)\b/g, ' ')
+      .replace(/\b(?:por favor|porfa|quiero|necesito|me gustaria|me gustaria que|llename)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function normalizarNumeroAsistente(texto) {
+    if (texto === null || texto === undefined) return null;
+    const limpio = String(texto).replace(',', '.').replace(/[^\d.]/g, '');
+    if (!limpio) return null;
+    const numero = Number(limpio);
+    return Number.isFinite(numero) ? numero : null;
+  }
+
+  function clonarDebugAsistente(value, depth = 0) {
+    if (depth > 2) return '[max-depth]';
+    if (value === null || value === undefined) return value;
+    if (typeof value === 'function') return '[function]';
+    if (typeof value !== 'object') return value;
+    if (Array.isArray(value)) return value.slice(0, 8).map(item => clonarDebugAsistente(item, depth + 1));
+    const clone = {};
+    Object.keys(value).slice(0, 12).forEach((key) => {
+      clone[key] = clonarDebugAsistente(value[key], depth + 1);
+    });
+    return clone;
+  }
+
+  function iniciarDebugAsistente(rawText, normalizedText) {
+    assistantDebugState.traceId += 1;
+    assistantDebugState.current = [];
+    registrarDebugAsistente('input', {
+      rawText,
+      normalizedText,
+      activeModule: obtenerModuloActivoAsistente()?.page || '',
+      pendingAction: !!assistantPendingAction
+    });
+  }
+
+  function registrarDebugAsistente(stage, payload = {}) {
+    const entry = {
+      id: assistantDebugState.traceId,
+      stage,
+      at: new Date().toISOString(),
+      data: clonarDebugAsistente(payload)
+    };
+    assistantDebugState.current.push(entry);
+    try {
+      console.info('[LuRo Assistant]', stage, entry.data);
+    } catch (_) {}
+    return entry;
+  }
+
+  function cerrarDebugAsistente(resultado) {
+    assistantDebugState.history.unshift({
+      id: assistantDebugState.traceId,
+      at: new Date().toISOString(),
+      result: clonarDebugAsistente(resultado),
+      trace: assistantDebugState.current.slice()
+    });
+    assistantDebugState.history = assistantDebugState.history.slice(0, 40);
+    window.__luroAssistantDebug = assistantDebugState.history;
+    window.getLuroAssistantDebug = function () {
+      return assistantDebugState.history.slice();
+    };
+  }
+
+  function distanciaLevenshteinAsistente(a, b) {
+    const left = String(a || '');
+    const right = String(b || '');
+    if (!left) return right.length;
+    if (!right) return left.length;
+    const dp = Array.from({ length: left.length + 1 }, () => new Array(right.length + 1).fill(0));
+    for (let i = 0; i <= left.length; i += 1) dp[i][0] = i;
+    for (let j = 0; j <= right.length; j += 1) dp[0][j] = j;
+    for (let i = 1; i <= left.length; i += 1) {
+      for (let j = 1; j <= right.length; j += 1) {
+        const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,
+          dp[i][j - 1] + 1,
+          dp[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return dp[left.length][right.length];
+  }
+
+  function normalizarUnidadAsistente(texto) {
+    const valor = normalizarTextoAsistente(texto);
+    if (!valor) return '';
+    if (['lb', 'lbr', 'libra', 'libras'].includes(valor)) return 'Lb';
+    if (['g', 'gr', 'grs', 'gramo', 'gramos'].includes(valor)) return 'g';
+    if (['oz', 'onza', 'onzas'].includes(valor)) return 'Oz';
+    if (['lt', 'lts', 'litro', 'litros', 'l'].includes(valor)) return 'Litros';
+    if (['unidad', 'unidades', 'ud', 'uds', 'u'].includes(valor)) return 'Unidad';
+    if (['ml', 'mililitro', 'mililitros'].includes(valor)) return 'Litros';
+    return '';
+  }
+
+  function etiquetaUnidadAsistente(unidad) {
+    switch (unidad) {
+      case 'Lb': return 'libras';
+      case 'g': return 'gramos';
+      case 'Oz': return 'onzas';
+      case 'Litros': return 'litros';
+      case 'Unidad': return 'unidades';
+      default: return unidad || 'unidades';
+    }
+  }
+
+  function obtenerModuloActivoAsistente() {
+    const activo = document.querySelector('.content-section.active');
+    if (!activo || !activo.id) return null;
+    return ASSISTANT_PAGES.find(item => item.page === activo.id) || null;
+  }
+
+  function obtenerModuloPorPaginaAsistente(page) {
+    return ASSISTANT_PAGES.find(item => item.page === page) || null;
+  }
+
+  function esModuloRestringidoAsistente(moduloOPage) {
+    const page = typeof moduloOPage === 'string' ? moduloOPage : moduloOPage?.page;
+    return ASSISTANT_RESTRICTED_PAGES.has(page);
+  }
+
+  function construirRespuestaRestriccionAsistente(moduloOPage) {
+    const modulo = typeof moduloOPage === 'string' ? obtenerModuloPorPaginaAsistente(moduloOPage) : moduloOPage;
+    const label = modulo?.label || 'ese módulo';
+    return {
+      message: `No tengo acceso a ${label}. Esa acción está restringida para el asistente.`,
+      role: 'assistant'
+    };
+  }
+
+  function resolverModuloAsistente(intencion) {
+    if (!intencion) return null;
+    const topicMap = {
+      'ganancias-total': 'ventas',
+      'perdidas-total': 'historial-decomiso',
+      'ventas-total-hoy': 'ventas',
+      'ventas-top-product': 'ventas',
+      'ventas-low-product': 'ventas',
+      'facturas-hoy': 'rnc-dgii',
+      'facturacion-total': 'rnc-dgii',
+      'factura-mas-alta': 'rnc-dgii',
+      'factura-por-cliente': 'rnc-dgii',
+      'almacen-restante': 'inventario',
+      'almacen-mas-critico': 'inventario',
+      'almacen-bajo-ideal': 'inventario',
+      'almacen-buscar': 'inventario',
+      'distribuidor-productos': 'distribuidores',
+      'distribuidor-faltantes': 'distribuidores',
+      'distribuidor-pedido': 'distribuidores',
+      'distribuidor-vende-producto': 'distribuidores',
+      'clientes-puntos': 'clientes-puntos',
+      'clientes-buscar': 'clientes-puntos',
+      'clientes-top-puntos': 'clientes-puntos',
+      'clientes-top-compra': 'clientes-puntos',
+      'plato-mas-ganancia': 'ventas',
+      'plato-faltantes': 'disponibilidad',
+      'platos-bloqueados': 'disponibilidad',
+      'produccion-recomendada': 'produccion-interna',
+      'produccion-listado': 'produccion-interna',
+      'produccion-composicion': 'produccion-interna',
+      'produccion-faltantes': 'produccion-interna',
+      'plato-consume-ingrediente': 'disponibilidad',
+      'ingrediente-mas-usado': 'disponibilidad'
+    };
+    const actionMap = {
+      'distribuidor-create': 'distribuidores',
+      'distribuidor-update-phone': 'distribuidores',
+      'decomiso-create': 'decomiso'
+    };
+    const page = topicMap[intencion.topic] || actionMap[intencion.kind] || '';
+    if (page) {
+      return ASSISTANT_PAGES.find(item => item.page === page) || null;
+    }
+    return null;
+  }
+
+  function leerValorDOMAsistente(selector) {
+    if (!selector || typeof document === 'undefined') return '';
+    let node = null;
+    if (selector.startsWith('#') && typeof document.getElementById === 'function') {
+      node = document.getElementById(selector.slice(1));
+    } else if (typeof document.querySelector === 'function') {
+      node = document.querySelector(selector);
+    }
+    if (!node) return '';
+    return String(node.innerText || node.textContent || node.value || '').trim();
+  }
+
+  function extraerMontoDesdeTextoAsistente(texto) {
+    const match = String(texto || '').match(/RD\$\s*([0-9.,]+)/i);
+    if (!match) return null;
+    const limpio = match[1].replace(/,/g, '');
+    const numero = Number(limpio);
+    return Number.isFinite(numero) ? numero : null;
+  }
+
+  function formatearMontoRespuestaAsistente(valor) {
+    const numero = Number(valor);
+    if (!Number.isFinite(numero)) return 'RD$0.00';
+    return `RD$${numero.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  function obtenerOwnerAsistente() {
+    if (typeof ownerDatosActivo === 'function') {
+      const owner = ownerDatosActivo();
+      if (owner) return String(owner).trim().toLowerCase();
+    }
+    return String(sesionUser?.user || '').trim().toLowerCase();
+  }
+
+  function itemPerteneceContextoAsistente(item) {
+    return String(item?.owner || '').trim().toLowerCase() === obtenerOwnerAsistente() && item?.modulo === moduloActual;
+  }
+
+  function obtenerContextoConversacionAsistente() {
+    return { ...assistantConversationContext };
+  }
+
+  function actualizarContextoConversacionAsistente(payload = {}) {
+    Object.keys(payload).forEach((key) => {
+      if (!(key in assistantConversationContext)) return;
+      const value = payload[key];
+      if (value === undefined) return;
+      assistantConversationContext[key] = value;
+    });
+    return obtenerContextoConversacionAsistente();
+  }
+
+  function recordarEntidadAsistente(payload = {}) {
+    const patch = {};
+    if (payload.intent) patch.lastIntent = payload.intent;
+    if (payload.module) patch.lastModule = payload.module;
+    if (payload.entityType) patch.lastEntityType = payload.entityType;
+    if (payload.reference) patch.lastReference = payload.reference;
+    if (payload.quantity !== undefined) patch.lastQuantity = payload.quantity;
+    if (payload.unit !== undefined) patch.lastUnit = payload.unit;
+    if (payload.cost !== undefined) patch.lastCost = payload.cost;
+    if (payload.ideal !== undefined) patch.lastIdeal = payload.ideal;
+
+    const entityName = payload.entityName || payload.product || payload.distributor || '';
+    if (entityName) {
+      patch.lastEntityName = entityName;
+    }
+
+    if (payload.product) {
+      patch.lastProduct = payload.product;
+      patch.lastEntityName = payload.product;
+      patch.lastEntityType = payload.entityType || 'almacen';
+    }
+
+    if (payload.distributor) {
+      patch.lastDistributor = payload.distributor;
+      patch.lastEntityName = payload.distributor;
+      patch.lastEntityType = payload.entityType || 'distribuidor';
+    }
+
+    if (payload.client) {
+      patch.lastClient = payload.client;
+      patch.lastEntityName = payload.client;
+      patch.lastEntityType = payload.entityType || 'cliente';
+    }
+
+    if (payload.plate) {
+      patch.lastPlate = payload.plate;
+      patch.lastEntityName = payload.plate;
+      patch.lastEntityType = payload.entityType || 'plato';
+    }
+
+    if (payload.queryTopic) {
+      patch.lastQueryTopic = payload.queryTopic;
+    }
+
+    return actualizarContextoConversacionAsistente(patch);
+  }
+
+  function esReferenciaGenericaAsistente(referencia) {
+    return /^(|lo|la|el|los|las|ese|esa|eso|este|esta|esto|aquello|aquella|mismo|misma|producto|distribuidor|plato|receta|item|registro)$/.test(normalizarTextoAsistente(referencia));
+  }
+
+  function buscarModuloAsistente(textoNormalizado) {
+    return ASSISTANT_PAGES.find(item => textoIncluyeAlias(textoNormalizado, item.aliases)) || null;
+  }
+
+  function buscarAccionAsistente(textoNormalizado) {
+    return ASSISTANT_ACTIONS.find(item => textoIncluyeAlias(textoNormalizado, item.aliases)) || null;
+  }
+
+  function construirExplicacionModuloAsistente(modulo, modoGuia = false) {
+    if (!modulo) {
+      const activo = obtenerModuloActivoAsistente();
+      if (activo) modulo = activo;
+    }
+    if (!modulo) {
+      return 'No pude identificar la opción que deseas revisar. Puedes preguntarme por Almacén, Distribuidores, Producción Interna, Disponibilidad, Clientes y Puntos, Comandas o Historial de Ventas.';
+    }
+    if (esModuloRestringidoAsistente(modulo)) {
+      return construirRespuestaRestriccionAsistente(modulo).message;
+    }
+    const base = `${modulo.label}: ${modulo.description}`;
+    if (!modoGuia) return base;
+    const guia = ASSISTANT_MODULE_GUIDES[modulo.page];
+    return guia ? `${base} ${guia}` : base;
+  }
+
+  function registrarMensajeAsistente(role, text, options = {}) {
+    const { messages } = assistantRefs();
+    if (!messages) return;
+    if (options.trackActivity !== false) {
+      registrarActividadAsistente();
+    }
+    const wrap = document.createElement('div');
+    wrap.className = `luro-assistant-msg ${role === 'user' ? 'is-user' : (role === 'system' ? 'is-system' : 'is-assistant')}`;
+
+    const meta = document.createElement('span');
+    meta.className = 'luro-assistant-msg-meta';
+    meta.textContent = role === 'user' ? 'Tú' : (role === 'system' ? 'Sistema' : 'LuRo Control');
+
+    const bubble = document.createElement('div');
+    bubble.className = 'luro-assistant-bubble';
+    bubble.textContent = text;
+
+    wrap.appendChild(meta);
+    wrap.appendChild(bubble);
+    messages.appendChild(wrap);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function sembrarAsistenteSiHaceFalta(trackActivity = false) {
+    if (assistantSeeded) return;
+    assistantSeeded = true;
+    registrarMensajeAsistente('assistant', ASSISTANT_GREETING, { trackActivity });
+  }
+
+  function enfocarInputAsistente() {
+    const { input } = assistantRefs();
+    if (!input) return;
+    setTimeout(() => {
+      try {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      } catch (_) {}
+    }, 60);
+  }
+
+  function actualizarEstadoVisualAsistente(abierto) {
+    const { panel, fab } = assistantRefs();
+    if (panel) {
+      panel.classList.toggle('is-open', !!abierto);
+      panel.setAttribute('aria-hidden', abierto ? 'false' : 'true');
+      if (!abierto) panel.classList.remove('is-minimized');
+    }
+    if (fab) {
+      fab.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+    }
+  }
+
+  function abrirPanelAsistente() {
+    sembrarAsistenteSiHaceFalta();
+    registrarActividadAsistente();
+    actualizarEstadoVisualAsistente(true);
+    if (window.innerWidth <= 900 && typeof window.cerrarSidebarMovil === 'function') {
+      window.cerrarSidebarMovil('assistant');
+    }
+    enfocarInputAsistente();
+  }
+
+  function cerrarPanelAsistente() {
+    assistantSuggestionPreviewKey = '';
+    actualizarEstadoVisualAsistente(false);
+  }
+
+  function irAModuloAsistente(modulo) {
+    if (!modulo?.page || esModuloRestringidoAsistente(modulo) || typeof window.showPage !== 'function') return;
+    window.showPage(modulo.page);
+  }
+
+  function responderModulo(modulo, soloExplicacion = false, modoGuia = false) {
+    if (!modulo) {
+      return {
+        message: 'No encontré ese módulo dentro de LuRo Control.',
+        role: 'assistant'
+      };
+    }
+    if (esModuloRestringidoAsistente(modulo)) {
+      return construirRespuestaRestriccionAsistente(modulo);
+    }
+    if (soloExplicacion || modoGuia) {
+      return {
+        message: construirExplicacionModuloAsistente(modulo, modoGuia),
+        role: 'assistant'
+      };
+    }
+    return {
+      message: `Abriendo ${modulo.label}.`,
+      role: 'system',
+      actionDelay: 260,
+      action: () => irAModuloAsistente(modulo)
+    };
+  }
+
+  function responderAccion(actionDef, soloExplicacion = false) {
+    if (!actionDef) {
+      return {
+        message: ASSISTANT_UNKNOWN_COMMAND,
+        role: 'assistant'
+      };
+    }
+    if (soloExplicacion) {
+      return {
+        message: actionDef.help,
+        role: 'assistant'
+      };
+    }
+    return {
+      message: actionDef.response,
+      role: 'system',
+      actionDelay: 260,
+      action: () => actionDef.run()
+    };
+  }
+
+  function actualizarEstadoModuloComandos(texto) {
+    const { state } = comandosRefs();
+    if (state) state.textContent = texto || ASSISTANT_HELP;
+  }
+
+  const ASSISTANT_TEMPLATE_PLACEHOLDERS = new Set([
+    'nombre',
+    'contacto',
+    'telefono',
+    'telefono del distribuidor',
+    'distribuidor',
+    'producto',
+    'ingrediente',
+    'cliente',
+    'cantidad',
+    'unidad',
+    'fecha',
+    'mesa',
+    'numero',
+    'número',
+    'plato',
+    'equipo',
+    'equipo o plato'
+  ]);
+
+  function normalizarTextoPlantillaAsistente(texto) {
+    return String(texto || '').replace(/\[([^\]]+)\]/g, (_, contenido) => {
+      const limpio = String(contenido || '').trim();
+      return limpio ? limpio : ' ';
+    });
+  }
+
+  function esPlantillaComandoAsistente(texto) {
+    const matches = String(texto || '').match(/\[([^\]]+)\]/g);
+    if (!matches) return false;
+    return matches.some((token) => {
+      const contenido = normalizarTextoAsistente(token.slice(1, -1)).trim();
+      return !contenido || ASSISTANT_TEMPLATE_PLACEHOLDERS.has(contenido);
+    });
+  }
+
+  function prepararTextoComandoAsistente(texto, opciones = {}) {
+    const commandText = String(texto || '').trim();
+    if (!commandText) return false;
+    const { runnerInput } = comandosRefs();
+    const { input } = assistantRefs();
+    if (runnerInput) runnerInput.value = commandText;
+    if (input) input.value = commandText;
+    if (opciones.abrirPanel !== false) abrirPanelAsistente();
+    if (opciones.enfocar !== false) enfocarInputAsistente();
+    return true;
+  }
+
+  function prepararComandoDesdeCatalogo(texto) {
+    if (!prepararTextoComandoAsistente(texto, { abrirPanel: false, enfocar: false })) return;
+    const { runnerInput } = comandosRefs();
+    if (runnerInput) {
+      setTimeout(() => {
+        try {
+          runnerInput.focus();
+          runnerInput.setSelectionRange(runnerInput.value.length, runnerInput.value.length);
+        } catch (_) {}
+      }, 40);
+    }
+    if (esPlantillaComandoAsistente(texto)) {
+      actualizarEstadoModuloComandos(`Plantilla preparada: completa los campos y ejecútala. ${texto}`);
+      return;
+    }
+    actualizarEstadoModuloComandos(`Comando preparado: ${texto}`);
+  }
+
+  function crearEstadoEditorComandos(section) {
+    if (!section) return null;
+    return {
+      key: obtenerClaveSeccionComandos(section),
+      page: section.page || '',
+      title: section.title || '',
+      description: section.description || '',
+      commands: (Array.isArray(section.commands) ? section.commands : []).map((command) => ({
+        text: String(command?.text || '').trim(),
+        help: String(command?.help || '').trim()
+      }))
+    };
+  }
+
+  function renderEditorComandosModulo() {
+    const { editorKey, editorTitle, editorDescription, editorList } = comandosRefs();
+    if (!comandosEditorState || !editorList) return;
+    if (editorKey) editorKey.value = comandosEditorState.key || '';
+    if (editorTitle) editorTitle.value = comandosEditorState.title || '';
+    if (editorDescription) editorDescription.value = comandosEditorState.description || '';
+    editorList.innerHTML = '';
+
+    comandosEditorState.commands.forEach((command, index) => {
+      const item = document.createElement('div');
+      item.className = 'comandos-editor-item';
+
+      const head = document.createElement('div');
+      head.className = 'comandos-editor-item-head';
+
+      const title = document.createElement('strong');
+      title.textContent = `Acción ${index + 1}`;
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'btn btn-danger comandos-editor-delete-btn';
+      deleteBtn.textContent = 'Eliminar';
+      deleteBtn.onclick = () => window.eliminarFilaEditorComandoModulo(index);
+
+      head.appendChild(title);
+      head.appendChild(deleteBtn);
+
+      const textWrap = document.createElement('label');
+      textWrap.className = 'comandos-editor-field';
+      const textLabel = document.createElement('span');
+      textLabel.textContent = 'Nombre de la acción';
+      const textInput = document.createElement('input');
+      textInput.type = 'text';
+      textInput.value = command.text || '';
+      textInput.placeholder = 'Ej. busca [producto]';
+      textInput.oninput = (event) => window.actualizarCampoEditorComandoModulo(index, 'text', event.target.value);
+      textWrap.appendChild(textLabel);
+      textWrap.appendChild(textInput);
+
+      const helpWrap = document.createElement('label');
+      helpWrap.className = 'comandos-editor-field';
+      const helpLabel = document.createElement('span');
+      helpLabel.textContent = 'Qué hace esta acción';
+      const helpInput = document.createElement('textarea');
+      helpInput.rows = 3;
+      helpInput.value = command.help || '';
+      helpInput.placeholder = 'Explica qué hace este comando dentro del sistema.';
+      helpInput.oninput = (event) => window.actualizarCampoEditorComandoModulo(index, 'help', event.target.value);
+      helpWrap.appendChild(helpLabel);
+      helpWrap.appendChild(helpInput);
+
+      item.appendChild(head);
+      item.appendChild(textWrap);
+      item.appendChild(helpWrap);
+      editorList.appendChild(item);
+    });
+  }
+
+  function abrirEditorComandosModulo(sectionKey) {
+    const section = buscarSeccionComandosPorKey(sectionKey);
+    if (!section) return;
+    const { editorModal } = comandosRefs();
+    comandosEditorState = crearEstadoEditorComandos(section);
+    renderEditorComandosModulo();
+    if (editorModal) {
+      editorModal.style.display = 'flex';
+      editorModal.setAttribute('aria-hidden', 'false');
+    }
+  }
+
+  function cerrarEditorComandosModulo() {
+    const { editorModal } = comandosRefs();
+    if (editorModal) {
+      editorModal.style.display = 'none';
+      editorModal.setAttribute('aria-hidden', 'true');
+    }
+    comandosEditorState = null;
+  }
+
+  function sincronizarCabeceraEditorComandos() {
+    const { editorTitle, editorDescription } = comandosRefs();
+    if (!comandosEditorState) return;
+    if (editorTitle) comandosEditorState.title = String(editorTitle.value || '').trim();
+    if (editorDescription) comandosEditorState.description = String(editorDescription.value || '').trim();
+  }
+
+  function guardarEditorComandosModulo() {
+    sincronizarCabeceraEditorComandos();
+    if (!comandosEditorState) return;
+    const commands = (Array.isArray(comandosEditorState.commands) ? comandosEditorState.commands : [])
+      .map((command) => ({
+        text: String(command?.text || '').trim(),
+        help: String(command?.help || '').trim()
+      }))
+      .filter((command) => command.text);
+    if (!commands.length) {
+      actualizarEstadoModuloComandos('Debes dejar al menos una acción en la tarjeta antes de guardar.');
+      return;
+    }
+    const overrides = obtenerOverridesComandosAsistente();
+    overrides[comandosEditorState.key] = {
+      title: comandosEditorState.title,
+      description: comandosEditorState.description,
+      commands
+    };
+    guardarOverridesComandosAsistente(overrides);
+    cerrarEditorComandosModulo();
+    renderModuloComandos();
+    renderSugerenciasAsistente();
+    actualizarEstadoModuloComandos('Tarjeta de comandos actualizada correctamente.');
+  }
+
+  function restaurarEditorComandosModulo() {
+    if (!comandosEditorState?.key) return;
+    const baseSection = buscarSeccionComandosPorKey(comandosEditorState.key, obtenerCatalogoBaseComandosSistema());
+    if (!baseSection) return;
+    const overrides = obtenerOverridesComandosAsistente();
+    delete overrides[comandosEditorState.key];
+    guardarOverridesComandosAsistente(overrides);
+    comandosEditorState = crearEstadoEditorComandos(baseSection);
+    renderEditorComandosModulo();
+    renderModuloComandos();
+    renderSugerenciasAsistente();
+    actualizarEstadoModuloComandos('Restauré la tarjeta a su configuración original.');
+  }
+
+  function construirClaveFiltroComandos(section) {
+    return normalizarTextoAsistente([
+      section.title,
+      section.description,
+      ...(Array.isArray(section.commands) ? section.commands.flatMap((command) => [command?.text || '', command?.help || '']) : [])
+    ].join(' '));
+  }
+
+  function renderModuloComandos() {
+    const { search, summary, list } = comandosRefs();
+    if (!list) return;
+
+    const filtro = normalizarTextoAsistente(search?.value || '');
+    const sugerenciasActivas = new Set(obtenerClavesSugerenciasActivasAsistente());
+    const sections = obtenerCatalogoComandosSistema().filter((section) => {
+      if (!filtro) return true;
+      return construirClaveFiltroComandos(section).includes(filtro);
+    });
+
+    list.innerHTML = '';
+
+    if (summary) {
+      const totalComandos = sections.reduce((acc, section) => acc + (section.commands?.length || 0), 0);
+      summary.textContent = `${sections.length} módulos visibles · ${totalComandos} comandos listados · ${sugerenciasActivas.size} accesos activos en el asistente. Pulsa un comando para prepararlo, ejecútalo o marca la tarjeta para mostrarla arriba en el panel.`;
+    }
+
+    if (!sections.length) {
+      const empty = document.createElement('div');
+      empty.className = 'comandos-module-empty';
+      empty.textContent = 'No encontré comandos con ese filtro.';
+      list.appendChild(empty);
+      return;
+    }
+
+    sections.forEach((section) => {
+      const card = document.createElement('article');
+      card.className = 'comandos-module-section';
+      card.dataset.sectionKey = obtenerClaveSeccionComandos(section);
+
+      const head = document.createElement('div');
+      head.className = 'comandos-module-section-head';
+
+      const headTop = document.createElement('div');
+      headTop.className = 'comandos-module-section-top';
+
+      const headCopy = document.createElement('div');
+      headCopy.className = 'comandos-module-section-copy';
+
+      const title = document.createElement('strong');
+      title.textContent = section.title;
+
+      const description = document.createElement('p');
+      description.textContent = section.description;
+
+      const suggestion = obtenerConfigSugerenciaSeccion(section);
+      const toggle = document.createElement('label');
+      toggle.className = 'comandos-module-suggestion-toggle';
+      toggle.title = 'Mostrar esta tarjeta dentro de las sugerencias rápidas del asistente';
+
+      const toggleInput = document.createElement('input');
+      toggleInput.type = 'checkbox';
+      toggleInput.checked = sugerenciasActivas.has(suggestion.key);
+      toggleInput.setAttribute('aria-label', `Mostrar ${section.title} en las sugerencias del asistente`);
+      toggleInput.onchange = () => window.toggleSugerenciaComandoModulo(suggestion.key, toggleInput.checked);
+
+      const toggleUi = document.createElement('span');
+      toggleUi.className = 'comandos-module-suggestion-toggle-ui';
+
+      const toggleCopy = document.createElement('span');
+      toggleCopy.className = 'comandos-module-suggestion-toggle-copy';
+      toggleCopy.textContent = 'Sugerencia';
+
+      const sectionTools = document.createElement('div');
+      sectionTools.className = 'comandos-module-section-tools';
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn comandos-module-edit-btn';
+      editBtn.setAttribute('aria-label', `Editar ${section.title}`);
+      editBtn.title = 'Editar título, descripción y acciones de esta tarjeta';
+      editBtn.textContent = '✏️ Editar';
+      editBtn.onclick = () => window.abrirEditorComandosModulo(obtenerClaveSeccionComandos(section));
+
+      const commandsWrap = document.createElement('div');
+      commandsWrap.className = 'comandos-module-command-list';
+
+      (section.commands || []).forEach((command) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'comandos-module-command';
+        btn.textContent = command.text;
+        if (command.help) btn.title = command.help;
+        btn.onclick = () => prepararComandoDesdeCatalogo(command.text);
+        commandsWrap.appendChild(btn);
+      });
+
+      headCopy.appendChild(title);
+      toggle.appendChild(toggleInput);
+      toggle.appendChild(toggleUi);
+      toggle.appendChild(toggleCopy);
+      sectionTools.appendChild(editBtn);
+      sectionTools.appendChild(toggle);
+      headTop.appendChild(headCopy);
+      headTop.appendChild(sectionTools);
+      head.appendChild(headTop);
+      head.appendChild(description);
+      card.appendChild(head);
+      card.appendChild(commandsWrap);
+      list.appendChild(card);
+    });
+  }
+
+  function obtenerItemsAlmacenAsistente() {
+    if (!sesionUser?.user) return [];
+    return (db.almacen || []).filter(item => itemPerteneceContextoAsistente(item));
+  }
+
+  function obtenerDistribuidoresAsistente() {
+    if (typeof obtenerDistribuidoresActuales === 'function') {
+      return obtenerDistribuidoresActuales();
+    }
+    if (!sesionUser?.user) return [];
+    return (db.distribuidores || []).filter(item => itemPerteneceContextoAsistente(item));
+  }
+
+  function obtenerProduccionesAsistente() {
+    if (!sesionUser?.user) return [];
+    return (db.produccion_stock || []).filter(item => itemPerteneceContextoAsistente(item));
+  }
+
+  function obtenerPlatosAsistente() {
+    if (!sesionUser?.user) return [];
+    return (db.platos || []).filter(item => itemPerteneceContextoAsistente(item));
+  }
+
+  function obtenerCatalogoDistribuidoresAsistente() {
+    if (typeof obtenerCatalogoDistribuidoresActual === 'function') {
+      return obtenerCatalogoDistribuidoresActual();
+    }
+    if (!sesionUser?.user) return [];
+    return (db.catalogoDistribuidores || []).filter(item => itemPerteneceContextoAsistente(item));
+  }
+
+  function obtenerClientesAsistente() {
+    return Array.isArray(db.clientesFidelizacion) ? db.clientesFidelizacion : [];
+  }
+
+  function obtenerTsAsistente(registro) {
+    if (!registro) return 0;
+    if (typeof obtenerTsRegistro === 'function') {
+      const ts = Number(obtenerTsRegistro(registro) || 0);
+      if (Number.isFinite(ts) && ts > 0) return ts;
+    }
+    const tsDirecto = Number(registro.ts || 0);
+    if (Number.isFinite(tsDirecto) && tsDirecto > 0) return tsDirecto;
+    if (typeof parseFechaRegistro === 'function') {
+      const parsed = parseFechaRegistro(registro.fecha);
+      if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) return parsed.getTime();
+    }
+    const parsed = new Date(registro.fecha || registro.createdAt || registro.updatedAt || 0).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function mismoDiaAsistente(ts, offsetDays = 0) {
+    const fecha = new Date(ts || 0);
+    if (Number.isNaN(fecha.getTime())) return false;
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    base.setDate(base.getDate() + offsetDays);
+    const limite = new Date(base);
+    limite.setDate(limite.getDate() + 1);
+    return fecha >= base && fecha < limite;
+  }
+
+  function obtenerVentasAsistente(options = {}) {
+    const useDateFilters = options.useDateFilters === true;
+    return (db.ventas || []).filter((venta) => {
+      if (!sesionUser?.user) return false;
+      if (venta.owner !== sesionUser.user) return false;
+      if (typeof moduloPerteneceVista === 'function' && !moduloPerteneceVista(venta.modulo)) return false;
+      if (options.currentModuleOnly && venta.modulo !== moduloActual) return false;
+      if (useDateFilters && typeof fechaDentroRango === 'function' && !fechaDentroRango(venta.fecha, 'filtro-ventas-desde', 'filtro-ventas-hasta')) return false;
+      const ts = obtenerTsAsistente(venta);
+      if (options.todayOnly && !mismoDiaAsistente(ts, 0)) return false;
+      if (options.yesterdayOnly && !mismoDiaAsistente(ts, -1)) return false;
+      return true;
+    });
+  }
+
+  function obtenerFacturasAsistente(options = {}) {
+    const useDateFilters = options.useDateFilters === true;
+    return (db.facturasResumen || []).filter((factura) => {
+      if (!sesionUser?.user) return false;
+      if ((factura.owner || '') !== sesionUser.user) return false;
+      if (typeof moduloPerteneceVista === 'function' && !moduloPerteneceVista(factura.modulo)) return false;
+      if (options.currentModuleOnly && factura.modulo !== moduloActual) return false;
+      if (useDateFilters && typeof fechaDentroRango === 'function' && !fechaDentroRango(factura.fecha, 'filtro-rnc-desde', 'filtro-rnc-hasta')) return false;
+      const ts = obtenerTsAsistente(factura);
+      if (options.todayOnly && !mismoDiaAsistente(ts, 0)) return false;
+      if (options.yesterdayOnly && !mismoDiaAsistente(ts, -1)) return false;
+      return true;
+    });
+  }
+
+  function construirMapaVentasPlatosAsistente(options = {}) {
+    const mapa = new Map();
+    const facturas = obtenerFacturasAsistente(options);
+    if (facturas.length) {
+      facturas.forEach((factura) => {
+        (Array.isArray(factura.items) ? factura.items : []).forEach((item) => {
+          const nombre = capitalizarTextoAsistente(item?.nombre || '');
+          if (!nombre) return;
+          const actual = mapa.get(nombre) || { nombre, cantidad: 0, total: 0, ganancia: 0 };
+          const cantidad = Number(item?.cantidad || 0);
+          const subtotal = Number(item?.subtotal || ((item?.precio || 0) * cantidad) || 0);
+          actual.cantidad += cantidad;
+          actual.total += subtotal;
+          mapa.set(nombre, actual);
+        });
+      });
+    } else {
+      obtenerVentasAsistente(options).forEach((venta) => {
+        const nombre = capitalizarTextoAsistente(venta?.plato || '');
+        if (!nombre) return;
+        const actual = mapa.get(nombre) || { nombre, cantidad: 0, total: 0, ganancia: 0 };
+        actual.cantidad += Number(venta?.cantidad || 0);
+        actual.total += Number(venta?.totalVenta || 0);
+        actual.ganancia += Number(venta?.ganancia || 0);
+        mapa.set(nombre, actual);
+      });
+    }
+    return Array.from(mapa.values()).sort((a, b) => b.cantidad - a.cantidad || b.total - a.total);
+  }
+
+  function obtenerProductosBajoIdealAsistente() {
+    return obtenerItemsAlmacenAsistente()
+      .map((item) => {
+        const actual = Number(item.actual || 0);
+        const ideal = Number(item.ideal || 0);
+        const faltante = Math.max(0, ideal - actual);
+        const ratio = ideal > 0 ? actual / ideal : (actual > 0 ? 1 : 0);
+        return { ...item, actual, ideal, faltante, ratio };
+      })
+      .filter((item) => item.ideal > 0 && item.actual < item.ideal)
+      .sort((a, b) => b.faltante - a.faltante || a.ratio - b.ratio);
+  }
+
+  function obtenerProductoMasCriticoAsistente() {
+    return obtenerProductosBajoIdealAsistente()[0] || null;
+  }
+
+  function calcularGananciaPorPlatoAsistente() {
+    const mapa = new Map();
+    obtenerVentasAsistente().forEach((venta) => {
+      const nombre = capitalizarTextoAsistente(venta?.plato || '');
+      if (!nombre) return;
+      const actual = mapa.get(nombre) || { nombre, cantidad: 0, ganancia: 0, total: 0 };
+      actual.cantidad += Number(venta?.cantidad || 0);
+      actual.ganancia += Number(venta?.ganancia || 0);
+      actual.total += Number(venta?.totalVenta || 0);
+      mapa.set(nombre, actual);
+    });
+    return Array.from(mapa.values()).sort((a, b) => b.ganancia - a.ganancia || b.cantidad - a.cantidad);
+  }
+
+  function construirDetalleProduccionAsistente(prod) {
+    if (!prod) return null;
+    const ownerActivo = obtenerOwnerAsistente();
+    const detalle = {
+      produccion: prod,
+      ingredientes: [],
+      faltantes: [],
+      capacidad: 0,
+      costoReposicion: 0
+    };
+    const capacidades = [];
+    const receta = Array.isArray(prod.receta) ? prod.receta : [];
+    receta.forEach((ing) => {
+      const alm = (db.almacen || []).find((item) =>
+        normalizarTextoAsistente(item.nombre) === normalizarTextoAsistente(ing.nombre) &&
+        String(item.owner || '').trim().toLowerCase() === ownerActivo &&
+        item.modulo === prod.modulo
+      );
+      const unidadBase = alm?.unidad || ing.unidad || '';
+      let requerida = Number(ing.cantidad || 0);
+      if (alm && typeof convertirUnidad === 'function') {
+        try {
+          requerida = convertirUnidad(Number(ing.cantidad || 0), ing.unidad, unidadBase);
+        } catch (_) {}
+      }
+      const actual = Number(alm?.actual || 0);
+      const costoUnitario = Number(alm?.costoUnitario || 0);
+      const faltante = Math.max(0, requerida - actual);
+      if (requerida > 0) {
+        capacidades.push(Math.floor(actual / requerida));
+      }
+      detalle.ingredientes.push({
+        nombre: capitalizarTextoAsistente(ing.nombre),
+        requerida,
+        actual,
+        unidad: unidadBase || ing.unidad || ''
+      });
+      if (faltante > 0.0001) {
+        const costo = faltante * costoUnitario;
+        detalle.faltantes.push({
+          nombre: capitalizarTextoAsistente(ing.nombre),
+          faltante,
+          unidad: unidadBase || ing.unidad || '',
+          costo
+        });
+        detalle.costoReposicion += costo;
+      }
+    });
+    detalle.capacidad = capacidades.length ? Math.max(0, Math.min(...capacidades)) : 0;
+    return detalle;
+  }
+
+  function obtenerIngredienteMasUsadoAsistente() {
+    const mapa = new Map();
+    const registrar = (ing, fuente) => {
+      const clave = normalizarTextoAsistente(ing?.nombre || '');
+      if (!clave) return;
+      const actual = mapa.get(clave) || {
+        nombre: capitalizarTextoAsistente(ing.nombre),
+        cantidad: 0,
+        unidad: ing.unidad || '',
+        veces: 0,
+        fuentes: new Set()
+      };
+      actual.cantidad += Number(ing?.cantidad || 0);
+      actual.veces += 1;
+      if (!actual.unidad) actual.unidad = ing.unidad || '';
+      actual.fuentes.add(fuente);
+      mapa.set(clave, actual);
+    };
+
+    obtenerPlatosAsistente().forEach((plato) => {
+      (Array.isArray(plato.receta) ? plato.receta : []).forEach((ing) => registrar(ing, 'plato'));
+    });
+    obtenerProduccionesAsistente().forEach((prod) => {
+      (Array.isArray(prod.receta) ? prod.receta : []).forEach((ing) => registrar(ing, 'produccion'));
+    });
+
+    return Array.from(mapa.values())
+      .map((item) => ({ ...item, fuentes: Array.from(item.fuentes) }))
+      .sort((a, b) => b.veces - a.veces || b.cantidad - a.cantidad)[0] || null;
+  }
+
+  function obtenerIngredientesFaltantesPlatoAsistente(plato) {
+    if (!plato || !Array.isArray(plato.receta)) return [];
+    const ownerActivo = obtenerOwnerAsistente();
+    return plato.receta.map((ing) => {
+      const itemStock = (db.almacen || []).find(a =>
+        String(a.nombre || '').trim().toLowerCase() === String(ing.nombre || '').trim().toLowerCase() &&
+        String(a.owner || '').trim().toLowerCase() === ownerActivo &&
+        a.modulo === moduloActual
+      ) || (db.produccion_stock || []).find(p =>
+        String(p.nombre || '').trim().toLowerCase() === String(ing.nombre || '').trim().toLowerCase() &&
+        String(p.owner || '').trim().toLowerCase() === ownerActivo &&
+        p.modulo === moduloActual
+      );
+
+      let requerido = Number(ing.cantidad || 0);
+      let unidad = ing.unidad || '';
+      let actual = 0;
+      if (itemStock) {
+        unidad = itemStock.unidad || unidad;
+        actual = Number(itemStock.actual || 0);
+        if (typeof convertirUnidad === 'function') {
+          try {
+            requerido = convertirUnidad(Number(ing.cantidad || 0), ing.unidad, unidad);
+          } catch (_) {}
+        }
+      }
+      const faltante = Math.max(0, requerido - actual);
+      return {
+        nombre: capitalizarTextoAsistente(ing.nombre),
+        unidad,
+        requerido,
+        actual,
+        faltante
+      };
+    }).filter((item) => item.faltante > 0.0001);
+  }
+
+  function obtenerPlatosBloqueadosAsistente() {
+    return obtenerPlatosAsistente()
+      .map((plato) => ({ plato, faltantes: obtenerIngredientesFaltantesPlatoAsistente(plato) }))
+      .filter((entry) => entry.faltantes.length > 0)
+      .sort((a, b) => b.faltantes.length - a.faltantes.length || a.plato.nombre.localeCompare(b.plato.nombre));
+  }
+
+  function obtenerProduccionesBajasAsistente() {
+    return obtenerProduccionesAsistente()
+      .map((item) => {
+        const actual = Number(item.actual || 0);
+        const ideal = Number(item.ideal || 0);
+        const faltante = Math.max(0, ideal - actual);
+        return { ...item, actual, ideal, faltante };
+      })
+      .filter((item) => item.actual <= 0 || (item.ideal > 0 && item.actual < item.ideal))
+      .sort((a, b) => b.faltante - a.faltante || a.actual - b.actual);
+  }
+
+  function resolverClienteAsistente(referencia) {
+    const consulta = limpiarNombreEntidadAsistente(referencia || obtenerReferenciaDesdeContextoAsistente('cliente'));
+    if (!consulta) return { query: '', match: null, matches: [], ambiguous: false };
+    const objetivo = normalizarTextoAsistente(consulta);
+    const resultados = obtenerClientesAsistente().map((cliente) => {
+      const nombre = normalizarTextoAsistente(cliente.nombre);
+      const cedula = normalizarTextoAsistente(cliente.cedula);
+      const telefono = normalizarTextoAsistente(cliente.telefono);
+      let score = 0;
+      if (nombre === objetivo || cedula === objetivo || telefono === objetivo) {
+        score = 500;
+      } else if (nombre.includes(objetivo) || objetivo.includes(nombre)) {
+        score = 280;
+      } else if (cedula.includes(objetivo) || telefono.includes(objetivo)) {
+        score = 240;
+      } else {
+        const distance = distanciaLevenshteinAsistente(nombre.replace(/\s+/g, ''), objetivo.replace(/\s+/g, ''));
+        const maxLen = Math.max(nombre.replace(/\s+/g, '').length, objetivo.replace(/\s+/g, '').length, 1);
+        const similarity = 1 - (distance / maxLen);
+        if (similarity >= 0.62) score = Math.round(similarity * 150);
+      }
+      return { cliente, score, nombre: cliente.nombre };
+    }).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score || String(a.nombre).localeCompare(String(b.nombre)));
+
+    return {
+      query: consulta,
+      match: resultados[0]?.cliente || null,
+      matches: resultados.slice(0, 4).map((entry) => entry.cliente),
+      ambiguous: !!(resultados[1] && Math.abs(resultados[0].score - resultados[1].score) < 55)
+    };
+  }
+
+  function calcularGananciaTotalAsistente() {
+    if (!Array.isArray(db?.ventas) || !sesionUser?.user) return null;
+    const total = db.ventas
+      .filter((venta) => {
+        if (venta.owner !== sesionUser.user) return false;
+        if (typeof moduloPerteneceVista === 'function' && !moduloPerteneceVista(venta.modulo)) return false;
+        if (typeof fechaDentroRango === 'function' && !fechaDentroRango(venta.fecha, 'filtro-ventas-desde', 'filtro-ventas-hasta')) return false;
+        return true;
+      })
+      .reduce((acc, venta) => acc + (Number(venta.ganancia) || 0), 0);
+    return total;
+  }
+
+  function calcularPerdidaTotalAsistente() {
+    if (!Array.isArray(db?.decomisos) || !sesionUser?.user) return null;
+    const total = db.decomisos
+      .filter((registro) => {
+        if (registro.owner !== sesionUser.user) return false;
+        if (typeof moduloPerteneceVista === 'function' && !moduloPerteneceVista(registro.modulo)) return false;
+        if (typeof fechaDentroRango === 'function' && !fechaDentroRango(registro.fecha, 'filtro-decomiso-desde', 'filtro-decomiso-hasta')) return false;
+        return true;
+      })
+      .reduce((acc, registro) => acc + (Number(registro.perdida) || 0), 0);
+    return total;
+  }
+
+  function obtenerDatoVentasAsistente(intencion) {
+    if (!intencion) return null;
+    if (intencion.topic === 'ganancias-total') {
+      const modulo = resolverModuloAsistente(intencion);
+      try {
+        if (typeof renderHistorialVentas === 'function') {
+          renderHistorialVentas();
+        } else if (modulo?.page === 'ventas' && typeof window.showPage === 'function') {
+          window.showPage('ventas');
+        }
+      } catch (_) {}
+
+      const domRaw = leerValorDOMAsistente('#total-ganancias-cuadro');
+      const domValue = extraerMontoDesdeTextoAsistente(domRaw);
+      if (Number.isFinite(domValue)) {
+        return {
+          source: 'dom',
+          selector: '#total-ganancias-cuadro',
+          label: 'total de ganancias',
+          raw: domRaw,
+          value: domValue,
+          module: modulo?.page || 'ventas'
+        };
+      }
+
+      const calculated = calcularGananciaTotalAsistente();
+      if (Number.isFinite(calculated)) {
+        return {
+          source: 'db',
+          label: 'total de ganancias',
+          value: calculated,
+          module: modulo?.page || 'ventas'
+        };
+      }
+      return { topic: intencion.topic, reason: 'not-found' };
+    }
+
+    if (intencion.topic === 'ventas-total-hoy') {
+      const facturasHoy = obtenerFacturasAsistente({ todayOnly: true });
+      const totalFacturas = facturasHoy.reduce((acc, factura) => acc + Number(factura.total || 0), 0);
+      if (facturasHoy.length) {
+        return {
+          topic: intencion.topic,
+          source: 'facturas',
+          count: facturasHoy.length,
+          value: totalFacturas
+        };
+      }
+      const ventasHoy = obtenerVentasAsistente({ todayOnly: true });
+      return {
+        topic: intencion.topic,
+        source: 'ventas',
+        count: ventasHoy.length,
+        value: ventasHoy.reduce((acc, venta) => acc + Number(venta.totalVenta || 0), 0)
+      };
+    }
+
+    if (intencion.topic === 'ventas-top-product' || intencion.topic === 'ventas-low-product') {
+      const ranking = construirMapaVentasPlatosAsistente();
+      if (!ranking.length) return { topic: intencion.topic, reason: 'not-found' };
+      const entry = intencion.topic === 'ventas-low-product'
+        ? [...ranking].filter(item => item.cantidad > 0).sort((a, b) => a.cantidad - b.cantidad || a.total - b.total)[0]
+        : ranking[0];
+      return {
+        topic: intencion.topic,
+        entry: entry || null
+      };
+    }
+
+    if (intencion.topic === 'plato-mas-ganancia') {
+      const ranking = calcularGananciaPorPlatoAsistente();
+      return ranking.length
+        ? { topic: intencion.topic, entry: ranking[0] }
+        : { topic: intencion.topic, reason: 'not-found' };
+    }
+
+    return null;
+  }
+
+  function obtenerDatoDecomisosAsistente(intencion) {
+    if (!intencion) return null;
+    if (intencion.topic === 'perdidas-total') {
+      const modulo = resolverModuloAsistente(intencion);
+      try {
+        if (typeof renderHistorialDecomiso === 'function') {
+          renderHistorialDecomiso();
+        } else if (modulo?.page === 'historial-decomiso' && typeof window.showPage === 'function') {
+          window.showPage('historial-decomiso');
+        }
+      } catch (_) {}
+
+      const domRaw = leerValorDOMAsistente('#total-perdidas-cuadro');
+      const domValue = extraerMontoDesdeTextoAsistente(domRaw);
+      if (Number.isFinite(domValue)) {
+        return {
+          source: 'dom',
+          selector: '#total-perdidas-cuadro',
+          label: 'total de perdidas',
+          raw: domRaw,
+          value: domValue,
+          module: modulo?.page || 'historial-decomiso'
+        };
+      }
+
+      const calculated = calcularPerdidaTotalAsistente();
+      if (Number.isFinite(calculated)) {
+        return {
+          source: 'db',
+          label: 'total de perdidas',
+          value: calculated,
+          module: modulo?.page || 'historial-decomiso'
+        };
+      }
+
+      return { topic: intencion.topic, reason: 'not-found' };
+    }
+
+    return null;
+  }
+
+  function obtenerDatoFacturacionAsistente(intencion) {
+    if (!intencion) return null;
+    const facturas = obtenerFacturasAsistente();
+    if (intencion.topic === 'facturas-hoy') {
+      const hoy = obtenerFacturasAsistente({ todayOnly: true });
+      return {
+        topic: intencion.topic,
+        count: hoy.length,
+        value: hoy.reduce((acc, factura) => acc + Number(factura.total || 0), 0),
+        facturas: hoy
+      };
+    }
+    if (intencion.topic === 'facturacion-total') {
+      return {
+        topic: intencion.topic,
+        count: facturas.length,
+        value: facturas.reduce((acc, factura) => acc + Number(factura.total || 0), 0)
+      };
+    }
+    if (intencion.topic === 'factura-mas-alta') {
+      const highest = [...facturas].sort((a, b) => Number(b.total || 0) - Number(a.total || 0))[0] || null;
+      return highest ? { topic: intencion.topic, factura: highest } : { topic: intencion.topic, reason: 'not-found' };
+    }
+    if (intencion.topic === 'factura-por-cliente') {
+      const reference = limpiarNombreEntidadAsistente(intencion.reference);
+      if (!reference) return { topic: intencion.topic, reason: 'missing-reference' };
+      const target = normalizarTextoAsistente(reference);
+      const coincidencias = facturas.filter((factura) => {
+        const nombre = normalizarTextoAsistente(factura.nombre);
+        const rnc = normalizarTextoAsistente(factura.rnc);
+        const codigo = normalizarTextoAsistente(factura.codigo);
+        return nombre.includes(target) || target.includes(nombre) || rnc.includes(target) || codigo.includes(target);
+      });
+      return coincidencias.length
+        ? { topic: intencion.topic, reference, facturas: coincidencias }
+        : { topic: intencion.topic, reference, reason: 'not-found' };
+    }
+    return null;
+  }
+
+  function obtenerDatoAlmacenAsistente(intencion) {
+    if (!intencion) return null;
+    if (intencion.topic === 'almacen-restante' || intencion.topic === 'almacen-buscar') {
+      const resolucion = resolverReferenciaAmbiguaAsistente(intencion.reference, 'almacen');
+      if (!resolucion.query) return { topic: intencion.topic, reason: 'missing-reference' };
+      if (!resolucion.entity) return { topic: intencion.topic, reason: 'not-found', reference: resolucion.query };
+      if (resolucion.ambiguous) return { topic: intencion.topic, reason: 'ambiguous', matches: resolucion.matches, reference: resolucion.query };
+      return {
+        topic: intencion.topic,
+        item: resolucion.entity.item,
+        entity: resolucion.entity
+      };
+    }
+    if (intencion.topic === 'almacen-bajo-ideal') {
+      return {
+        topic: intencion.topic,
+        items: obtenerProductosBajoIdealAsistente()
+      };
+    }
+    if (intencion.topic === 'almacen-mas-critico') {
+      return {
+        topic: intencion.topic,
+        item: obtenerProductoMasCriticoAsistente()
+      };
+    }
+    return null;
+  }
+
+  function obtenerDatoDistribuidoresAsistente(intencion) {
+    if (!intencion) return null;
+    if (intencion.topic === 'distribuidor-productos' || intencion.topic === 'distribuidor-faltantes') {
+      const resolucion = resolverReferenciaAmbiguaAsistente(intencion.reference, 'distribuidor');
+      if (!resolucion.query && !obtenerReferenciaDesdeContextoAsistente('distribuidor')) {
+        return { topic: intencion.topic, reason: 'missing-reference' };
+      }
+      if (!resolucion.entity) return { topic: intencion.topic, reason: 'not-found', reference: resolucion.query };
+      if (resolucion.ambiguous) return { topic: intencion.topic, reason: 'ambiguous', matches: resolucion.matches, reference: resolucion.query };
+      const distribuidor = resolucion.entity.item;
+      const productos = obtenerCatalogoDistribuidoresAsistente().filter(item => item.distId === distribuidor.id);
+      if (intencion.topic === 'distribuidor-faltantes') {
+        const faltantes = productos
+          .map((item) => ({ item, faltante: obtenerFaltanteProductoCatalogo(item) }))
+          .filter((entry) => Number(entry.faltante.cantidad || 0) > 0);
+        return { topic: intencion.topic, distribuidor, productos, faltantes };
+      }
+      return { topic: intencion.topic, distribuidor, productos };
+    }
+    if (intencion.topic === 'distribuidor-vende-producto') {
+      const referencia = limpiarNombreEntidadAsistente(intencion.reference);
+      if (!referencia) return { topic: intencion.topic, reason: 'missing-reference' };
+      const objetivo = normalizarTextoAsistente(referencia);
+      const coincidencias = obtenerCatalogoDistribuidoresAsistente().filter((item) => {
+        const nombre = normalizarTextoAsistente(item.nombreProducto);
+        return nombre.includes(objetivo) || objetivo.includes(nombre);
+      });
+      if (!coincidencias.length) return { topic: intencion.topic, reference: referencia, reason: 'not-found' };
+      const agrupado = Array.from(new Map(coincidencias.map(item => [item.distId, item])).values());
+      return { topic: intencion.topic, reference: referencia, proveedores: agrupado, coincidencias };
+    }
+    if (intencion.topic === 'distribuidor-pedido') {
+      const resolucion = resolverReferenciaAmbiguaAsistente(intencion.reference, 'distribuidor');
+      if (!resolucion.query && !obtenerReferenciaDesdeContextoAsistente('distribuidor')) {
+        return { topic: intencion.topic, reason: 'missing-reference' };
+      }
+      if (!resolucion.entity) return { topic: intencion.topic, reason: 'not-found', reference: resolucion.query };
+      if (resolucion.ambiguous) return { topic: intencion.topic, reason: 'ambiguous', matches: resolucion.matches, reference: resolucion.query };
+      const distribuidor = resolucion.entity.item;
+      const productos = obtenerCatalogoDistribuidoresAsistente().filter(item => item.distId === distribuidor.id);
+      const faltantes = productos
+        .map((item) => ({ item, faltante: obtenerFaltanteProductoCatalogo(item) }))
+        .filter((entry) => Number(entry.faltante.cantidad || 0) > 0);
+      return { topic: intencion.topic, distribuidor, productos, faltantes };
+    }
+    return null;
+  }
+
+  function obtenerDatoClientesAsistente(intencion) {
+    if (!intencion) return null;
+    if (intencion.topic === 'clientes-puntos' || intencion.topic === 'clientes-buscar') {
+      const resolucion = resolverClienteAsistente(intencion.reference);
+      if (!resolucion.query) return { topic: intencion.topic, reason: 'missing-reference' };
+      if (!resolucion.match) return { topic: intencion.topic, reason: 'not-found', reference: resolucion.query };
+      if (resolucion.ambiguous) return { topic: intencion.topic, reason: 'ambiguous', matches: resolucion.matches, reference: resolucion.query };
+      return { topic: intencion.topic, cliente: resolucion.match };
+    }
+    if (intencion.topic === 'clientes-top-puntos') {
+      const cliente = [...obtenerClientesAsistente()].sort((a, b) => Number(b.puntos || 0) - Number(a.puntos || 0))[0] || null;
+      return cliente ? { topic: intencion.topic, cliente } : { topic: intencion.topic, reason: 'not-found' };
+    }
+    if (intencion.topic === 'clientes-top-compra') {
+      const cliente = [...obtenerClientesAsistente()].sort((a, b) => Number(b.totalAcumulado || 0) - Number(a.totalAcumulado || 0))[0] || null;
+      return cliente ? { topic: intencion.topic, cliente } : { topic: intencion.topic, reason: 'not-found' };
+    }
+    return null;
+  }
+
+  function obtenerDatoDisponibilidadAsistente(intencion) {
+    if (!intencion) return null;
+    if (intencion.topic === 'plato-faltantes') {
+      const resolucion = resolverReferenciaAmbiguaAsistente(intencion.reference, 'plato');
+      if (!resolucion.query) return { topic: intencion.topic, reason: 'missing-reference' };
+      if (!resolucion.entity) return { topic: intencion.topic, reason: 'not-found', reference: resolucion.query };
+      if (resolucion.ambiguous) return { topic: intencion.topic, reason: 'ambiguous', matches: resolucion.matches, reference: resolucion.query };
+      return {
+        topic: intencion.topic,
+        plato: resolucion.entity.item,
+        faltantes: obtenerIngredientesFaltantesPlatoAsistente(resolucion.entity.item)
+      };
+    }
+    if (intencion.topic === 'platos-bloqueados') {
+      return {
+        topic: intencion.topic,
+        platos: obtenerPlatosBloqueadosAsistente()
+      };
+    }
+    if (intencion.topic === 'produccion-recomendada') {
+      return {
+        topic: intencion.topic,
+        items: obtenerProduccionesBajasAsistente()
+      };
+    }
+    if (intencion.topic === 'plato-consume-ingrediente') {
+      const ingrediente = limpiarNombreEntidadAsistente(intencion.reference);
+      if (!ingrediente) return { topic: intencion.topic, reason: 'missing-reference' };
+      const objetivo = normalizarTextoAsistente(ingrediente);
+      const ranking = obtenerPlatosAsistente().map((plato) => {
+        let total = 0;
+        let unidad = '';
+        (Array.isArray(plato.receta) ? plato.receta : []).forEach((ing) => {
+          const nombreIng = normalizarTextoAsistente(ing.nombre);
+          if (!(nombreIng.includes(objetivo) || objetivo.includes(nombreIng))) return;
+          total += Number(ing.cantidad || 0);
+          unidad = ing.unidad || unidad;
+        });
+        return { plato, total, unidad };
+      }).filter((entry) => entry.total > 0).sort((a, b) => b.total - a.total);
+      return ranking.length
+        ? { topic: intencion.topic, ingrediente, entry: ranking[0] }
+        : { topic: intencion.topic, ingrediente, reason: 'not-found' };
+    }
+    if (intencion.topic === 'ingrediente-mas-usado') {
+      const entry = obtenerIngredienteMasUsadoAsistente();
+      return entry ? { topic: intencion.topic, entry } : { topic: intencion.topic, reason: 'not-found' };
+    }
+    return null;
+  }
+
+  function obtenerDatoProduccionAsistente(intencion) {
+    if (!intencion) return null;
+    if (intencion.topic === 'produccion-recomendada') {
+      return {
+        topic: intencion.topic,
+        items: obtenerProduccionesBajasAsistente()
+      };
+    }
+    if (intencion.topic === 'produccion-listado') {
+      return {
+        topic: intencion.topic,
+        items: obtenerProduccionesAsistente().sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')))
+      };
+    }
+    if (intencion.topic === 'produccion-composicion' || intencion.topic === 'produccion-faltantes') {
+      const resolucion = resolverReferenciaAmbiguaAsistente(intencion.reference, 'produccion');
+      if (!resolucion.query && !obtenerReferenciaDesdeContextoAsistente('produccion')) {
+        return { topic: intencion.topic, reason: 'missing-reference' };
+      }
+      if (!resolucion.entity) return { topic: intencion.topic, reason: 'not-found', reference: resolucion.query };
+      if (resolucion.ambiguous) return { topic: intencion.topic, reason: 'ambiguous', matches: resolucion.matches, reference: resolucion.query };
+      return {
+        topic: intencion.topic,
+        entity: resolucion.entity,
+        detalle: construirDetalleProduccionAsistente(resolucion.entity.item)
+      };
+    }
+    return null;
+  }
+
+  function obtenerDatoSistemaAsistente(intencion) {
+    if (!intencion) return null;
+    if (intencion.kind !== 'system-query') return null;
+    const modulo = resolverModuloAsistente(intencion);
+    let dato = null;
+    if (modulo?.page === 'ventas') dato = obtenerDatoVentasAsistente(intencion);
+    if (!dato && modulo?.page === 'produccion-interna') dato = obtenerDatoProduccionAsistente(intencion);
+    if (!dato && modulo?.page === 'historial-decomiso') dato = obtenerDatoDecomisosAsistente(intencion);
+    if (!dato && modulo?.page === 'rnc-dgii') dato = obtenerDatoFacturacionAsistente(intencion);
+    if (!dato && modulo?.page === 'inventario') dato = obtenerDatoAlmacenAsistente(intencion);
+    if (!dato && modulo?.page === 'distribuidores') dato = obtenerDatoDistribuidoresAsistente(intencion);
+    if (!dato && modulo?.page === 'clientes-puntos') dato = obtenerDatoClientesAsistente(intencion);
+    if (!dato && (modulo?.page === 'disponibilidad' || modulo?.page === 'produccion-interna')) dato = obtenerDatoDisponibilidadAsistente(intencion);
+    registrarDebugAsistente('system-query:data', { intent: intencion, module: modulo?.page || '', data: dato });
+    if (dato) return dato;
+    return null;
+  }
+
+  function listarCoincidenciasAsistente(items, consulta, getLabel) {
+    const objetivo = limpiarNombreEntidadAsistente(consulta);
+    if (!objetivo) {
+      return { query: '', scored: [], matches: [] };
+    }
+    const objetivoNormalizado = normalizarTextoAsistente(objetivo);
+    const objetivoCompacto = objetivoNormalizado.replace(/\s+/g, '');
+    const puntuadas = items.map(item => {
+      const nombre = normalizarTextoAsistente(getLabel(item));
+      const nombreCompacto = nombre.replace(/\s+/g, '');
+      let score = 0;
+      if (nombre === objetivoNormalizado) {
+        score = 500;
+      } else if (nombre.startsWith(objetivoNormalizado) || objetivoNormalizado.startsWith(nombre)) {
+        score = 350;
+      } else if (nombre.includes(objetivoNormalizado) || objetivoNormalizado.includes(nombre)) {
+        score = 250;
+      } else {
+        const tokensObjetivo = objetivoNormalizado.split(' ').filter(Boolean);
+        const tokensNombre = nombre.split(' ').filter(Boolean);
+        const comunes = tokensObjetivo.filter(token => tokensNombre.includes(token));
+        score = comunes.length * 25;
+      }
+      if (!score && objetivoCompacto.length >= 4 && nombreCompacto.length >= 4) {
+        const distance = distanciaLevenshteinAsistente(nombreCompacto, objetivoCompacto);
+        const maxLen = Math.max(nombreCompacto.length, objetivoCompacto.length, 1);
+        const similarity = 1 - (distance / maxLen);
+        if (similarity >= 0.62) {
+          score = Math.round(similarity * 160);
+        }
+      }
+      return { item, score, nombre };
+    }).filter(item => item.score > 0).sort((a, b) => b.score - a.score || a.nombre.length - b.nombre.length);
+
+    return { query: objetivo, scored: puntuadas, matches: puntuadas.slice(0, 3).map(item => item.item) };
+  }
+
+  function resolverCoincidenciaAsistente(items, consulta, getLabel) {
+    const listado = listarCoincidenciasAsistente(items, consulta, getLabel);
+    return {
+      query: listado.query,
+      match: listado.scored[0]?.item || null,
+      matches: listado.matches,
+      ambiguous: !!(listado.scored[1] && listado.scored[0].score === listado.scored[1].score && listado.scored[0].score < 500)
+    };
+  }
+
+  function seleccionarValorSeguroAsistente(select, value) {
+    if (!select || !value) return false;
+    const existe = Array.from(select.options || []).some(option => option.value === value);
+    if (!existe) return false;
+    select.value = value;
+    return true;
+  }
+
+  function construirCoincidenciasSistemaAsistente(consulta, explicitType = '') {
+    const contexto = obtenerContextoConversacionAsistente();
+    const fuentes = [
+      { type: 'almacen', module: 'inventario', label: 'Almacén', items: obtenerItemsAlmacenAsistente(), getLabel: item => item.nombre },
+      { type: 'produccion', module: 'produccion-interna', label: 'Producción Interna', items: obtenerProduccionesAsistente(), getLabel: item => item.nombre },
+      { type: 'plato', module: 'disponibilidad', label: 'Disponibilidad', items: obtenerPlatosAsistente(), getLabel: item => item.nombre },
+      { type: 'distribuidor', module: 'distribuidores', label: 'Distribuidores', items: obtenerDistribuidoresAsistente(), getLabel: item => item.nombre }
+    ];
+
+    const resultados = [];
+    fuentes.forEach((fuente) => {
+      const listado = listarCoincidenciasAsistente(fuente.items, consulta, fuente.getLabel);
+      listado.scored.forEach((entry) => {
+        let score = entry.score;
+        if (explicitType && fuente.type === explicitType) score += 90;
+        if (contexto.lastEntityType && fuente.type === contexto.lastEntityType) score += 40;
+        if (contexto.lastModule && fuente.module === contexto.lastModule) score += 24;
+        resultados.push({
+          ...fuente,
+          item: entry.item,
+          score,
+          name: fuente.getLabel(entry.item)
+        });
+      });
+    });
+
+    resultados.sort((a, b) => b.score - a.score || normalizarTextoAsistente(a.name).localeCompare(normalizarTextoAsistente(b.name)));
+    const best = resultados[0] || null;
+    const second = resultados[1] || null;
+    const ambiguous = !!(best && second && Math.abs(best.score - second.score) < 55 && normalizarTextoAsistente(best.name) !== normalizarTextoAsistente(second.name));
+
+    return {
+      query: limpiarNombreEntidadAsistente(consulta),
+      all: resultados,
+      top: resultados.slice(0, 4),
+      best,
+      ambiguous
+    };
+  }
+
+  function obtenerReferenciaDesdeContextoAsistente(explicitType = '') {
+    const contexto = obtenerContextoConversacionAsistente();
+    if (explicitType === 'cliente') {
+      return contexto.lastClient || contexto.lastEntityName || '';
+    }
+    if (explicitType === 'distribuidor') {
+      return contexto.lastDistributor || contexto.lastEntityName || '';
+    }
+    if (explicitType === 'plato' && contexto.lastEntityType === 'plato') {
+      return contexto.lastEntityName || '';
+    }
+    if (explicitType === 'produccion' && contexto.lastEntityType === 'produccion') {
+      return contexto.lastEntityName || '';
+    }
+    return contexto.lastProduct || contexto.lastEntityName || '';
+  }
+
+  function resolverReferenciaAmbiguaAsistente(referencia, explicitType = '') {
+    const contexto = obtenerContextoConversacionAsistente();
+    const referenciaLimpia = limpiarNombreEntidadAsistente(referencia);
+    const consulta = !referenciaLimpia || esReferenciaGenericaAsistente(referenciaLimpia)
+      ? obtenerReferenciaDesdeContextoAsistente(explicitType)
+      : referenciaLimpia;
+
+    if (!consulta) {
+      return { query: '', entity: null, ambiguous: false, matches: [] };
+    }
+
+    const coincidencias = construirCoincidenciasSistemaAsistente(consulta, explicitType);
+    if (!coincidencias.best) {
+      return { query: consulta, entity: null, ambiguous: false, matches: [] };
+    }
+
+    if (coincidencias.ambiguous) {
+      const contextoCompatible = coincidencias.all.find((entry) => {
+        if (explicitType && entry.type !== explicitType) return false;
+        if (contexto.lastEntityType && entry.type === contexto.lastEntityType) return true;
+        if (contexto.lastModule && entry.module === contexto.lastModule) return true;
+        return false;
+      });
+      if (contextoCompatible) {
+        return {
+          query: consulta,
+          entity: contextoCompatible,
+          ambiguous: false,
+          matches: coincidencias.top
+        };
+      }
+    }
+
+    return {
+      query: consulta,
+      entity: coincidencias.best,
+      ambiguous: coincidencias.ambiguous,
+      matches: coincidencias.top
+    };
+  }
+
+  function extraerReferenciaConsultaAsistente(textoNormalizado, patrones = []) {
+    for (const patron of patrones) {
+      const match = textoNormalizado.match(patron);
+      if (match && match[1]) {
+        const referencia = limpiarNombreEntidadAsistente(match[1]);
+        if (referencia) return referencia;
+      }
+    }
+    return '';
+  }
+
+  function normalizarTelefonoAsistente(texto) {
+    return String(texto || '').replace(/[^\d+]/g, '').trim();
+  }
+
+  function detectarConsultaSistemaAvanzadaAsistente(textoNormalizado) {
+    const moduloActivo = obtenerModuloActivoAsistente()?.page || '';
+    const contexto = obtenerContextoConversacionAsistente();
+
+    if (detectarConsultaPerdidasAsistente(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'perdidas-total' };
+    }
+
+    if (/(cuanto vendi hoy|cuanto se vendio hoy|ventas de hoy|total vendido hoy|cuanto facture hoy|facture hoy)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'ventas-total-hoy' };
+    }
+    if (/(producto|plato).*(mas se vende|mas vendido|mas salida|mas movimiento)|que se vende mas|cual se vende mas|producto mas vendido|plato mas vendido|producto con mas salida|producto con mas movimiento/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'ventas-top-product' };
+    }
+    if (/(producto|plato).*(se vende menos|menos vendido|menos salida|menos movimiento)|que se vende menos|cual se vende menos|producto menos vendido|plato menos vendido/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'ventas-low-product' };
+    }
+    if (/(que plato deja mas ganancia|cual plato deja mas ganancia|plato mas rentable|plato deja mayor ganancia)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'plato-mas-ganancia' };
+    }
+    if (/(facturas de hoy|muestrame las facturas de hoy|mostrar facturas de hoy|facturacion de hoy)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'facturas-hoy' };
+    }
+    if (/(cuanto se ha facturado|cuanto he facturado|total facturado|facturacion total|cuanto se ha vendido en facturas)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'facturacion-total' };
+    }
+    if (/(factura mas alta|factura fue la mas alta|factura mas grande|mayor factura)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'factura-mas-alta' };
+    }
+
+    const facturaCliente = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:busca|buscar|muestrame|mostrar|ensename|ver)\s+(?:la\s+)?factura(?:s)?\s+(?:de|del cliente)\s+(.+)$/,
+      /\b(?:factura|facturas)\s+de\s+(.+)$/
+    ]);
+    if (facturaCliente) {
+      return { kind: 'system-query', topic: 'factura-por-cliente', reference: facturaCliente };
+    }
+
+    const puntosCliente = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:cuantos|cuanto)\s+puntos\s+tiene\s+(.+)$/,
+      /\b(?:puntos\s+de|puntos del cliente)\s+(.+)$/
+    ]);
+    if (puntosCliente) {
+      return { kind: 'system-query', topic: 'clientes-puntos', reference: puntosCliente };
+    }
+
+    const clienteBuscado = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:busca|buscar|encuentra|localiza)\s+(?:al\s+)?cliente\s+(.+)$/,
+      /\b(?:busca|buscar|encuentra|localiza)\s+(.+)$/
+    ]);
+    if (clienteBuscado && (/(cliente|clientes)/.test(textoNormalizado) || moduloActivo === 'clientes-puntos')) {
+      return { kind: 'system-query', topic: 'clientes-buscar', reference: clienteBuscado };
+    }
+
+    if (/(quien tiene mas puntos|cliente.*mas puntos|mas puntos acumulados)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'clientes-top-puntos' };
+    }
+    if (/(que cliente compra mas|quien compra mas|cliente.*compra mas|cliente mas comprador)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'clientes-top-compra' };
+    }
+
+    const distribuidorFaltantes = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:productos?\s+faltantes?\s+del?\s+distribuidor)\s+(.+)$/,
+      /\b(?:faltantes?\s+del?\s+distribuidor)\s+(.+)$/,
+      /\b(?:sus\s+faltantes)\b/
+    ]);
+    if (distribuidorFaltantes || (/sus faltantes/.test(textoNormalizado) && contexto.lastEntityType === 'distribuidor')) {
+      return { kind: 'system-query', topic: 'distribuidor-faltantes', reference: distribuidorFaltantes || obtenerReferenciaDesdeContextoAsistente('distribuidor') };
+    }
+
+    const distribuidorProductos = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:que|cuales)\s+productos\s+tiene\s+(?:el\s+)?(?:distribuidor\s+)?(.+)$/,
+      /\b(?:cuales son|mostrar|muestrame|ver)\s+(?:los\s+)?productos\s+(?:del?|de)\s+(?:distribuidor\s+)?(.+)$/,
+      /\b(?:productos\s+del?\s+distribuidor)\s+(.+)$/,
+      /\b(?:sus productos)\b/
+    ]);
+    if (distribuidorProductos || (/sus productos/.test(textoNormalizado) && obtenerContextoConversacionAsistente().lastEntityType === 'distribuidor')) {
+      return { kind: 'system-query', topic: 'distribuidor-productos', reference: distribuidorProductos || obtenerReferenciaDesdeContextoAsistente('distribuidor') };
+    }
+
+    const pedidoDistribuidor = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:haz|genera|prepara|crea|realiza|arma)\s+(?:el\s+)?pedido\s+(?:del?|de)\s+(?:distribuidor\s+)?(.+)$/,
+      /\b(?:pide|pedir|solicita|ordena)\s+(?:todo\s+)?(?:al?\s+)?distribuidor\s+(.+)$/
+    ]);
+    if (pedidoDistribuidor) {
+      return { kind: 'system-query', topic: 'distribuidor-pedido', reference: pedidoDistribuidor };
+    }
+
+    const distribuidoresProducto = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:que|cual|quien)\s+(?:distribuidor|distribuidores)\s+vende(?:n)?\s+(.+)$/,
+      /\b(?:quien vende|donde consigo)\s+(.+)$/
+    ]);
+    if (distribuidoresProducto) {
+      return { kind: 'system-query', topic: 'distribuidor-vende-producto', reference: distribuidoresProducto };
+    }
+
+    const platoFaltantes = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:que\s+(?:producto|ingrediente)s?\s+falta(?:n)?\s+para\s+completar)\s+(.+)$/,
+      /\b(?:que\s+(?:producto|ingrediente)s?\s+falta(?:n)?\s+para\s+completar\s+(?:el\s+)?plato)\s+(.+)$/,
+      /\b(?:que\s+le\s+falta\s+a)\s+(.+?)\s+(?:para\s+salir|para\s+completar)$/
+    ]);
+    if (platoFaltantes) {
+      return { kind: 'system-query', topic: 'plato-faltantes', reference: platoFaltantes };
+    }
+
+    if (/(que plato no puede salir|que platos no pueden salir|platos sin stock|platos bloqueados|que plato esta bloqueado)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'platos-bloqueados' };
+    }
+
+    if (/(cuales son mis producciones|que producciones tengo|que produccion tengo|mostrar produccion interna|muestrame la produccion interna|que hay en produccion interna|listar producciones)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'produccion-listado' };
+    }
+
+    const composicionProduccion = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:de que esta compuesta(?: la)? produccion)\s+(.+)$/,
+      /\b(?:que ingredientes tiene(?: la)? produccion)\s+(.+)$/,
+      /\b(?:composicion de(?: la)? produccion)\s+(.+)$/,
+      /\b(?:de que se compone(?: la)? produccion)\s+(.+)$/
+    ]);
+    if (composicionProduccion || ((/sus ingredientes|su composicion/.test(textoNormalizado)) && contexto.lastEntityType === 'produccion')) {
+      return { kind: 'system-query', topic: 'produccion-composicion', reference: composicionProduccion || obtenerReferenciaDesdeContextoAsistente('produccion') };
+    }
+
+    const faltantesProduccion = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:que me falta para completar(?: la)? produccion)\s+(.+)$/,
+      /\b(?:faltantes? de(?: la)? produccion)\s+(.+)$/,
+      /\b(?:informa(?:me)?\s+el\s+faltante\s+de)\s+(.+)$/
+    ]);
+    if (faltantesProduccion || ((/que me falta|faltantes/.test(textoNormalizado)) && contexto.lastEntityType === 'produccion')) {
+      return { kind: 'system-query', topic: 'produccion-faltantes', reference: faltantesProduccion || obtenerReferenciaDesdeContextoAsistente('produccion') };
+    }
+
+    if (/(que produccion debo hacer|que debo producir|produccion baja|que hay que producir hoy)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'produccion-recomendada' };
+    }
+
+    if (/(que ingrediente se usa mas|cual ingrediente se usa mas|ingrediente mas usado|ingrediente que mas se usa)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'ingrediente-mas-usado' };
+    }
+
+    const consumeIngrediente = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:cual|que)\s+plato\s+consume\s+mas\s+(.+)$/,
+      /\b(?:que\s+plato\s+usa\s+mas)\s+(.+)$/
+    ]);
+    if (consumeIngrediente) {
+      return { kind: 'system-query', topic: 'plato-consume-ingrediente', reference: consumeIngrediente };
+    }
+
+    const restanteProducto = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:cuanto\s+queda\s+de)\s+(.+)$/,
+      /\b(?:que\s+queda\s+de)\s+(.+)$/,
+      /\b(?:existencia\s+de|stock\s+de)\s+(.+)$/
+    ]);
+    if (restanteProducto) {
+      return { kind: 'system-query', topic: 'almacen-restante', reference: restanteProducto };
+    }
+
+    if (/(que producto se esta acabando|cual producto se esta acabando|que producto se agota mas rapido|cual producto se agota mas rapido|que producto falta mas|cual producto tiene mas faltante)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'almacen-mas-critico' };
+    }
+
+    if (/(productos?\s+estan\s+por\s+debajo\s+del\s+ideal|productos?\s+bajos|stock\s+bajo|que productos se estan acabando|que productos estan bajos|cuales productos estan bajos|cuales son los productos bajos)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'almacen-bajo-ideal' };
+    }
+
+    const busquedaInventario = extraerReferenciaConsultaAsistente(textoNormalizado, [
+      /\b(?:busca|buscar|encuentra|localiza)\s+(?:el\s+)?(?:producto|ingrediente|insumo)?\s*(.+)$/
+    ]);
+    if (busquedaInventario && (/(almacen|inventario|ingrediente|insumo|producto)/.test(textoNormalizado) || moduloActivo === 'inventario')) {
+      return { kind: 'system-query', topic: 'almacen-buscar', reference: busquedaInventario };
+    }
+    if (busquedaInventario && !/(cliente|clientes|factura|facturas|distribuidor|distribuidores|proveedor|proveedores)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'almacen-buscar', reference: busquedaInventario };
+    }
+
+    return null;
+  }
+
+  function detectarComandoCrearDistribuidor(textoNormalizado) {
+    if (!/(crea|crear|agrega|agregar|registra|registrar|nuevo)/.test(textoNormalizado)) return null;
+    if (!/(distribuidor|distribuidores)/.test(textoNormalizado)) return null;
+
+    let trabajo = textoNormalizado
+      .replace(/\b(?:crea|crear|agrega|agregar|registra|registrar)\b/g, ' ')
+      .replace(/\b(?:un|una|nuevo|nueva)\b/g, ' ')
+      .replace(/\b(?:distribuidor|distribuidores)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!trabajo) return null;
+
+    const telefonoMatch = trabajo.match(/(\+?\d[\d\s-]{6,})$/);
+    const telefono = telefonoMatch ? normalizarTelefonoAsistente(telefonoMatch[1]) : '';
+    if (telefonoMatch) {
+      trabajo = trabajo.replace(telefonoMatch[1], '').trim().replace(/[,\-]+$/, '').trim();
+    }
+
+    const partes = trabajo.split(',').map(part => limpiarNombreEntidadAsistente(part)).filter(Boolean);
+    let nombre = partes[0] || '';
+    let contacto = partes[1] || '';
+    if (!contacto) {
+      const tokens = trabajo.split(' ').filter(Boolean);
+      if (tokens.length >= 4) {
+        contacto = tokens.slice(-2).join(' ');
+        nombre = tokens.slice(0, -2).join(' ');
+      }
+    }
+    if (!nombre) return null;
+    return {
+      kind: 'distribuidor-create',
+      nombre,
+      contacto,
+      telefono
+    };
+  }
+
+  function detectarComandoActualizarTelefonoDistribuidor(textoNormalizado) {
+    if (!/(edita|editar|cambia|cambiar|modifica|modificar|actualiza|actualizar)/.test(textoNormalizado)) return null;
+    if (!/(distribuidor|telefono|numero|celular|contacto)/.test(textoNormalizado)) return null;
+
+    const telefonoMatch = textoNormalizado.match(/(\+?\d[\d\s-]{6,})/);
+    const telefono = telefonoMatch ? normalizarTelefonoAsistente(telefonoMatch[1]) : '';
+    let trabajo = textoNormalizado
+      .replace(/\b(?:edita|editar|cambia|cambiar|modifica|modificar|actualiza|actualizar)\b/g, ' ')
+      .replace(/\b(?:telefono|numero|celular|contacto)\b/g, ' ')
+      .replace(/\b(?:del?|de la|de)\s+distribuidor\b/g, ' ')
+      .replace(/\b(?:distribuidor)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (telefonoMatch) {
+      trabajo = trabajo.replace(telefonoMatch[1], ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    const nombre = limpiarNombreEntidadAsistente(trabajo);
+    if (!nombre && !telefono) return null;
+    return {
+      kind: 'distribuidor-update-phone',
+      nombre,
+      telefono
+    };
+  }
+
+  function detectarComandoAgregarAlmacen(textoNormalizado) {
+    if (!/(^| )(agrega|agregar|anade|anadir|registra|registrar|mete|meter|suma|sumar|pon|poner|ingresa|ingresar)( |$)/.test(textoNormalizado)) {
+      return null;
+    }
+    if (/(distribuidor|proveedor|produccion interna|produccion|plato|comanda|sesion)/.test(textoNormalizado) && !/(almacen|inventario|ingrediente|insumo)/.test(textoNormalizado)) {
+      return null;
+    }
+    if (!/(almacen|inventario|ingrediente|insumo|ideal|costo|coste|precio|\ba\s*\$?\s*\d)/.test(textoNormalizado)) {
+      return null;
+    }
+
+    let trabajo = textoNormalizado;
+    let costo = null;
+    let ideal = null;
+    let unidadIdeal = '';
+
+    const idealMatch = trabajo.match(/\b(?:stock\s+)?ideal\s+(?:de\s+)?(\d+(?:[.,]\d+)?)(?:\s+([a-z]+))?/);
+    if (idealMatch) {
+      ideal = normalizarNumeroAsistente(idealMatch[1]);
+      unidadIdeal = normalizarUnidadAsistente(idealMatch[2] || '');
+      trabajo = trabajo.replace(idealMatch[0], ' ');
+    }
+
+    const costoMatch = trabajo.match(/\b(?:a|por|costo|coste|precio|vale|valor)\s*\$?\s*(\d+(?:[.,]\d+)?)(?:\s*(?:pesos|rd|rds))?/);
+    if (costoMatch) {
+      costo = normalizarNumeroAsistente(costoMatch[1]);
+      trabajo = trabajo.replace(costoMatch[0], ' ');
+    }
+
+    trabajo = trabajo
+      .replace(/\b(?:al?|en el|en la|en|de)\s+(?:almacen|inventario)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const cabeza = trabajo.match(/^(?:agrega|agregar|anade|anadir|registra|registrar|mete|meter|suma|sumar|pon|poner|ingresa|ingresar)\s+(.+)$/);
+    if (!cabeza) return null;
+
+    const cuerpo = cabeza[1].trim();
+    let cantidad = null;
+    let unidad = '';
+    let producto = '';
+
+    let matchCantidad = cuerpo.match(/^(\d+(?:[.,]\d+)?)\s+([a-z]+)\s+(?:de\s+)?(.+)$/);
+    if (matchCantidad) {
+      cantidad = normalizarNumeroAsistente(matchCantidad[1]);
+      unidad = normalizarUnidadAsistente(matchCantidad[2]);
+      producto = matchCantidad[3] || '';
+    } else {
+      matchCantidad = cuerpo.match(/^(\d+(?:[.,]\d+)?)\s+(?:de\s+)?(.+)$/);
+      if (!matchCantidad) return null;
+      cantidad = normalizarNumeroAsistente(matchCantidad[1]);
+      producto = matchCantidad[2] || '';
+    }
+
+    producto = limpiarNombreEntidadAsistente(producto)
+      .replace(/\b(?:con|ideal|costo|precio)\b.*$/, '')
+      .trim();
+
+    if (!producto || !Number.isFinite(cantidad) || cantidad <= 0) return null;
+
+    const existente = resolverCoincidenciaAsistente(obtenerItemsAlmacenAsistente(), producto, item => item.nombre).match;
+    const unidadBase = unidad || existente?.unidad || 'Unidad';
+    let idealConvertido = ideal;
+
+    if (Number.isFinite(idealConvertido) && unidadIdeal && unidadIdeal !== unidadBase && typeof convertirUnidad === 'function') {
+      try {
+        idealConvertido = convertirUnidad(idealConvertido, unidadIdeal, unidadBase);
+      } catch (_) {}
+    }
+
+    if (!Number.isFinite(idealConvertido)) {
+      idealConvertido = existente ? Number(existente.ideal) || 0 : null;
+    }
+
+    return {
+      kind: 'almacen-add',
+      producto,
+      productoBonito: capitalizarTextoAsistente(producto),
+      cantidad,
+      unidad: unidadBase,
+      costo,
+      ideal: idealConvertido,
+      existente
+    };
+  }
+
+  function detectarComandoAgregarBasico(textoNormalizado) {
+    if (!/(^| )(agrega|agregar|anade|anadir|registra|registrar|mete|meter|suma|sumar|pon|poner|ingresa|ingresar)( |$)/.test(textoNormalizado)) {
+      return null;
+    }
+    if (/(distribuidor|proveedor|produccion interna|produccion|plato|receta|comanda|sesion)/.test(textoNormalizado)) {
+      return null;
+    }
+
+    const resto = limpiarNombreEntidadAsistente(
+      textoNormalizado
+        .replace(/^(?:agrega|agregar|anade|anadir|registra|registrar|mete|meter|suma|sumar|pon|poner|ingresa|ingresar)\b/, ' ')
+        .replace(/\b(?:al?|en el|en la|en|de)\s+(?:almacen|inventario)\b/g, ' ')
+        .replace(/\b(?:ideal|costo|coste|precio)\b.*$/, ' ')
+    );
+
+    if (!resto || esReferenciaGenericaAsistente(resto)) return null;
+    return {
+      kind: 'almacen-add-incomplete',
+      producto: resto,
+      productoBonito: capitalizarTextoAsistente(resto)
+    };
+  }
+
+  function detectarComandoEliminarAlmacen(textoNormalizado) {
+    if (!/(elimina|eliminar|eliminalo|borra|borrar|borralo|quita|quitar|quitalo|remueve|remover|remuevelo|saca|sacar|sacalo)/.test(textoNormalizado)) {
+      return null;
+    }
+    if (/(distribuidor|proveedor)/.test(textoNormalizado)) return null;
+    if (/(plato|menu|disponibilidad|produccion)/.test(textoNormalizado) && !/(almacen|inventario|ingrediente|producto)/.test(textoNormalizado)) {
+      return null;
+    }
+    if (!/(almacen|inventario|ingrediente|producto)/.test(textoNormalizado)) return null;
+
+    const producto = limpiarNombreEntidadAsistente(
+      textoNormalizado
+        .replace(/\b(?:elimina|eliminar|eliminalo|borra|borrar|borralo|quita|quitar|quitalo|remueve|remover|remuevelo|saca|sacar|sacalo)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+    );
+    return producto ? { kind: 'almacen-delete', producto } : null;
+  }
+
+  function detectarComandoEliminarGenerico(textoNormalizado) {
+    if (!/(elimina|eliminar|eliminalo|borra|borrar|borralo|quita|quitar|quitalo|remueve|remover|remuevelo|saca|sacar|sacalo)/.test(textoNormalizado)) {
+      return null;
+    }
+    const explicitType = /(distribuidor|distribuidores|proveedor|proveedores)/.test(textoNormalizado)
+      ? 'distribuidor'
+      : (/(plato|platos|menu|disponibilidad|receta|recetas)/.test(textoNormalizado)
+        ? 'plato'
+        : (/(produccion|semielaborado|semielaborados)/.test(textoNormalizado) ? 'produccion' : ''));
+
+    const referencia = limpiarNombreEntidadAsistente(
+      textoNormalizado
+        .replace(/\b(?:elimina|eliminar|eliminalo|borra|borrar|borralo|quita|quitar|quitalo|remueve|remover|remuevelo|saca|sacar|sacalo)\b/g, ' ')
+        .replace(/\b(?:del?|de la|de|en el|en la|en)\s+(?:almacen|inventario|produccion|produccion interna|disponibilidad|menu)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+    );
+
+    return {
+      kind: 'entity-delete',
+      reference: referencia,
+      explicitType
+    };
+  }
+
+  function detectarComandoEliminarDistribuidor(textoNormalizado) {
+    if (!/(elimina|eliminar|eliminalo|borra|borrar|borralo|quita|quitar|quitalo|remueve|remover|remuevelo)/.test(textoNormalizado)) {
+      return null;
+    }
+    if (!/(distribuidor|distribuidores|proveedor|proveedores)/.test(textoNormalizado)) return null;
+
+    const nombre = limpiarNombreEntidadAsistente(
+      textoNormalizado
+        .replace(/\b(?:elimina|eliminar|eliminalo|borra|borrar|borralo|quita|quitar|quitalo|remueve|remover|remuevelo)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+    );
+    return nombre ? { kind: 'distribuidor-delete', nombre } : null;
+  }
+
+  function detectarComandoActualizarGenerico(textoNormalizado) {
+    if (!/\b(?:ponle|pon|cambiale|cambiarle|ajusta|ajustale|actualiza|actualizar|edita|editar|modifica|modificar)\b/.test(textoNormalizado)) {
+      return null;
+    }
+
+    const cantidadMatch = textoNormalizado.match(/\b(?:ponle|pon|cambiale|cambiarle|ajusta|ajustale|actualiza|actualizar|edita|editar|modifica|modificar)(?:\s+a)?\s*(\d+(?:[.,]\d+)?)(?:\s+([a-z]+))?/);
+    const reference = limpiarNombreEntidadAsistente(
+      textoNormalizado
+        .replace(/\b(?:ponle|pon|cambiale|cambiarle|ajusta|ajustale|actualiza|actualizar|edita|editar|modifica|modificar)\b/g, ' ')
+        .replace(/\b(?:costo|precio|ideal|stock)\b/g, ' ')
+        .replace(/\b(?:lb|lbr|libra|libras|g|gr|grs|gramo|gramos|oz|onza|onzas|lt|lts|litro|litros|l|unidad|unidades|ud|uds|ml|mililitro|mililitros)\b/g, ' ')
+        .replace(/\d+(?:[.,]\d+)?/g, ' ')
+        .replace(/\s+/g, ' ')
+    );
+
+    return {
+      kind: 'entity-update',
+      reference,
+      quantity: cantidadMatch ? normalizarNumeroAsistente(cantidadMatch[1]) : null,
+      unit: cantidadMatch ? normalizarUnidadAsistente(cantidadMatch[2] || '') : ''
+    };
+  }
+
+  function detectarComandoDecomiso(textoNormalizado) {
+    if (!/\b(?:decomisa|decomisar|decomiso)\b/.test(textoNormalizado)) {
+      return null;
+    }
+
+    const cantidadMatch = textoNormalizado.match(/\b(?:decomisa|decomisar)\s+(\d+(?:[.,]\d+)?)(?:\s+([a-z]+))?/);
+    const explicitType = /\bplato\b/.test(textoNormalizado)
+      ? 'plato'
+      : (/\b(?:ingrediente|insumo|almacen)\b/.test(textoNormalizado)
+        ? 'almacen'
+        : (/\bproduccion\b/.test(textoNormalizado) ? 'produccion' : ''));
+
+    const reference = limpiarNombreEntidadAsistente(
+      textoNormalizado
+        .replace(/\b(?:decomisa|decomisar|decomiso)\b/g, ' ')
+        .replace(/\b(?:plato|ingrediente|insumo|producto|produccion|almacen)\b/g, ' ')
+        .replace(/\b(?:si esta vencido|si esta vencida|si esta malo|si esta mala)\b/g, ' ')
+        .replace(/\d+(?:[.,]\d+)?/g, ' ')
+        .replace(/\b(?:lb|lbr|libra|libras|g|gr|grs|gramo|gramos|oz|onza|onzas|lt|lts|litro|litros|l|unidad|unidades|ud|uds|ml|mililitro|mililitros)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+    ).replace(/^de\s+/g, '').trim();
+
+    return {
+      kind: 'decomiso-create',
+      reference,
+      explicitType,
+      quantity: cantidadMatch ? normalizarNumeroAsistente(cantidadMatch[1]) : null,
+      unit: cantidadMatch ? normalizarUnidadAsistente(cantidadMatch[2] || '') : ''
+    };
+  }
+
+  function detectarIntencionAsistente(textoNormalizado) {
+    const consultaAvanzada = detectarConsultaSistemaAvanzadaAsistente(textoNormalizado);
+    if (consultaAvanzada) return consultaAvanzada;
+
+    if (detectarConsultaGananciasAsistente(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'ganancias-total' };
+    }
+
+    const crearDistribuidor = detectarComandoCrearDistribuidor(textoNormalizado);
+    if (crearDistribuidor) return crearDistribuidor;
+
+    const actualizarTelefonoDistribuidor = detectarComandoActualizarTelefonoDistribuidor(textoNormalizado);
+    if (actualizarTelefonoDistribuidor) return actualizarTelefonoDistribuidor;
+
+    const deleteDistribuidor = detectarComandoEliminarDistribuidor(textoNormalizado);
+    if (deleteDistribuidor) return deleteDistribuidor;
+
+    const deleteGenerico = detectarComandoEliminarGenerico(textoNormalizado);
+    if (deleteGenerico) return deleteGenerico;
+
+    const deleteAlmacen = detectarComandoEliminarAlmacen(textoNormalizado);
+    if (deleteAlmacen) return deleteAlmacen;
+
+    const addAlmacen = detectarComandoAgregarAlmacen(textoNormalizado);
+    if (addAlmacen) return addAlmacen;
+
+    const addBasico = detectarComandoAgregarBasico(textoNormalizado);
+    if (addBasico) return addBasico;
+
+    const updateGenerico = detectarComandoActualizarGenerico(textoNormalizado);
+    if (updateGenerico) return updateGenerico;
+
+    const decomiso = detectarComandoDecomiso(textoNormalizado);
+    if (decomiso) return decomiso;
+
+    if (detectarIntencionExplicacion(textoNormalizado)) return { kind: 'explain' };
+    if (detectarIntencionProcedimiento(textoNormalizado)) return { kind: 'guide' };
+    if (detectarIntencionAyuda(textoNormalizado)) return { kind: 'help' };
+    return { kind: 'navigate-or-action' };
+  }
+
+  function extraerEntidadesAsistente(textoNormalizado, intento) {
+    if (intento?.kind === 'almacen-add') return detectarComandoAgregarAlmacen(textoNormalizado) || intento;
+    if (intento?.kind === 'almacen-add-incomplete') return detectarComandoAgregarBasico(textoNormalizado) || intento;
+    if (intento?.kind === 'almacen-delete') return detectarComandoEliminarAlmacen(textoNormalizado) || intento;
+    if (intento?.kind === 'entity-delete') return detectarComandoEliminarGenerico(textoNormalizado) || intento;
+    if (intento?.kind === 'distribuidor-delete') return detectarComandoEliminarDistribuidor(textoNormalizado) || intento;
+    if (intento?.kind === 'distribuidor-create') return detectarComandoCrearDistribuidor(textoNormalizado) || intento;
+    if (intento?.kind === 'distribuidor-update-phone') return detectarComandoActualizarTelefonoDistribuidor(textoNormalizado) || intento;
+    if (intento?.kind === 'entity-update') return detectarComandoActualizarGenerico(textoNormalizado) || intento;
+    if (intento?.kind === 'decomiso-create') return detectarComandoDecomiso(textoNormalizado) || intento;
+    return intento || {};
+  }
+
+  function construirPendienteAsistente(config) {
+    assistantPendingAction = {
+      summary: config.summary,
+      confirmMessage: config.confirmMessage,
+      run: config.run
+    };
+    return {
+      message: config.message,
+      role: 'assistant'
+    };
+  }
+
+  function manejarPendienteAsistente(textoNormalizado) {
+    if (!assistantPendingAction) return null;
+    if (esCancelacionAsistente(textoNormalizado)) {
+      assistantPendingAction = null;
+      return {
+        message: 'Acción cancelada. No hice cambios en LuRo Control.',
+        role: 'assistant'
+      };
+    }
+    if (esConfirmacionAsistente(textoNormalizado)) {
+      const pending = assistantPendingAction;
+      assistantPendingAction = null;
+      return {
+        message: pending.confirmMessage,
+        role: 'system',
+        actionDelay: 220,
+        action: pending.run
+      };
+    }
+    if (pareceNuevoComandoAsistente(textoNormalizado)) {
+      assistantPendingAction = null;
+      return null;
+    }
+    return {
+      message: `Tengo pendiente esta acción: ${assistantPendingAction.summary}. Responde "sí" para continuar o "cancelar" para detenerla.`,
+      role: 'assistant'
+    };
+  }
+
+  function prepararFormularioAlmacenAsistente(datos) {
+    if (typeof window.showPage === 'function') {
+      window.showPage('inventario');
+    }
+    if (typeof actualizarSelectDistribuidores === 'function') {
+      actualizarSelectDistribuidores();
+    }
+
+    const inputNombre = document.getElementById('inv_nombre');
+    const inputCantidad = document.getElementById('inv_actual');
+    const inputIdeal = document.getElementById('inv_ideal');
+    const inputCosto = document.getElementById('inv_costo_total');
+    const selectUnidad = document.getElementById('inv_unidad');
+
+    if (inputNombre) inputNombre.value = normalizarTextoAsistente(datos.producto);
+    if (inputCantidad) inputCantidad.value = formatearNumeroAsistente(datos.cantidad);
+    if (inputIdeal) inputIdeal.value = datos.ideal !== null && datos.ideal !== undefined ? formatearNumeroAsistente(datos.ideal) : '';
+    if (inputCosto) inputCosto.value = datos.costo !== null && datos.costo !== undefined ? formatearNumeroAsistente(datos.costo) : '';
+    if (selectUnidad) seleccionarValorSeguroAsistente(selectUnidad, datos.unidad || 'Unidad');
+  }
+
+  function ejecutarRegistroAlmacenAsistente(datos) {
+    prepararFormularioAlmacenAsistente(datos);
+    if (typeof agregarAlmacen === 'function') {
+      agregarAlmacen();
+    }
+  }
+
+  function ejecutarEliminacionAlmacenAsistente(item) {
+    if (typeof window.showPage === 'function') {
+      window.showPage('inventario');
+    }
+    if (typeof eliminarAlmacen === 'function') {
+      eliminarAlmacen(item.nombre);
+    }
+  }
+
+  function ejecutarEliminacionDistribuidorAsistente(item) {
+    if (typeof window.showPage === 'function') {
+      window.showPage('distribuidores');
+    }
+    if (typeof eliminarDistribuidor === 'function') {
+      eliminarDistribuidor(item.id);
+    }
+  }
+
+  function ejecutarEliminacionProduccionAsistente(item) {
+    if (typeof window.showPage === 'function') {
+      window.showPage('produccion-interna');
+    }
+    const index = (db.produccion_stock || []).indexOf(item);
+    if (index >= 0 && typeof eliminarProduccion === 'function') {
+      eliminarProduccion(index);
+    }
+  }
+
+  function ejecutarEliminacionPlatoAsistente(item) {
+    if (typeof window.showPage === 'function') {
+      window.showPage('disponibilidad');
+    }
+    const index = (db.platos || []).indexOf(item);
+    if (index >= 0 && typeof delPlato === 'function') {
+      delPlato(index);
+    }
+  }
+
+  function prepararFormularioDistribuidorAsistente(datos) {
+    if (typeof window.showPage === 'function') window.showPage('distribuidores');
+    const inputId = document.getElementById('dist_edit_id');
+    const inputNombre = document.getElementById('dist_nombre');
+    const inputContacto = document.getElementById('dist_contacto');
+    const inputTelefono = document.getElementById('dist_telefono');
+    const inputEmail = document.getElementById('dist_email');
+    const inputDireccion = document.getElementById('dist_direccion');
+    const selectEstado = document.getElementById('dist_estado');
+    if (inputId) inputId.value = datos.id || '';
+    if (inputNombre) inputNombre.value = datos.nombre || '';
+    if (inputContacto) inputContacto.value = datos.contacto || '';
+    if (inputTelefono) inputTelefono.value = datos.telefono || '';
+    if (inputEmail) inputEmail.value = datos.email || '';
+    if (inputDireccion) inputDireccion.value = datos.direccion || '';
+    if (selectEstado) selectEstado.value = datos.activo === false ? 'inactivo' : 'activo';
+  }
+
+  function ejecutarRegistroDistribuidorAsistente(datos) {
+    prepararFormularioDistribuidorAsistente(datos);
+    if (typeof guardarDistribuidor === 'function') guardarDistribuidor();
+  }
+
+  function ejecutarActualizacionTelefonoDistribuidorAsistente(item, telefono) {
+    if (!item || !telefono) return;
+    if (typeof window.showPage === 'function') window.showPage('distribuidores');
+    if (typeof editarDistribuidor === 'function') editarDistribuidor(item.id);
+    const inputTelefono = document.getElementById('dist_telefono');
+    if (inputTelefono) inputTelefono.value = telefono;
+    if (typeof guardarDistribuidor === 'function') guardarDistribuidor();
+  }
+
+  function ejecutarBusquedaAlmacenAsistente(item) {
+    if (typeof window.showPage === 'function') window.showPage('inventario');
+    const input = document.getElementById('buscarProductoAlmacen');
+    if (input) input.value = item?.nombre || '';
+    if (typeof resaltarProducto === 'function') {
+      try { resaltarProducto(); } catch (_) {}
+    }
+  }
+
+  function ejecutarBusquedaFacturasClienteAsistente(filtro) {
+    if (typeof window.showPage === 'function') window.showPage('rnc-dgii');
+    const input = document.getElementById('busqueda-rnc-clientes');
+    if (input) input.value = filtro || '';
+    if (typeof actualizarTablaRNC === 'function') {
+      try { actualizarTablaRNC(); } catch (_) {}
+    }
+  }
+
+  function ejecutarBusquedaClienteAsistente(cliente) {
+    if (typeof window.showPage === 'function') window.showPage('clientes-puntos');
+    const input = document.getElementById('clientes-puntos-buscar');
+    if (input) input.value = cliente?.cedula || cliente?.nombre || '';
+    if (typeof renderTablaClientesPuntos === 'function') {
+      try { renderTablaClientesPuntos(); } catch (_) {}
+    }
+  }
+
+  function ejecutarVerProductosDistribuidorAsistente(distribuidor) {
+    if (!distribuidor) return;
+    if (typeof window.showPage === 'function') window.showPage('distribuidores');
+    if (typeof verProductosDistribuidor === 'function') {
+      try { verProductosDistribuidor(distribuidor.id); } catch (_) {}
+    }
+  }
+
+  function ejecutarPedidoDistribuidorAsistente(distribuidor) {
+    if (!distribuidor) return;
+    const productos = obtenerCatalogoDistribuidoresAsistente().filter(item => item.distId === distribuidor.id);
+    const faltantes = productos
+      .map((item) => ({ item, faltante: obtenerFaltanteProductoCatalogo(item) }))
+      .filter((entry) => Number(entry.faltante.cantidad || 0) > 0);
+    if (!faltantes.length) return;
+    let mensaje = `Nombre de Distribuidor: ${distribuidor.nombre}\n`;
+    mensaje += 'Asunto: Pedido de reposición\n';
+    mensaje += 'Cantidad a pedir:\n';
+    faltantes.forEach((entry) => {
+      mensaje += `- ${String(entry.item.nombreProducto || '').toUpperCase()}: ${entry.faltante.cantidad.toFixed(2)} ${entry.faltante.unidad}\n`;
+    });
+    if (typeof abrirWhatsAppConMensaje === 'function') {
+      abrirWhatsAppConMensaje(distribuidor.telefono || WHATSAPP_DEFAULT, mensaje);
+    }
+  }
+
+  function prepararPantallaDecomisoAsistente(tipo, referencia = '') {
+    if (typeof window.showPage === 'function') window.showPage('decomiso');
+    const selectTipo = document.getElementById('tipo-decomiso');
+    const inputBusqueda = document.getElementById('busqueda-decomiso');
+    if (selectTipo) selectTipo.value = tipo === 'plato' ? 'plato' : 'almacen';
+    if (typeof actualizarListaDecomiso === 'function') {
+      try { actualizarListaDecomiso(); } catch (_) {}
+    }
+    if (inputBusqueda) inputBusqueda.value = referencia || '';
+    if (typeof actualizarListaDecomiso === 'function') {
+      try { actualizarListaDecomiso(); } catch (_) {}
+    }
+  }
+
+  function ejecutarDecomisoPlatoAsistente(item) {
+    if (!item) return;
+    prepararPantallaDecomisoAsistente('plato', item.nombre || '');
+    if (typeof ejecutarDecomisoPlato === 'function') {
+      ejecutarDecomisoPlato(item.nombre);
+    }
+  }
+
+  function ejecutarDecomisoInventarioAsistente(item, cantidad, unidad) {
+    if (!item || !Number.isFinite(Number(cantidad)) || Number(cantidad) <= 0) return;
+    prepararPantallaDecomisoAsistente('almacen', item.nombre || '');
+    const inputCantidad = document.getElementById(`dec-cant-${item.nombre}`);
+    const selectUnidad = document.getElementById(`dec-unid-${item.nombre}`);
+    if (inputCantidad) inputCantidad.value = formatearNumeroAsistente(cantidad);
+    if (selectUnidad) seleccionarValorSeguroAsistente(selectUnidad, unidad || item.unidad || 'Unidad');
+    if (typeof ejecutarDecomisoAlmacen === 'function') {
+      ejecutarDecomisoAlmacen(item.nombre);
+    }
+  }
+
+  function ejecutarDecomisoProduccionAsistente(item, cantidad, unidad) {
+    const qty = Number(cantidad || 0);
+    if (!item || !Number.isFinite(qty) || qty <= 0) return;
+    const unidadBase = item.unidad || unidad || 'Unidad';
+    let descuento = qty;
+    if (unidad && unidadBase && unidad !== unidadBase && typeof convertirUnidad === 'function') {
+      try {
+        descuento = convertirUnidad(qty, unidad, unidadBase);
+      } catch (_) {}
+    }
+    if (!Number.isFinite(descuento) || descuento <= 0 || Number(item.actual || 0) < descuento) {
+      return;
+    }
+    item.actual = Math.max(0, Number(item.actual || 0) - descuento);
+    db.decomisos.push({
+      owner: sesionUser.user,
+      modulo: moduloActual,
+      fecha: new Date().toLocaleString(),
+      tipo: 'PRODUCCION',
+      nombre: item.nombre,
+      cant: qty,
+      medida: unidad || unidadBase,
+      perdida: Number(item.costoUnitario || item.costo || 0) * descuento,
+      operador: typeof operadorActual !== 'undefined' ? operadorActual : 'Admin'
+    });
+    guardarDatos();
+    if (typeof renderStockProduccion === 'function') {
+      try { renderStockProduccion(); } catch (_) {}
+    }
+    if (typeof renderHistorialDecomiso === 'function') {
+      try { renderHistorialDecomiso(); } catch (_) {}
+    }
+  }
+
+  function ejecutarEliminacionPorNombreAsistente(type, name) {
+    const nombre = normalizarTextoAsistente(name);
+    if (!nombre) return;
+    if (type === 'almacen') {
+      if (typeof window.showPage === 'function') window.showPage('inventario');
+      if (typeof eliminarAlmacen === 'function') eliminarAlmacen(nombre);
+      return;
+    }
+    if (type === 'distribuidor') {
+      const resultado = resolverCoincidenciaAsistente(obtenerDistribuidoresAsistente(), nombre, item => item.nombre);
+      if (resultado.match && typeof eliminarDistribuidor === 'function') {
+        if (typeof window.showPage === 'function') window.showPage('distribuidores');
+        eliminarDistribuidor(resultado.match.id);
+      }
+      return;
+    }
+    if (type === 'produccion') {
+      const resultado = resolverCoincidenciaAsistente(obtenerProduccionesAsistente(), nombre, item => item.nombre);
+      const index = resultado.match ? (db.produccion_stock || []).indexOf(resultado.match) : -1;
+      if (index >= 0 && typeof eliminarProduccion === 'function') {
+        if (typeof window.showPage === 'function') window.showPage('produccion-interna');
+        eliminarProduccion(index);
+      }
+      return;
+    }
+    if (type === 'plato') {
+      const resultado = resolverCoincidenciaAsistente(obtenerPlatosAsistente(), nombre, item => item.nombre);
+      const index = resultado.match ? (db.platos || []).indexOf(resultado.match) : -1;
+      if (index >= 0 && typeof delPlato === 'function') {
+        if (typeof window.showPage === 'function') window.showPage('disponibilidad');
+        delPlato(index);
+      }
+    }
+  }
+
+  function responderConsultaSistemaAsistente(intencion, dato) {
+    if (!intencion) return null;
+    if (intencion.kind !== 'system-query') return null;
+
+    if (intencion.topic === 'ganancias-total') {
+      if (dato && Number.isFinite(dato.value)) {
+        recordarEntidadAsistente({
+          intent: 'consultar',
+          module: 'ventas',
+          entityType: 'ventas',
+          reference: 'ganancias',
+          queryTopic: intencion.topic
+        });
+        return {
+          message: `Tu ganancia total actual es ${formatearMontoRespuestaAsistente(dato.value)}.`,
+          role: 'assistant'
+        };
+      }
+      return { message: 'No encontré el total de ganancias en este momento.', role: 'assistant' };
+    }
+
+    if (intencion.topic === 'perdidas-total') {
+      if (dato && Number.isFinite(dato.value)) {
+        recordarEntidadAsistente({
+          intent: 'consultar',
+          module: 'historial-decomiso',
+          entityType: 'decomisos',
+          reference: 'perdidas',
+          queryTopic: intencion.topic
+        });
+        return {
+          message: `Tu pérdida total actual es ${formatearMontoRespuestaAsistente(dato.value)}.`,
+          role: 'assistant'
+        };
+      }
+      return { message: 'No encontré el total de pérdidas en este momento.', role: 'assistant' };
+    }
+
+    if (intencion.topic === 'ventas-total-hoy') {
+      return {
+        message: `Hoy llevas vendido ${formatearMontoRespuestaAsistente(dato?.value || 0)} en ${Number(dato?.count || 0)} registro(s).`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'ventas-top-product' || intencion.topic === 'ventas-low-product') {
+      if (dato?.entry) {
+        const intro = intencion.topic === 'ventas-low-product' ? 'El producto con menor salida actual es' : 'El producto más vendido actualmente es';
+        return {
+          message: `${intro} ${dato.entry.nombre}, con ${formatearNumeroAsistente(dato.entry.cantidad)} unidad(es) registradas.`,
+          role: 'assistant'
+        };
+      }
+      return {
+        message: intencion.topic === 'ventas-low-product'
+          ? 'No encontré ventas suficientes para determinar el producto menos vendido.'
+          : 'No encontré ventas suficientes para determinar el producto más vendido.',
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'plato-mas-ganancia') {
+      if (!dato?.entry) {
+        return { message: 'No encontré ventas suficientes para calcular qué plato deja más ganancia.', role: 'assistant' };
+      }
+      return {
+        message: `${dato.entry.nombre} es el plato que más ganancia deja actualmente, con ${formatearMontoRespuestaAsistente(dato.entry.ganancia || 0)} acumulados.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'facturas-hoy') {
+      return {
+        message: `Hoy hay ${Number(dato?.count || 0)} factura(s) registradas por un total de ${formatearMontoRespuestaAsistente(dato?.value || 0)}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'facturacion-total') {
+      return {
+        message: `La facturación acumulada disponible es ${formatearMontoRespuestaAsistente(dato?.value || 0)} en ${Number(dato?.count || 0)} factura(s).`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'factura-mas-alta') {
+      if (!dato?.factura) {
+        return { message: 'No encontré facturas registradas para identificar la más alta.', role: 'assistant' };
+      }
+      const factura = dato.factura;
+      return {
+        message: `La factura más alta actual es de ${formatearMontoRespuestaAsistente(factura.total || 0)}, correspondiente a ${factura.nombre || 'CONSUMIDOR FINAL'} el ${factura.fecha || 'sin fecha disponible'}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'factura-por-cliente') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Necesito el nombre, RNC o código del cliente para buscar sus facturas.', role: 'assistant' };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré facturas para ${capitalizarTextoAsistente(dato.reference)} en los registros actuales.`, role: 'assistant' };
+      }
+      const facturas = dato?.facturas || [];
+      const total = facturas.reduce((acc, factura) => acc + Number(factura.total || 0), 0);
+      const nombres = formatearListaCortaAsistente(facturas, factura => `${factura.fecha} (${formatearMontoRespuestaAsistente(factura.total || 0)})`, 3);
+      return {
+        message: `Encontré ${facturas.length} factura(s) para ${capitalizarTextoAsistente(dato.reference)} por un total de ${formatearMontoRespuestaAsistente(total)}. Ejemplos: ${nombres}.`,
+        role: 'assistant',
+        action: () => ejecutarBusquedaFacturasClienteAsistente(dato.reference),
+        actionDelay: 220
+      };
+    }
+
+    if (intencion.topic === 'almacen-restante') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Indícame el producto del almacén que deseas consultar. Ejemplo: "cuánto queda de cebolla".', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        return {
+          message: `Encontré varias coincidencias para "${capitalizarTextoAsistente(dato.reference)}": ${sugerirCoincidenciasAsistente(dato.matches)}. Dime cuál quieres consultar.`,
+          role: 'assistant'
+        };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré ${capitalizarTextoAsistente(dato.reference)} dentro del almacén actual.`, role: 'assistant' };
+      }
+      recordarCoincidenciaAsistente(dato.entity, 'consultar');
+      return {
+        message: `${capitalizarTextoAsistente(dato.item.nombre)} tiene ${formatearNumeroAsistente(dato.item.actual || 0)} ${etiquetaUnidadAsistente(dato.item.unidad)} disponibles. Su stock ideal es ${formatearNumeroAsistente(dato.item.ideal || 0)} ${etiquetaUnidadAsistente(dato.item.unidad)} y su costo unitario actual es ${formatearMonedaAsistente(dato.item.costoUnitario || 0)}.`,
+        role: 'assistant',
+        action: () => ejecutarBusquedaAlmacenAsistente(dato.item),
+        actionDelay: 220
+      };
+    }
+
+    if (intencion.topic === 'almacen-buscar') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Dime qué producto del almacén quieres buscar.', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        return {
+          message: `Encontré varias coincidencias para "${capitalizarTextoAsistente(dato.reference)}": ${sugerirCoincidenciasAsistente(dato.matches)}. Dime cuál deseas abrir.`,
+          role: 'assistant'
+        };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré ${capitalizarTextoAsistente(dato.reference)} en el almacén actual.`, role: 'assistant' };
+      }
+      recordarCoincidenciaAsistente(dato.entity, 'buscar');
+      return {
+        message: `Encontré ${capitalizarTextoAsistente(dato.item.nombre)} en Almacén con ${formatearNumeroAsistente(dato.item.actual || 0)} ${etiquetaUnidadAsistente(dato.item.unidad)} disponibles.`,
+        role: 'assistant',
+        action: () => ejecutarBusquedaAlmacenAsistente(dato.item),
+        actionDelay: 220
+      };
+    }
+
+    if (intencion.topic === 'almacen-bajo-ideal') {
+      const items = dato?.items || [];
+      if (!items.length) {
+        return { message: 'No encontré productos del almacén por debajo del stock ideal en este momento.', role: 'assistant' };
+      }
+      const lista = formatearListaCortaAsistente(items, item => `${capitalizarTextoAsistente(item.nombre)} (${formatearNumeroAsistente(item.actual)} / ${formatearNumeroAsistente(item.ideal)} ${item.unidad})`, 4);
+      return {
+        message: `Los productos más comprometidos por debajo del ideal son: ${lista}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'almacen-mas-critico') {
+      if (!dato?.item) {
+        return { message: 'No encontré un producto comprometido por debajo del ideal en este momento.', role: 'assistant' };
+      }
+      return {
+        message: `${capitalizarTextoAsistente(dato.item.nombre)} es el producto que ahora mismo luce más comprometido: tiene ${formatearNumeroAsistente(dato.item.actual)} ${etiquetaUnidadAsistente(dato.item.unidad)} disponibles frente a un ideal de ${formatearNumeroAsistente(dato.item.ideal)}.`,
+        role: 'assistant',
+        action: () => ejecutarBusquedaAlmacenAsistente(dato.item),
+        actionDelay: 220
+      };
+    }
+
+    if (intencion.topic === 'distribuidor-productos') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Indícame el distribuidor del que deseas ver productos. También puedes decir "muéstrame sus productos" si acabas de mencionarlo.', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        return {
+          message: `Encontré varios distribuidores parecidos para "${capitalizarTextoAsistente(dato.reference)}": ${sugerirCoincidenciasAsistente(dato.matches)}. Dime cuál quieres revisar.`,
+          role: 'assistant'
+        };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré el distribuidor ${capitalizarTextoAsistente(dato.reference)} en los datos actuales.`, role: 'assistant' };
+      }
+      recordarEntidadAsistente({
+        intent: 'consultar',
+        module: 'distribuidores',
+        entityType: 'distribuidor',
+        distributor: dato.distribuidor.nombre,
+        queryTopic: intencion.topic
+      });
+      const productosTxt = formatearListaCortaAsistente(dato.productos, item => capitalizarTextoAsistente(item.nombreProducto), 5) || 'sin productos registrados';
+      return {
+        message: `${capitalizarTextoAsistente(dato.distribuidor.nombre)} tiene ${dato.productos.length} producto(s) asociados: ${productosTxt}.`,
+        role: 'assistant',
+        action: () => ejecutarVerProductosDistribuidorAsistente(dato.distribuidor),
+        actionDelay: 220
+      };
+    }
+
+    if (intencion.topic === 'distribuidor-faltantes') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Necesito el nombre del distribuidor para revisar sus productos faltantes.', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        return {
+          message: `Encontré varios distribuidores parecidos para "${capitalizarTextoAsistente(dato.reference)}": ${sugerirCoincidenciasAsistente(dato.matches)}. Dime cuál quieres revisar.`,
+          role: 'assistant'
+        };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré el distribuidor ${capitalizarTextoAsistente(dato.reference)} en los datos actuales.`, role: 'assistant' };
+      }
+      recordarEntidadAsistente({
+        intent: 'consultar',
+        module: 'distribuidores',
+        entityType: 'distribuidor',
+        distributor: dato.distribuidor.nombre,
+        queryTopic: intencion.topic
+      });
+      if (!dato.faltantes.length) {
+        return {
+          message: `${capitalizarTextoAsistente(dato.distribuidor.nombre)} no tiene faltantes pendientes para completar stock ideal en este momento.`,
+          role: 'assistant',
+          action: () => ejecutarVerProductosDistribuidorAsistente(dato.distribuidor),
+          actionDelay: 220
+        };
+      }
+      const lista = formatearListaCortaAsistente(dato.faltantes, entry => `${capitalizarTextoAsistente(entry.item.nombreProducto)} (${formatearNumeroAsistente(entry.faltante.cantidad)} ${entry.faltante.unidad})`, 4);
+      return {
+        message: `Los faltantes principales para ${capitalizarTextoAsistente(dato.distribuidor.nombre)} son: ${lista}.`,
+        role: 'assistant',
+        action: () => ejecutarVerProductosDistribuidorAsistente(dato.distribuidor),
+        actionDelay: 220
+      };
+    }
+
+    if (intencion.topic === 'distribuidor-vende-producto') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Indícame el producto que deseas consultar en distribuidores.', role: 'assistant' };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré distribuidores con ${capitalizarTextoAsistente(dato.reference)} en el catálogo actual.`, role: 'assistant' };
+      }
+      const lista = formatearListaCortaAsistente(dato.proveedores, item => `${capitalizarTextoAsistente(item.distNombre)} (${formatearMonedaAsistente(item.precio || 0)} por ${item.unidad})`, 4);
+      return {
+        message: `Encontré ${dato.proveedores.length} distribuidor(es) para ${capitalizarTextoAsistente(dato.reference)}: ${lista}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'distribuidor-pedido') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Necesito el nombre del distribuidor para preparar el pedido.', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        return {
+          message: `Encontré varios distribuidores parecidos para "${capitalizarTextoAsistente(dato.reference)}": ${sugerirCoincidenciasAsistente(dato.matches)}. Dime cuál quieres usar para el pedido.`,
+          role: 'assistant'
+        };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré el distribuidor ${capitalizarTextoAsistente(dato.reference)} para preparar el pedido.`, role: 'assistant' };
+      }
+      recordarEntidadAsistente({
+        intent: 'pedido',
+        module: 'distribuidores',
+        entityType: 'distribuidor',
+        distributor: dato.distribuidor.nombre,
+        queryTopic: intencion.topic
+      });
+      if (!dato.faltantes.length) {
+        return {
+          message: `${capitalizarTextoAsistente(dato.distribuidor.nombre)} no tiene faltantes pendientes para reponer stock ideal ahora mismo.`,
+          role: 'assistant',
+          action: () => ejecutarVerProductosDistribuidorAsistente(dato.distribuidor),
+          actionDelay: 220
+        };
+      }
+      const lista = formatearListaCortaAsistente(dato.faltantes, entry => `${capitalizarTextoAsistente(entry.item.nombreProducto)} (${formatearNumeroAsistente(entry.faltante.cantidad)} ${entry.faltante.unidad})`, 4);
+      return {
+        message: `Preparé el pedido de ${capitalizarTextoAsistente(dato.distribuidor.nombre)} con estos faltantes: ${lista}. Abriré WhatsApp para enviarlo.`,
+        role: 'system',
+        action: () => ejecutarPedidoDistribuidorAsistente(dato.distribuidor),
+        actionDelay: 260
+      };
+    }
+
+    if (intencion.topic === 'clientes-puntos' || intencion.topic === 'clientes-buscar') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Indícame el nombre, cédula o teléfono del cliente.', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        const nombres = formatearListaCortaAsistente(dato.matches || [], item => `${capitalizarTextoAsistente(item.nombre)} (${item.cedula || 'sin cédula'})`, 4);
+        return { message: `Encontré varios clientes parecidos: ${nombres}. Dime cuál necesitas revisar.`, role: 'assistant' };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré un cliente que coincida con ${capitalizarTextoAsistente(dato.reference)}.`, role: 'assistant' };
+      }
+      const cliente = dato.cliente;
+      recordarEntidadAsistente({
+        intent: 'consultar',
+        module: 'clientes-puntos',
+        entityType: 'cliente',
+        client: cliente.nombre,
+        queryTopic: intencion.topic
+      });
+      const resumen = intencion.topic === 'clientes-puntos'
+        ? `${capitalizarTextoAsistente(cliente.nombre)} tiene ${Number(cliente.puntos || 0)} punto(s) acumulados y un total histórico de ${formatearMontoRespuestaAsistente(cliente.totalAcumulado || 0)}.`
+        : `Encontré al cliente ${capitalizarTextoAsistente(cliente.nombre)} con cédula ${cliente.cedula || 'N/A'}, teléfono ${cliente.telefono || 'N/A'} y ${Number(cliente.puntos || 0)} punto(s).`;
+      return {
+        message: resumen,
+        role: 'assistant',
+        action: () => ejecutarBusquedaClienteAsistente(cliente),
+        actionDelay: 220
+      };
+    }
+
+    if (intencion.topic === 'clientes-top-puntos' || intencion.topic === 'clientes-top-compra') {
+      if (!dato?.cliente) {
+        return {
+          message: intencion.topic === 'clientes-top-puntos'
+            ? 'No encontré clientes con puntos acumulados.'
+            : 'No encontré clientes con compras acumuladas.',
+          role: 'assistant'
+        };
+      }
+      const cliente = dato.cliente;
+      const mensaje = intencion.topic === 'clientes-top-puntos'
+        ? `${capitalizarTextoAsistente(cliente.nombre)} es el cliente con más puntos acumulados, con ${Number(cliente.puntos || 0)} punto(s).`
+        : `${capitalizarTextoAsistente(cliente.nombre)} es el cliente con mayor compra acumulada, con ${formatearMontoRespuestaAsistente(cliente.totalAcumulado || 0)}.`;
+      return {
+        message: mensaje,
+        role: 'assistant',
+        action: () => ejecutarBusquedaClienteAsistente(cliente),
+        actionDelay: 220
+      };
+    }
+
+    if (intencion.topic === 'plato-faltantes') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Necesito el nombre del plato que deseas revisar.', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        return {
+          message: `Encontré varias coincidencias para "${capitalizarTextoAsistente(dato.reference)}": ${sugerirCoincidenciasAsistente(dato.matches)}. Dime cuál plato quieres revisar.`,
+          role: 'assistant'
+        };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré el plato ${capitalizarTextoAsistente(dato.reference)} en Disponibilidad.`, role: 'assistant' };
+      }
+      recordarEntidadAsistente({
+        intent: 'consultar',
+        module: 'disponibilidad',
+        entityType: 'plato',
+        plate: dato.plato.nombre,
+        queryTopic: intencion.topic
+      });
+      if (!dato.faltantes.length) {
+        return { message: `${capitalizarTextoAsistente(dato.plato.nombre)} no tiene faltantes. Con el stock actual sí puede salir.`, role: 'assistant' };
+      }
+      const lista = formatearListaCortaAsistente(dato.faltantes, item => `${item.nombre} (${formatearNumeroAsistente(item.faltante)} ${item.unidad})`, 5);
+      return {
+        message: `Para completar ${capitalizarTextoAsistente(dato.plato.nombre)} te faltan: ${lista}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'platos-bloqueados') {
+      const platos = dato?.platos || [];
+      if (!platos.length) {
+        return { message: 'No encontré platos bloqueados por falta de ingredientes en este momento.', role: 'assistant' };
+      }
+      const lista = formatearListaCortaAsistente(platos, entry => `${capitalizarTextoAsistente(entry.plato.nombre)} (${entry.faltantes.length} faltante(s))`, 4);
+      return {
+        message: `Los platos que ahora mismo no pueden salir completos por faltantes son: ${lista}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'produccion-recomendada') {
+      const items = dato?.items || [];
+      if (!items.length) {
+        return { message: 'No encontré producciones internas comprometidas por debajo del nivel esperado en este momento.', role: 'assistant' };
+      }
+      const lista = formatearListaCortaAsistente(items, item => `${capitalizarTextoAsistente(item.nombre)} (${formatearNumeroAsistente(item.actual)} ${item.unidad})`, 4);
+      return {
+        message: `Las producciones internas que conviene revisar o reforzar primero son: ${lista}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'produccion-listado') {
+      const items = dato?.items || [];
+      if (!items.length) {
+        return { message: 'No encontré producciones internas registradas en el módulo actual.', role: 'assistant' };
+      }
+      const lista = formatearListaCortaAsistente(items, item => `${capitalizarTextoAsistente(item.nombre)} (${formatearNumeroAsistente(item.actual || 0)} ${item.unidad || ''})`, 5);
+      return {
+        message: `Estas son las producciones internas registradas ahora mismo: ${lista}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'produccion-composicion') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Necesito el nombre de la producción que deseas revisar.', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        return {
+          message: `Encontré varias producciones parecidas para "${capitalizarTextoAsistente(dato.reference)}": ${sugerirCoincidenciasAsistente(dato.matches)}. Dime cuál quieres revisar.`,
+          role: 'assistant'
+        };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré la producción ${capitalizarTextoAsistente(dato.reference)} en Producción Interna.`, role: 'assistant' };
+      }
+      recordarCoincidenciaAsistente(dato.entity, 'consultar');
+      const ingredientes = formatearListaCortaAsistente(dato.detalle?.ingredientes || [], item => `${item.nombre} (${formatearNumeroAsistente(item.requerida)} ${item.unidad})`, 5);
+      return {
+        message: `${capitalizarTextoAsistente(dato.detalle?.produccion?.nombre || dato.entity.name)} está compuesta por: ${ingredientes || 'sin ingredientes definidos'}. Con el almacén actual puedes fabricar aproximadamente ${formatearNumeroAsistente(dato.detalle?.capacidad || 0)} ${dato.detalle?.produccion?.unidad || 'unidad(es)'} más.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'produccion-faltantes') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Necesito el nombre de la producción para calcular sus faltantes.', role: 'assistant' };
+      }
+      if (dato?.reason === 'ambiguous') {
+        return {
+          message: `Encontré varias producciones parecidas para "${capitalizarTextoAsistente(dato.reference)}": ${sugerirCoincidenciasAsistente(dato.matches)}. Dime cuál quieres revisar.`,
+          role: 'assistant'
+        };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré la producción ${capitalizarTextoAsistente(dato.reference)} en Producción Interna.`, role: 'assistant' };
+      }
+      recordarCoincidenciaAsistente(dato.entity, 'consultar');
+      if (!(dato.detalle?.faltantes || []).length) {
+        return {
+          message: `${capitalizarTextoAsistente(dato.detalle?.produccion?.nombre || dato.entity.name)} no tiene faltantes en este momento. Puedes producir con el stock actual.`,
+          role: 'assistant'
+        };
+      }
+      const faltantes = formatearListaCortaAsistente(dato.detalle.faltantes, item => `${item.nombre} (${formatearNumeroAsistente(item.faltante)} ${item.unidad})`, 5);
+      return {
+        message: `Para completar ${capitalizarTextoAsistente(dato.detalle?.produccion?.nombre || dato.entity.name)} te faltan: ${faltantes}. El costo estimado de reposición es ${formatearMontoRespuestaAsistente(dato.detalle?.costoReposicion || 0)}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'plato-consume-ingrediente') {
+      if (dato?.reason === 'missing-reference') {
+        return { message: 'Necesito el ingrediente que deseas analizar. Ejemplo: "cuál plato consume más pollo".', role: 'assistant' };
+      }
+      if (dato?.reason === 'not-found') {
+        return { message: `No encontré recetas que consuman ${capitalizarTextoAsistente(dato.ingrediente)} en el módulo actual.`, role: 'assistant' };
+      }
+      return {
+        message: `${capitalizarTextoAsistente(dato.entry.plato.nombre)} es el plato que más consume ${capitalizarTextoAsistente(dato.ingrediente)}, con aproximadamente ${formatearNumeroAsistente(dato.entry.total)} ${dato.entry.unidad || ''}.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intencion.topic === 'ingrediente-mas-usado') {
+      if (!dato?.entry) {
+        return { message: 'No encontré recetas suficientes para determinar cuál ingrediente se usa más.', role: 'assistant' };
+      }
+      return {
+        message: `${dato.entry.nombre} es el ingrediente con mayor presencia operativa ahora mismo. Aparece ${Number(dato.entry.veces || 0)} vez/veces entre platos y producciones activas.`,
+        role: 'assistant'
+      };
+    }
+
+    return null;
+  }
+
+  function describirEntidadSistemaAsistente(entity) {
+    if (!entity) return '';
+    switch (entity.type) {
+      case 'almacen':
+        return `el producto ${capitalizarTextoAsistente(entity.name)} del almacén`;
+      case 'produccion':
+        return `la producción ${capitalizarTextoAsistente(entity.name)} de Producción Interna`;
+      case 'plato':
+        return `el plato ${capitalizarTextoAsistente(entity.name)} de Disponibilidad`;
+      case 'distribuidor':
+        return `el distribuidor ${capitalizarTextoAsistente(entity.name)}`;
+      case 'cliente':
+        return `el cliente ${capitalizarTextoAsistente(entity.name)}`;
+      default:
+        return capitalizarTextoAsistente(entity.name);
+    }
+  }
+
+  function sugerirCoincidenciasAsistente(matches = []) {
+    return matches.map((entry) => `${capitalizarTextoAsistente(entry.name)} (${entry.label})`).join(', ');
+  }
+
+  function formatearListaCortaAsistente(items = [], mapper = (item) => item, limit = 4) {
+    const lista = items.slice(0, limit).map(mapper).filter(Boolean);
+    if (!lista.length) return '';
+    if (items.length > limit) {
+      lista.push(`+${items.length - limit} más`);
+    }
+    return lista.join(', ');
+  }
+
+  function recordarCoincidenciaAsistente(entity, intent = '') {
+    if (!entity) return;
+    recordarEntidadAsistente({
+      intent,
+      module: entity.module,
+      entityType: entity.type,
+      entityName: entity.name,
+      product: entity.type === 'distribuidor' ? '' : entity.name,
+      distributor: entity.type === 'distribuidor' ? entity.name : '',
+      client: entity.type === 'cliente' ? entity.name : '',
+      plate: entity.type === 'plato' ? entity.name : ''
+    });
+  }
+
+  function construirRespuestaAsistente(intento, datos, textoNormalizado) {
+    if (!intento) return null;
+    const contexto = obtenerContextoConversacionAsistente();
+    const moduloDetectado = buscarModuloAsistente(textoNormalizado);
+    if (moduloDetectado && !esModuloRestringidoAsistente(moduloDetectado)) {
+      actualizarContextoConversacionAsistente({ lastModule: moduloDetectado.page });
+    }
+
+    if (intento.kind === 'help') {
+      return { message: ASSISTANT_HELP, role: 'assistant' };
+    }
+
+    if (intento.kind === 'system-query') {
+      const modulo = resolverModuloAsistente(intento);
+      if (esModuloRestringidoAsistente(modulo)) {
+        return construirRespuestaRestriccionAsistente(modulo);
+      }
+      if (modulo) {
+        actualizarContextoConversacionAsistente({ lastModule: modulo.page, lastQueryTopic: intento.topic || '' });
+      }
+      return responderConsultaSistemaAsistente(intento, obtenerDatoSistemaAsistente(intento));
+    }
+
+    if (intento.kind === 'explain' || intento.kind === 'guide') {
+      const modulo = buscarModuloAsistente(textoNormalizado) || obtenerModuloActivoAsistente();
+      if (modulo) {
+        return responderModulo(modulo, true, intento.kind === 'guide');
+      }
+      const accion = buscarAccionAsistente(textoNormalizado);
+      if (accion) {
+        return responderAccion(accion, true);
+      }
+      return {
+        message: construirExplicacionModuloAsistente(null, intento.kind === 'guide'),
+        role: 'assistant'
+      };
+    }
+
+    if (intento.kind === 'almacen-add-incomplete') {
+      recordarEntidadAsistente({
+        intent: 'agregar',
+        module: 'inventario',
+        entityType: 'almacen',
+        product: datos.producto
+      });
+      return {
+        message: `Entendí que deseas registrar ${datos.productoBonito} en Almacén, pero todavía me faltan datos. Puedes completarlo con algo como: "agrega 50 libras de ${datos.producto} a 560 ideal 40 libras".`,
+        role: 'assistant'
+      };
+    }
+
+    if (intento.kind === 'distribuidor-create') {
+      if (!datos.nombre) {
+        return {
+          message: 'Necesito al menos el nombre del distribuidor para crearlo. Puedes decirme algo como: "crea un nuevo distribuidor La Sirena, Jhonn Santana, 8293666947".',
+          role: 'assistant'
+        };
+      }
+      recordarEntidadAsistente({
+        intent: 'crear',
+        module: 'distribuidores',
+        entityType: 'distribuidor',
+        distributor: datos.nombre
+      });
+      const partes = [
+        `Entendí que deseas crear el distribuidor ${capitalizarTextoAsistente(datos.nombre)}`
+      ];
+      if (datos.contacto) partes.push(`con contacto ${capitalizarTextoAsistente(datos.contacto)}`);
+      if (datos.telefono) partes.push(`y teléfono ${datos.telefono}`);
+      return construirPendienteAsistente({
+        summary: `Crear distribuidor ${capitalizarTextoAsistente(datos.nombre)}`,
+        confirmMessage: `Voy a abrir Distribuidores y registrar ${capitalizarTextoAsistente(datos.nombre)} usando la lógica real del sistema.`,
+        message: `${partes.join(' ')}. ¿Deseas que lo registre ahora?`,
+        run: () => ejecutarRegistroDistribuidorAsistente({
+          nombre: capitalizarTextoAsistente(datos.nombre),
+          contacto: capitalizarTextoAsistente(datos.contacto || ''),
+          telefono: datos.telefono || ''
+        })
+      });
+    }
+
+    if (intento.kind === 'distribuidor-update-phone') {
+      const referencia = datos.nombre || obtenerReferenciaDesdeContextoAsistente('distribuidor');
+      if (!referencia) {
+        return {
+          message: 'Indícame el nombre del distribuidor cuyo teléfono deseas editar.',
+          role: 'assistant'
+        };
+      }
+      if (!datos.telefono) {
+        return {
+          message: `Entendí que deseas editar el teléfono de ${capitalizarTextoAsistente(referencia)}, pero todavía me falta el nuevo número.`,
+          role: 'assistant'
+        };
+      }
+      const resolucion = resolverReferenciaAmbiguaAsistente(referencia, 'distribuidor');
+      if (!resolucion.entity) {
+        return {
+          message: `No encontré un distribuidor exacto para ${capitalizarTextoAsistente(referencia)}. Si quieres, dime el nombre más completo.`,
+          role: 'assistant'
+        };
+      }
+      if (resolucion.ambiguous) {
+        return {
+          message: `Encontré varios distribuidores parecidos para "${capitalizarTextoAsistente(referencia)}": ${sugerirCoincidenciasAsistente(resolucion.matches)}. Dime cuál quieres editar.`,
+          role: 'assistant'
+        };
+      }
+      recordarCoincidenciaAsistente(resolucion.entity, 'editar');
+      return construirPendienteAsistente({
+        summary: `Actualizar teléfono de ${capitalizarTextoAsistente(resolucion.entity.name)}`,
+        confirmMessage: `Voy a abrir Distribuidores y actualizar el teléfono de ${capitalizarTextoAsistente(resolucion.entity.name)} a ${datos.telefono}.`,
+        message: `Entendí que deseas cambiar el teléfono del distribuidor ${capitalizarTextoAsistente(resolucion.entity.name)} a ${datos.telefono}. ¿Confirmas este cambio?`,
+        run: () => ejecutarActualizacionTelefonoDistribuidorAsistente(resolucion.entity.item, datos.telefono)
+      });
+    }
+
+    if (intento.kind === 'almacen-add') {
+      recordarEntidadAsistente({
+        intent: 'agregar',
+        module: 'inventario',
+        entityType: 'almacen',
+        product: datos.producto,
+        quantity: datos.cantidad,
+        unit: datos.unidad,
+        cost: datos.costo,
+        ideal: datos.ideal
+      });
+      if (!Number.isFinite(datos?.costo)) {
+        return {
+          message: `Entendí que deseas registrar ${datos?.productoBonito || 'ese producto'} en Almacén, pero me falta el costo total para prepararlo automáticamente. Puedes escribir algo como: "agrega 50 libras de plátano maduro a 560 ideal 40 libras".`,
+          role: 'assistant'
+        };
+      }
+
+      const unidadTexto = etiquetaUnidadAsistente(datos.unidad);
+      const idealTexto = datos.ideal !== null && datos.ideal !== undefined
+        ? ` y stock ideal de ${formatearNumeroAsistente(datos.ideal)} ${unidadTexto}`
+        : '';
+      const mensaje = `Entendí que deseas agregar al almacén ${datos.productoBonito} con ${formatearNumeroAsistente(datos.cantidad)} ${unidadTexto}, costo total ${formatearMonedaAsistente(datos.costo)}${idealTexto}. ¿Deseas que lo registre ahora?`;
+
+      return construirPendienteAsistente({
+        summary: `Registrar ${datos.productoBonito} en Almacén`,
+        confirmMessage: `Voy a registrar ${datos.productoBonito} en Almacén y usaré la lógica actual del sistema para guardar la entrada.`,
+        message: mensaje,
+        run: () => ejecutarRegistroAlmacenAsistente(datos)
+      });
+    }
+
+    if (intento.kind === 'almacen-delete' || intento.kind === 'entity-delete' || intento.kind === 'distribuidor-delete') {
+      const reference = intento.kind === 'almacen-delete'
+        ? datos.producto
+        : (intento.kind === 'distribuidor-delete' ? datos.nombre : datos.reference);
+      const explicitType = intento.kind === 'almacen-delete'
+        ? 'almacen'
+        : (intento.kind === 'distribuidor-delete' ? 'distribuidor' : (datos.explicitType || ''));
+      const resolucion = resolverReferenciaAmbiguaAsistente(reference, explicitType);
+
+      if (!resolucion.query && !obtenerReferenciaDesdeContextoAsistente(explicitType)) {
+        return {
+          message: explicitType === 'distribuidor'
+            ? 'Indícame el nombre del distribuidor que deseas eliminar. Ejemplo: "elimina distribuidor Pricesmart".'
+            : 'Indícame el nombre del producto, plato, producción o distribuidor que deseas eliminar. También puedes decirme "elimínalo" si ya mencionaste uno antes.',
+          role: 'assistant'
+        };
+      }
+
+      if (!resolucion.entity) {
+        const referenciaContextual = obtenerReferenciaDesdeContextoAsistente(explicitType);
+        if (referenciaContextual && contexto.lastEntityType) {
+          const tipoContextual = explicitType || contexto.lastEntityType || 'almacen';
+          const syntheticEntity = {
+            type: tipoContextual,
+            module: contexto.lastModule || (tipoContextual === 'distribuidor' ? 'distribuidores' : 'inventario'),
+            label: tipoContextual === 'distribuidor' ? 'Distribuidores' : (tipoContextual === 'produccion' ? 'Producción Interna' : (tipoContextual === 'plato' ? 'Disponibilidad' : 'Almacén')),
+            name: referenciaContextual
+          };
+          recordarCoincidenciaAsistente(syntheticEntity, 'eliminar');
+          return construirPendienteAsistente({
+            summary: `Eliminar ${describirEntidadSistemaAsistente(syntheticEntity)}`,
+            confirmMessage: `Voy a intentar resolver y eliminar ${describirEntidadSistemaAsistente(syntheticEntity)} usando el contexto reciente de la conversación.`,
+            message: `Entendí que deseas eliminar ${describirEntidadSistemaAsistente(syntheticEntity)}. ¿Confirmas esta acción?`,
+            run: () => ejecutarEliminacionPorNombreAsistente(syntheticEntity.type, syntheticEntity.name)
+          });
+        }
+        return {
+          message: `No encontré una coincidencia exacta para "${capitalizarTextoAsistente(resolucion.query)}" en los datos actuales. Si quieres, dime el módulo o el nombre más completo.`,
+          role: 'assistant'
+        };
+      }
+
+      if (resolucion.ambiguous) {
+        return {
+          message: `Encontré varias coincidencias para "${capitalizarTextoAsistente(resolucion.query)}": ${sugerirCoincidenciasAsistente(resolucion.matches)}. Dime cuál quieres eliminar.`,
+          role: 'assistant'
+        };
+      }
+
+      const entity = resolucion.entity;
+      recordarCoincidenciaAsistente(entity, 'eliminar');
+
+      let confirmMessage = '';
+      let run = null;
+      if (entity.type === 'almacen') {
+        confirmMessage = `Voy a abrir Almacén y ejecutar la eliminación segura de ${capitalizarTextoAsistente(entity.name)}. El sistema te pedirá la contraseña de seguridad antes de borrar.`;
+        run = () => ejecutarEliminacionAlmacenAsistente(entity.item);
+      } else if (entity.type === 'distribuidor') {
+        confirmMessage = `Voy a abrir Distribuidores y ejecutar la eliminación segura de ${capitalizarTextoAsistente(entity.name)}. Después el sistema te pedirá la validación administrativa correspondiente.`;
+        run = () => ejecutarEliminacionDistribuidorAsistente(entity.item);
+      } else if (entity.type === 'produccion') {
+        confirmMessage = `Voy a abrir Producción Interna y ejecutar la eliminación segura de ${capitalizarTextoAsistente(entity.name)}. El sistema te pedirá la validación correspondiente.`;
+        run = () => ejecutarEliminacionProduccionAsistente(entity.item);
+      } else if (entity.type === 'plato') {
+        confirmMessage = `Voy a abrir Disponibilidad y ejecutar la eliminación segura de ${capitalizarTextoAsistente(entity.name)}. El sistema te pedirá la validación administrativa correspondiente.`;
+        run = () => ejecutarEliminacionPlatoAsistente(entity.item);
+      }
+
+      return construirPendienteAsistente({
+        summary: `Eliminar ${describirEntidadSistemaAsistente(entity)}`,
+        confirmMessage,
+        message: `Entendí que deseas eliminar ${describirEntidadSistemaAsistente(entity)}. ¿Confirmas esta acción?`,
+        run
+      });
+    }
+
+    if (intento.kind === 'entity-update') {
+      const resolucion = resolverReferenciaAmbiguaAsistente(datos.reference, '');
+      if (!resolucion.entity) {
+        return {
+          message: 'Entendí que quieres actualizar un registro, pero necesito que me indiques cuál. Si acabas de mencionarlo, también puedes decirme "ponle 60 libras a plátano maduro".',
+          role: 'assistant'
+        };
+      }
+      recordarCoincidenciaAsistente(resolucion.entity, 'actualizar');
+      const unidadTexto = datos.unit ? ` ${etiquetaUnidadAsistente(datos.unit)}` : '';
+      if (Number.isFinite(datos.quantity)) {
+        return {
+          message: `Entendí que deseas actualizar ${describirEntidadSistemaAsistente(resolucion.entity)} a ${formatearNumeroAsistente(datos.quantity)}${unidadTexto}. Para no asumir mal, dime si quieres cambiar cantidad, stock ideal, costo o preparar la edición.`,
+          role: 'assistant'
+        };
+      }
+      return {
+        message: `Entendí que deseas editar ${describirEntidadSistemaAsistente(resolucion.entity)}. Dime qué valor quieres cambiar y te ayudo a prepararlo.`,
+        role: 'assistant'
+      };
+    }
+
+    if (intento.kind === 'decomiso-create') {
+      const tipoExplicito = datos.explicitType === 'plato'
+        ? 'plato'
+        : (datos.explicitType === 'produccion' ? 'produccion' : (datos.explicitType ? 'almacen' : ''));
+      const resolucion = resolverReferenciaAmbiguaAsistente(datos.reference, tipoExplicito);
+      if (!resolucion.query && !obtenerReferenciaDesdeContextoAsistente(tipoExplicito || '')) {
+        return {
+          message: 'Indícame qué plato, ingrediente o producción deseas decomisar. También puedes decir "decomisa 2 libras de tomate" o "decomisa costilla infinita".',
+          role: 'assistant'
+        };
+      }
+      if (!resolucion.entity) {
+        return {
+          message: `No encontré una coincidencia clara para "${capitalizarTextoAsistente(resolucion.query || datos.reference)}" dentro de los módulos permitidos para decomiso.`,
+          role: 'assistant'
+        };
+      }
+      if (resolucion.ambiguous) {
+        return {
+          message: `Encontré varias coincidencias para "${capitalizarTextoAsistente(resolucion.query)}": ${sugerirCoincidenciasAsistente(resolucion.matches)}. Dime cuál deseas decomisar.`,
+          role: 'assistant'
+        };
+      }
+      const entity = resolucion.entity;
+      recordarCoincidenciaAsistente(entity, 'decomisar');
+
+      if (entity.type === 'plato') {
+        return construirPendienteAsistente({
+          summary: `Decomisar el plato ${capitalizarTextoAsistente(entity.name)}`,
+          confirmMessage: `Voy a registrar el decomiso de ${capitalizarTextoAsistente(entity.name)} usando la lógica real del sistema.`,
+          message: `Entendí que deseas decomisar el plato ${capitalizarTextoAsistente(entity.name)}. Esto descontará 1 unidad del plato y registrará la pérdida. ¿Confirmas esta acción?`,
+          run: () => ejecutarDecomisoPlatoAsistente(entity.item)
+        });
+      }
+
+      if ((entity.type === 'almacen' || entity.type === 'produccion') && (!Number.isFinite(datos.quantity) || Number(datos.quantity) <= 0)) {
+        return {
+          message: `Entendí que deseas decomisar ${describirEntidadSistemaAsistente(entity)}, pero necesito la cantidad. Puedes decirme algo como: "decomisa 2 ${etiquetaUnidadAsistente(entity.item?.unidad || datos.unit || 'Unidad')} de ${entity.name}".`,
+          role: 'assistant'
+        };
+      }
+
+      if (entity.type === 'almacen') {
+        const unidad = datos.unit || entity.item?.unidad || 'Unidad';
+        return construirPendienteAsistente({
+          summary: `Decomisar ${formatearNumeroAsistente(datos.quantity)} ${etiquetaUnidadAsistente(unidad)} de ${capitalizarTextoAsistente(entity.name)}`,
+          confirmMessage: `Voy a registrar el decomiso de ${formatearNumeroAsistente(datos.quantity)} ${etiquetaUnidadAsistente(unidad)} de ${capitalizarTextoAsistente(entity.name)} en Almacén.`,
+          message: `Entendí que deseas decomisar ${formatearNumeroAsistente(datos.quantity)} ${etiquetaUnidadAsistente(unidad)} del producto ${capitalizarTextoAsistente(entity.name)}. ¿Confirmas esta acción?`,
+          run: () => ejecutarDecomisoInventarioAsistente(entity.item, datos.quantity, unidad)
+        });
+      }
+
+      if (entity.type === 'produccion') {
+        const unidad = datos.unit || entity.item?.unidad || 'Unidad';
+        return construirPendienteAsistente({
+          summary: `Decomisar ${formatearNumeroAsistente(datos.quantity)} ${etiquetaUnidadAsistente(unidad)} de ${capitalizarTextoAsistente(entity.name)}`,
+          confirmMessage: `Voy a registrar el decomiso de ${formatearNumeroAsistente(datos.quantity)} ${etiquetaUnidadAsistente(unidad)} de ${capitalizarTextoAsistente(entity.name)} en Producción Interna y lo dejaré trazado en Historial Decomiso.`,
+          message: `Entendí que deseas decomisar ${formatearNumeroAsistente(datos.quantity)} ${etiquetaUnidadAsistente(unidad)} de la producción ${capitalizarTextoAsistente(entity.name)}. ¿Confirmas esta acción?`,
+          run: () => ejecutarDecomisoProduccionAsistente(entity.item, datos.quantity, unidad)
+        });
+      }
+    }
+
+    return null;
+  }
+
+  function respuestaFallback() {
+    return {
+      message: ASSISTANT_UNKNOWN_COMMAND,
+      role: 'assistant'
+    };
+  }
+
+  async function resolverIntencionAsistente(textoCrudo) {
+    const unresolvedTemplate = esPlantillaComandoAsistente(textoCrudo);
+    const rawText = normalizarTextoPlantillaAsistente(textoCrudo).trim();
+    const normalizedText = normalizarTextoAsistente(rawText);
+    iniciarDebugAsistente(rawText, normalizedText);
+    const finalizarRespuestaAsistente = (response, extra = {}) => {
+      registrarDebugAsistente('output', {
+        extra,
+        response,
+        context: obtenerContextoConversacionAsistente(),
+        pendingSummary: assistantPendingAction?.summary || ''
+      });
+      cerrarDebugAsistente(response);
+      return response;
+    };
+
+    if (!normalizedText) {
+      return finalizarRespuestaAsistente({
+        message: 'Escribe un comando.',
+        role: 'assistant'
+      }, { reason: 'empty-input' });
+    }
+
+    if (unresolvedTemplate) {
+      return finalizarRespuestaAsistente({
+        message: 'Completa los campos pendientes de la plantilla antes de ejecutarla.',
+        role: 'assistant'
+      }, { reason: 'template-incomplete' });
+    }
+
+    const pendingResponse = manejarPendienteAsistente(normalizedText);
+    registrarDebugAsistente('pending-check', {
+      hadPending: !!assistantPendingAction,
+      pendingResolved: !!pendingResponse
+    });
+    if (pendingResponse) return finalizarRespuestaAsistente(pendingResponse, { stage: 'pending' });
+
+    if (detectarSaludo(normalizedText)) {
+      return finalizarRespuestaAsistente({ message: ASSISTANT_GREETING, role: 'assistant' }, { stage: 'greeting' });
+    }
+
+    const explicitNavigation = detectarNavegacionExplicitaAsistente(normalizedText);
+    if (explicitNavigation) {
+      return finalizarRespuestaAsistente(responderModulo(explicitNavigation, false, false), {
+        stage: 'explicit-navigation',
+        page: explicitNavigation.page
+      });
+    }
+
+    const helpModuleMatch = buscarModuloAsistente(normalizedText);
+    const helpActionMatch = buscarAccionAsistente(normalizedText);
+    if (detectarIntencionAyuda(normalizedText) && !helpModuleMatch && !helpActionMatch) {
+      return finalizarRespuestaAsistente(responderModulo(obtenerModuloPorPaginaAsistente('comandos')), { stage: 'help' });
+    }
+
+    const askExplanation = detectarIntencionExplicacion(normalizedText);
+    const askGuide = detectarIntencionProcedimiento(normalizedText);
+
+    const intencion = detectarIntencionAsistente(normalizedText);
+    const datos = extraerEntidadesAsistente(normalizedText, intencion);
+    registrarDebugAsistente('intent-detected', { intencion });
+    registrarDebugAsistente('entities-extracted', { datos });
+    const respuestaInteligente = construirRespuestaAsistente(intencion, datos, normalizedText);
+    registrarDebugAsistente('smart-response', { handled: !!respuestaInteligente, respuesta: respuestaInteligente });
+    if (respuestaInteligente) return finalizarRespuestaAsistente(respuestaInteligente, { stage: 'smart-response' });
+
+    const actionMatch = buscarAccionAsistente(normalizedText);
+    if (actionMatch) {
+      return finalizarRespuestaAsistente(responderAccion(actionMatch, askExplanation || askGuide), {
+        stage: 'action-match',
+        action: actionMatch.id
+      });
+    }
+
+    const pageMatch = buscarModuloAsistente(normalizedText);
+    if (pageMatch) {
+      return finalizarRespuestaAsistente(responderModulo(pageMatch, askExplanation || askGuide, askGuide), {
+        stage: 'page-match',
+        page: pageMatch.page
+      });
+    }
+
+    if ((askExplanation || askGuide) && obtenerModuloActivoAsistente()) {
+      return finalizarRespuestaAsistente(responderModulo(obtenerModuloActivoAsistente(), true, askGuide), {
+        stage: 'active-module-help',
+        page: obtenerModuloActivoAsistente()?.page || ''
+      });
+    }
+
+    return finalizarRespuestaAsistente(respuestaFallback(), { stage: 'fallback' });
+  }
+
+  function ejecutarAccionResultadoAsistente(result) {
+    if (typeof result?.action === 'function') {
+      setTimeout(() => {
+        try {
+          registrarDebugAsistente('action-run-start', {
+            message: result?.message || '',
+            role: result?.role || 'assistant'
+          });
+          result.action();
+          registrarDebugAsistente('action-run-complete', {
+            message: result?.message || '',
+            role: result?.role || 'assistant'
+          });
+        } catch (e) {
+          console.warn('No se pudo ejecutar la acción del asistente:', e);
+          registrarDebugAsistente('action-run-error', {
+            message: result?.message || '',
+            error: e?.message || String(e)
+          });
+          registrarMensajeAsistente('assistant', 'No se pudo ejecutar el comando automáticamente.');
+          actualizarEstadoModuloComandos('No se pudo ejecutar el comando automáticamente.');
+        }
+      }, Number(result?.actionDelay || 240));
+    }
+  }
+
+  window.procesarComando = resolverIntencionAsistente;
+  window.interpretarComandoAsistente = resolverIntencionAsistente;
+
+  window.enviarMensajeAsistente = async function () {
+    const { input } = assistantRefs();
+    if (!input) return;
+    const texto = String(input.value || '').trim();
+    if (!texto) return;
+    if (esPlantillaComandoAsistente(texto)) {
+      actualizarEstadoModuloComandos('Completa los campos de la plantilla antes de enviarla.');
+      enfocarInputAsistente();
+      return;
+    }
+    registrarMensajeAsistente('user', texto);
+    input.value = '';
+
+    const result = await resolverIntencionAsistente(texto);
+    registrarMensajeAsistente(result?.role || 'assistant', result?.message || ASSISTANT_UNKNOWN_COMMAND);
+    actualizarEstadoModuloComandos(result?.message || ASSISTANT_UNKNOWN_COMMAND);
+    ejecutarAccionResultadoAsistente(result);
+  };
+
+  window.handleLuroAssistantKeydown = function (event) {
+    if (!event) return;
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      window.enviarMensajeAsistente();
+    }
+  };
+
+  window.toggleLuroAssistant = function (forceOpen) {
+    const { panel } = assistantRefs();
+    if (!panel) return;
+    const isOpen = panel.classList.contains('is-open');
+    const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !isOpen;
+    if (shouldOpen) {
+      abrirPanelAsistente();
+    } else {
+      cerrarPanelAsistente();
+    }
+  };
+
+  window.abrirAsistente = function () {
+    abrirPanelAsistente();
+  };
+
+  window.cerrarAsistente = function () {
+    cerrarPanelAsistente();
+  };
+
+  window.limpiarConversacionAsistente = function () {
+    reiniciarConversacionAsistente('manual');
+  };
+
+  window.toggleLuroAssistantMinimize = function () {
+    const { panel } = assistantRefs();
+    if (!panel) return;
+    if (!panel.classList.contains('is-open')) {
+      abrirPanelAsistente();
+      return;
+    }
+    panel.classList.toggle('is-minimized');
+    if (!panel.classList.contains('is-minimized')) enfocarInputAsistente();
+  };
+
+  window.usarSugerenciaAsistente = function (texto) {
+    assistantSuggestionPreviewKey = '';
+    renderSugerenciasAsistente();
+    if (!prepararTextoComandoAsistente(texto)) return;
+    if (esPlantillaComandoAsistente(texto)) {
+      actualizarEstadoModuloComandos('Plantilla cargada en el asistente. Completa los datos antes de enviarla.');
+      return;
+    }
+    window.enviarMensajeAsistente();
+  };
+
+  window.toggleVistaPreviaSugerenciaAsistente = function (sectionKey) {
+    const key = String(sectionKey || '').trim();
+    if (!key) return;
+    assistantSuggestionPreviewKey = assistantSuggestionPreviewKey === key ? '' : key;
+    renderSugerenciasAsistente();
+    registrarActividadAsistente();
+  };
+
+  window.filtrarModuloComandos = function () {
+    renderModuloComandos();
+  };
+
+  window.renderModuloComandos = renderModuloComandos;
+  window.renderSugerenciasAsistente = renderSugerenciasAsistente;
+  window.abrirEditorComandosModulo = abrirEditorComandosModulo;
+  window.cerrarEditorComandosModulo = cerrarEditorComandosModulo;
+  window.guardarEditorComandosModulo = guardarEditorComandosModulo;
+  window.restaurarEditorComandoModulo = restaurarEditorComandosModulo;
+  window.restaurarEditorComandosModulo = restaurarEditorComandosModulo;
+  window.actualizarCampoEditorComandoModulo = function (index, field, value) {
+    if (!comandosEditorState || !Array.isArray(comandosEditorState.commands)) return;
+    const safeIndex = Number(index);
+    if (!Number.isInteger(safeIndex) || safeIndex < 0 || safeIndex >= comandosEditorState.commands.length) return;
+    if (!['text', 'help'].includes(field)) return;
+    comandosEditorState.commands[safeIndex][field] = String(value || '');
+  };
+  window.actualizarCabeceraEditorComandoModulo = function (field, value) {
+    if (!comandosEditorState) return;
+    if (!['title', 'description'].includes(field)) return;
+    comandosEditorState[field] = String(value || '');
+  };
+  window.agregarFilaEditorComandoModulo = function () {
+    if (!comandosEditorState) return;
+    comandosEditorState.commands.push({
+      text: '',
+      help: 'Explica aquí qué hace esta acción dentro del sistema.'
+    });
+    renderEditorComandosModulo();
+  };
+  window.eliminarFilaEditorComandoModulo = function (index) {
+    if (!comandosEditorState || !Array.isArray(comandosEditorState.commands)) return;
+    if (comandosEditorState.commands.length <= 1) {
+      actualizarEstadoModuloComandos('Cada tarjeta debe conservar al menos una acción.');
+      return;
+    }
+    const safeIndex = Number(index);
+    if (!Number.isInteger(safeIndex) || safeIndex < 0 || safeIndex >= comandosEditorState.commands.length) return;
+    comandosEditorState.commands.splice(safeIndex, 1);
+    renderEditorComandosModulo();
+  };
+
+  window.toggleSugerenciaComandoModulo = function (sectionKey, checked) {
+    const actuales = new Set(obtenerClavesSugerenciasActivasAsistente());
+    const key = String(sectionKey || '').trim();
+    if (!key) return;
+    if (checked) {
+      actuales.add(key);
+    } else {
+      actuales.delete(key);
+      if (assistantSuggestionPreviewKey === key) assistantSuggestionPreviewKey = '';
+    }
+    guardarClavesSugerenciasActivasAsistente(Array.from(actuales));
+    renderModuloComandos();
+    renderSugerenciasAsistente();
+    actualizarEstadoModuloComandos(
+      checked
+        ? 'Acceso activado. Ya aparece en las sugerencias del asistente.'
+        : 'Acceso desactivado. Ya no aparece en las sugerencias del asistente.'
+    );
+  };
+
+  window.handleComandosSearchKeydown = function (event) {
+    if (!event || event.key !== 'Enter') return;
+    event.preventDefault();
+    renderModuloComandos();
+  };
+
+  window.handleComandoModuloKeydown = function (event) {
+    if (!event || event.key !== 'Enter') return;
+    event.preventDefault();
+    window.ejecutarComandoDesdeModulo();
+  };
+
+  window.ejecutarComandoDesdeModulo = async function () {
+    const { runnerInput } = comandosRefs();
+    if (!runnerInput) return;
+    const texto = String(runnerInput.value || '').trim();
+    if (!texto) {
+      actualizarEstadoModuloComandos('Escribe un comando.');
+      return;
+    }
+    if (esPlantillaComandoAsistente(texto)) {
+      actualizarEstadoModuloComandos('Completa los campos pendientes de la plantilla antes de ejecutarla.');
+      prepararTextoComandoAsistente(texto);
+      return;
+    }
+    registrarMensajeAsistente('user', texto);
+    const result = await resolverIntencionAsistente(texto);
+    registrarMensajeAsistente(result?.role || 'assistant', result?.message || ASSISTANT_UNKNOWN_COMMAND);
+    actualizarEstadoModuloComandos(result?.message || ASSISTANT_UNKNOWN_COMMAND);
+    ejecutarAccionResultadoAsistente(result);
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    sembrarAsistenteSiHaceFalta();
+    renderModuloComandos();
+    renderSugerenciasAsistente();
+    const { panel } = assistantRefs();
+    const { editorModal } = comandosRefs();
+    if (panel) {
+      panel.addEventListener('pointerdown', registrarActividadAsistente, true);
+      panel.addEventListener('input', registrarActividadAsistente, true);
+      panel.addEventListener('keydown', registrarActividadAsistente, true);
+    }
+    if (editorModal) {
+      editorModal.addEventListener('click', (event) => {
+        if (event.target === editorModal) cerrarEditorComandosModulo();
+      });
+    }
+    document.addEventListener('click', (event) => {
+      const { panel } = assistantRefs();
+      if (panel?.classList.contains('is-open')) {
+        registrarActividadAsistente();
+      }
+      if (!panel || !panel.classList.contains('is-open')) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (panel.contains(target)) {
+        if (
+          assistantSuggestionPreviewKey &&
+          !target.closest('.luro-assistant-suggestion-item') &&
+          !target.closest('.luro-assistant-suggestion-preview')
+        ) {
+          assistantSuggestionPreviewKey = '';
+          renderSugerenciasAsistente();
+        }
+        return;
+      }
+      if (esDisparadorAsistente(target)) return;
+      cerrarPanelAsistente();
+    });
+    document.addEventListener('keydown', (event) => {
+      const { editorModal } = comandosRefs();
+      if (editorModal && editorModal.style.display === 'flex' && event.key === 'Escape') {
+        cerrarEditorComandosModulo();
+        return;
+      }
+      const { panel } = assistantRefs();
+      if (!panel || !panel.classList.contains('is-open')) return;
+      if (event.key === 'Escape') cerrarPanelAsistente();
+    });
+  });
 })();
 
 // ============================
