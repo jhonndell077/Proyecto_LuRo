@@ -84,15 +84,17 @@ function getPayPalMode() {
 const PLAN_CATALOG = {
   basico: {
     id: "basico",
-    nombre: "Plan Básico",
-    montoUSD: 20.0,
+    nombre: "Basic Control",
+    descripcion: "Incluye: Inventario, Gestion de Platos, Ventas/Comandas, Clientes, Reportes basicos, Configuracion basica, Salidas de inventario. 1 sucursal.",
+    montoUSD: 44.99,
     usuariosMax: 3,
     modulosMax: 8,
     sucursalesMax: 1
   },
   profesional: {
     id: "profesional",
-    nombre: "Plan Profesional",
+    nombre: "Professional Control",
+    descripcion: "Todos los modulos del sistema: Inventario, Gestion de Platos, Ventas/Comandas, Clientes, Reportes avanzados, Configuracion completa, Produccion, Control de costos, Control de desperdicios, Usuarios y permisos, Dashboard en tiempo real, Proveedores, Auditoria, Notificaciones, Control de caja, Boveda del sistema. Hasta 2 sucursales.",
     montoUSD: 99.99,
     usuariosMax: 30,
     modulosMax: 999,
@@ -100,8 +102,9 @@ const PLAN_CATALOG = {
   },
   empresarial: {
     id: "empresarial",
-    nombre: "Plan Empresarial",
-    montoUSD: 349.99,
+    nombre: "Master Control",
+    descripcion: "Mismos modulos que Professional Control (todo incluido). Hasta 10 sucursales.",
+    montoUSD: 149.99,
     usuariosMax: 30,
     modulosMax: 999,
     sucursalesMax: 10
@@ -114,6 +117,23 @@ function norm(v) {
 
 function safeText(v, max = 160) {
   return String(v || "").trim().slice(0, max);
+}
+
+function serializePublicPlanCatalog() {
+  const payload = {};
+  Object.keys(PLAN_CATALOG).forEach((key) => {
+    const cfg = PLAN_CATALOG[key] || {};
+    payload[key] = {
+      id: safeText(cfg.id || key, 40),
+      nombre: safeText(cfg.nombre, 120),
+      descripcion: safeText(cfg.descripcion, 600),
+      montoUSD: Number(cfg.montoUSD || 0),
+      usuariosMax: Number(cfg.usuariosMax || 0),
+      modulosMax: Number(cfg.modulosMax || 0),
+      sucursalesMax: Number(cfg.sucursalesMax || 0)
+    };
+  });
+  return payload;
 }
 
 function isMasterPasswordAccepted(password, masterEntry = null) {
@@ -533,17 +553,24 @@ async function ensurePayPalCatalog() {
     const cfg = PLAN_CATALOG[key];
     const planRef = rootRef.collection("plans").doc(planNodeId(key));
     const planSnap = await planRef.get();
-    const existing = safeText(planSnap.data()?.planId, 80);
+    const planData = planSnap.data() || {};
+    const existing = safeText(planData.planId, 80);
+    const storedName = safeText(planData.nombre, 120);
+    const storedAmount = Number(planData.montoUSD || 0);
+    const expectedAmount = Number(cfg.montoUSD || 0);
+    const needsRefresh = !existing || storedName !== String(cfg.nombre || "") || Math.abs(storedAmount - expectedAmount) > 0.01;
     let planId = existing;
-    if (!planId) {
+    if (needsRefresh) {
       planId = await createPayPalPlan({ productId, planKey: key, planCfg: cfg });
       if (!planId) throw new HttpsError("internal", `No se pudo crear plan PayPal ${key}.`);
       await planRef.set({
         key,
         planId,
         nombre: cfg.nombre,
-        montoUSD: Number(cfg.montoUSD || 0),
+        descripcion: safeText(cfg.descripcion, 600),
+        montoUSD: expectedAmount,
         billingInterval: "MONTH",
+        previousPlanId: existing || null,
         updatedAt: now,
         createdAt: now
       }, { merge: true });
@@ -1417,7 +1444,8 @@ exports.getPublicBillingConfig = onCall(PAYPAL_RUNTIME_OPTS, async () => {
     paymentMode: billingState.paymentMode,
     missingConfig: Array.isArray(billingState.missingConfig) ? billingState.missingConfig : [],
     currency: "USD",
-    mode: billingState.mode
+    mode: billingState.mode,
+    plans: serializePublicPlanCatalog()
   };
 });
 

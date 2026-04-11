@@ -4,9 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Acceso | LuRo Control SaaS</title>
-  <link rel="stylesheet" href="assets/saas/css/access.css?v=20260309-0420">
+  <link rel="stylesheet" href="assets/saas/css/access.css?v=20260410-plan-sync-1">
 </head>
 <body>
+  <div id="saas-loading-overlay" class="luro-loading-overlay" aria-hidden="true" style="display:none;">
+    <div class="luro-loading-card">
+      <div class="luro-loading-orbit">
+        <span class="luro-loading-ring luro-loading-ring--one"></span>
+        <span class="luro-loading-ring luro-loading-ring--two"></span>
+        <span class="luro-loading-ring luro-loading-ring--three"></span>
+        <span class="luro-loading-core"></span>
+      </div>
+      <div class="luro-loading-copy">
+        <strong id="saas-loading-title">Accediendo al sistema</strong>
+        <span id="saas-loading-message">Validando tu negocio y preparando el acceso...</span>
+      </div>
+    </div>
+  </div>
   <main class="wrap">
     <section class="panel">
       <div class="access-brand">
@@ -17,6 +31,12 @@
       <div class="tabs">
         <button id="tab-login" class="active" onclick="showTab('login')">Iniciar sesión</button>
         <button id="tab-register" onclick="showTab('register')">Registrar negocio</button>
+      </div>
+      <div id="selected-plan-summary" class="selected-plan-summary hidden" aria-live="polite">
+        <span id="selected-plan-label" class="selected-plan-label">Plan seleccionado</span>
+        <strong id="selected-plan-title">Basic Control</strong>
+        <span id="selected-plan-price">USD$44.99 / mes</span>
+        <p id="selected-plan-description"></p>
       </div>
 
       <form id="form-login" onsubmit="return loginSaas(event)">
@@ -89,14 +109,15 @@
 
       <p id="status" class="status"></p>
       <div id="pay-box" class="pay-box hidden">
-        <p><strong>Pago de suscripción:</strong> complete el pago para activar la cuenta.</p>
+        <p id="pay-box-copy"><strong>Pago de suscripción:</strong> complete el pago para activar la cuenta.</p>
+        <p id="pay-box-note" class="pay-note hidden"></p>
         <div id="paypal-register-slot" class="hidden" style="margin-top:8px;"></div>
         <a id="pay-link" class="pay-link" target="_blank" rel="noopener">Pagar ahora</a>
       </div>
       <a class="back" href="index.html">Volver al inicio</a>
     </section>
   </main>
-  <script src="assets/saas/js/access.js?v=20260306-1205"></script>
+  <script src="assets/saas/js/access.js?v=20260410-plan-sync-1"></script>
 </body>
 </html>
 

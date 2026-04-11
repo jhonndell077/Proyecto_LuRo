@@ -17,7 +17,7 @@ h1{margin:0 0 12px}
   width:34px;
   height:34px;
   object-fit:contain;
-  border-radius:9px;
+  border-radius:50%;
 }
 .luro-logo-toned{
   filter:saturate(1.2) contrast(1.08) brightness(1.04) drop-shadow(0 0 10px rgba(31,208,180,.34));
@@ -66,11 +66,148 @@ button:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(30,199,121,.
 button:active{transform:scale(.98)}
 .hidden{display:none}
 .status{min-height:20px;color:var(--muted);font-size:13px;margin-top:10px}
+.selected-plan-summary{
+  margin:0 0 14px;
+  padding:14px;
+  border:1px solid rgba(30,199,121,.34);
+  border-radius:14px;
+  background:
+    radial-gradient(circle at top right, rgba(83,167,255,.16), transparent 42%),
+    linear-gradient(180deg, rgba(16,32,58,.96) 0%, rgba(11,24,43,.98) 100%);
+  display:grid;
+  gap:6px;
+}
+.selected-plan-label{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#8fc8ff;
+}
+.selected-plan-summary strong{
+  font-size:22px;
+  line-height:1.1;
+}
+.selected-plan-summary span{
+  color:#dff3ff;
+}
+.selected-plan-summary p{
+  margin:2px 0 0;
+  color:#b8c7df;
+  font-size:13px;
+  line-height:1.5;
+}
 .pay-box{margin-top:8px;padding:10px;border:1px solid #37517f;border-radius:10px;background:#10203a}
+.pay-box[data-payment-mode="paypal_link"]{border-color:#2f6eea;background:#0f1d34}
+.pay-box[data-payment-mode="unavailable"]{border-color:#7f4b4b;background:#24151a}
+.pay-note{margin:8px 0 0;color:#b8c7df;font-size:12px;line-height:1.45}
 .pay-link{display:inline-block;margin-top:6px;padding:9px 12px;border-radius:8px;background:#0070ba;color:#fff;text-decoration:none;transition:.2s transform}
 .pay-link:hover{transform:translateY(-2px)}
 .paypal-slot{margin-top:10px;min-height:42px}
 .back{display:inline-block;margin-top:10px;color:var(--muted)}
+
+.luro-loading-overlay{
+  position:fixed;
+  inset:0;
+  z-index:5000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:
+    radial-gradient(circle at top, rgba(30,199,121,.2), transparent 32%),
+    rgba(8, 13, 22, .84);
+  backdrop-filter:blur(8px);
+}
+
+.luro-loading-card{
+  width:min(360px,92vw);
+  padding:24px 22px;
+  border-radius:24px;
+  border:1px solid rgba(255,255,255,.1);
+  background:linear-gradient(180deg, rgba(20,31,51,.96) 0%, rgba(11,18,32,.98) 100%);
+  box-shadow:0 24px 60px rgba(0,0,0,.34);
+  display:grid;
+  gap:18px;
+  justify-items:center;
+  text-align:center;
+}
+
+.luro-loading-orbit{
+  position:relative;
+  width:108px;
+  height:108px;
+  display:grid;
+  place-items:center;
+}
+
+.luro-loading-ring{
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border:3px solid transparent;
+  opacity:.92;
+}
+
+.luro-loading-ring--one{
+  border-top-color:#1ec779;
+  border-right-color:rgba(30,199,121,.32);
+  animation:luroSpin 1.1s linear infinite;
+}
+
+.luro-loading-ring--two{
+  inset:11px;
+  border-bottom-color:#53a7ff;
+  border-left-color:rgba(83,167,255,.3);
+  animation:luroSpinReverse 1.45s linear infinite;
+}
+
+.luro-loading-ring--three{
+  inset:24px;
+  border-top-color:#ffd166;
+  border-left-color:rgba(255,209,102,.28);
+  animation:luroSpin 1.8s linear infinite;
+}
+
+.luro-loading-core{
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#fff 0%,#dff3ff 100%);
+  box-shadow:0 0 0 10px rgba(255,255,255,.06),0 0 26px rgba(83,167,255,.3);
+  animation:luroPulse 1.35s ease-in-out infinite;
+}
+
+.luro-loading-copy{
+  display:grid;
+  gap:8px;
+}
+
+.luro-loading-copy strong{
+  font-size:20px;
+  line-height:1.15;
+}
+
+.luro-loading-copy span{
+  color:#b8c7df;
+  font-size:13px;
+  line-height:1.55;
+}
+
+@keyframes luroSpin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+
+@keyframes luroSpinReverse{
+  from{transform:rotate(360deg)}
+  to{transform:rotate(0deg)}
+}
+
+@keyframes luroPulse{
+  0%,100%{transform:scale(.9);opacity:.86}
+  50%{transform:scale(1.16);opacity:1}
+}
 
 @media (max-width:720px){
   .wrap{padding:12px}
@@ -107,4 +244,5 @@ button{font-size:16px}
   .panel{padding:14px;border-radius:12px}
   .access-brand{gap:8px;font-size:18px}
   .luro-logo{width:30px;height:30px}
+  .selected-plan-summary strong{font-size:20px}
 }
