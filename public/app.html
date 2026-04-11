@@ -286,6 +286,7 @@
     <a onclick="showPage('decomiso')" style="border-left: 15px solid var(--warning);">🗑️ Registrar Decomiso</a>
     <a onclick="showPage('produccion')" style="border-left: 15px solid var(--warning);">📊 Departamentos A-B-C</a>
     <a onclick="showPage('diagnostico')" style="border-left: 15px solid var(--blue);">🧠 Diagnóstico Inteligente</a>
+    <a onclick="showPage('guia-usuario')" style="border-left: 15px solid var(--blue);">📚 Guía de Usuario</a>
     <a class="sidebar-command-launch" onclick="showPage('comandos')" style="border-left: 15px solid var(--blue);">📜 COMANDOS</a>
     <a id="sidebar-assistant-launch" class="sidebar-assistant-launch" onclick="toggleLuroAssistant(true)" style="border-left: 15px solid var(--blue);">🧠 Asistente LuRo</a>
     
@@ -975,6 +976,7 @@
                         <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="clientes-puntos"> &#x1F465; Clientes y Puntos</label>
                         <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="entrenamientos"> &#x1F393; Entrenamientos</label>
                         <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="procedimientos"> &#x1F4D8; Procedimientos</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="guia-usuario"> &#x1F4DA; Guía de Usuario</label>
                         <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="configuracion"> &#x2699;&#xFE0F; Configuración</label>
                         <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="comandas"> &#x1F9FE; Comandas</label>
                     </div>
@@ -1364,6 +1366,50 @@
         <div id="comandos-lista" class="comandos-module-grid"></div>
       </div>
     </div>
+    <div id="guia-usuario" class="content-section">
+      <div class="card">
+        <h2>📚 Guía de Usuario LuRo</h2>
+        <p style="color:#57606f; margin-top:-4px;">Esta guía explica cada módulo del sistema y cómo se conecta con los demás en el flujo completo operativo.</p>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:12px 0 16px;">
+          <div style="border:1px solid #e6e9ef; border-radius:10px; padding:10px;">
+            <strong>📦 Almacén</strong>
+            <div style="font-size:12px; color:#666;">Entradas, costos y stock base.</div>
+          </div>
+          <div style="border:1px solid #e6e9ef; border-radius:10px; padding:10px;">
+            <strong>🏭 Producción Interna</strong>
+            <div style="font-size:12px; color:#666;">Transforma insumos en semielaborados.</div>
+          </div>
+          <div style="border:1px solid #e6e9ef; border-radius:10px; padding:10px;">
+            <strong>🧪 Agregar Plato</strong>
+            <div style="font-size:12px; color:#666;">Receta, costos, precio y stock vendible.</div>
+          </div>
+          <div style="border:1px solid #e6e9ef; border-radius:10px; padding:10px;">
+            <strong>📤 Registrar Salida</strong>
+            <div style="font-size:12px; color:#666;">Venta, descuento de inventario y factura.</div>
+          </div>
+        </div>
+        <div style="background:#f8fbff; border:1px solid #d7e8ff; border-radius:12px; padding:14px; margin-bottom:12px;">
+          <strong>🔗 Conexión entre módulos (resumen)</strong>
+          <ul style="margin:8px 0 0 18px; color:#2f3542;">
+            <li>Almacén alimenta Producción Interna y recetas de platos.</li>
+            <li>Producción Interna alimenta recetas y se descuenta al vender.</li>
+            <li>Agregar Plato define lo que se cobra en Registrar Salida.</li>
+            <li>Registrar Salida descuenta stock, registra venta y genera factura.</li>
+          </ul>
+        </div>
+        <div style="border:1px dashed #dfe4ea; border-radius:12px; padding:14px;">
+          <strong>🧭 Flujo completo</strong>
+          <ol style="margin:8px 0 0 18px; color:#2f3542;">
+            <li>Entrada en Almacén.</li>
+            <li>Producción Interna (si aplica).</li>
+            <li>Creación/actualización de plato.</li>
+            <li>Venta en Registrar Salida.</li>
+            <li>Historiales y reportes para auditoría.</li>
+          </ol>
+          <p style="margin:10px 0 0; font-size:12px; color:#666;">Tip: el campo “Venta recomendada (x3)” sale de <b>costo final × 3</b> en la receta del plato.</p>
+        </div>
+      </div>
+    </div>
     <div id="comandos-editor-modal" class="comandos-editor-modal" aria-hidden="true" style="display:none;">
       <div class="comandos-editor-card">
         <div class="comandos-editor-head">
@@ -1449,7 +1495,6 @@
   </script>
 </body>
 </html>
-
 
 
 

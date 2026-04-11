@@ -3862,6 +3862,7 @@ function etiquetaPermisoRenglon(p) {
         'clientes-puntos': 'Clientes y Puntos',
         entrenamientos: 'Entrenamientos',
         procedimientos: 'Procedimientos',
+        'guia-usuario': 'Guía de Usuario',
         'historial-produccion': 'Historial Producción',
         'entradas-almacen': 'Entradas Almacén',
         ventas: 'Historial de Ventas',
@@ -3971,6 +3972,7 @@ function obtenerPermisosColaboradorSesion() {
         'clientes-puntos',
         'entrenamientos',
         'procedimientos',
+        'guia-usuario',
         'historial-produccion',
         'entradas-almacen',
         'ventas',
@@ -4000,6 +4002,7 @@ function obtenerPaginaInicialSesion() {
         'clientes-puntos',
         'entrenamientos',
         'procedimientos',
+        'guia-usuario',
         'configuracion',
         'historial-produccion',
         'entradas-almacen',
@@ -11076,6 +11079,12 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       description: 'Muestra procedimientos y protocolos operativos en modo consulta.'
     },
     {
+      page: 'guia-usuario',
+      label: 'Guía de Usuario',
+      aliases: ['guia de usuario', 'manual de usuario', 'ayuda de modulos', 'documentacion', 'abrir guia de usuario', 'ir a guia de usuario'],
+      description: 'Explica cómo funciona cada módulo y la conexión operativa entre ellos.'
+    },
+    {
       page: 'clientes-puntos',
       label: 'Clientes y Puntos',
       aliases: ['clientes y puntos', 'clientes puntos', 'puntos', 'fidelizacion'],
@@ -11219,6 +11228,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     disponibilidad: 'Disponibilidad te permite controlar los platos activos para venta y ajustar su existencia disponible.',
     salida: 'Registrar Salida gestiona mesas, clientes, facturación y el cierre operativo de una venta.',
     procedimientos: 'Procedimientos muestra protocolos y guías de trabajo para consulta rápida del equipo.',
+    'guia-usuario': 'Guía de Usuario explica cada módulo, sus conexiones y el flujo completo de operación dentro de LuRo.',
     'clientes-puntos': 'Clientes y Puntos administra la fidelización, el historial del cliente y sus puntos acumulados.',
     'historial-produccion': 'Historial Producción te deja consultar operaciones ya registradas, con fechas, cantidades y costos.',
     'entradas-almacen': 'Entradas Almacén muestra el historial de entradas manuales y te ayuda a auditar movimientos de inventario.',
@@ -11283,6 +11293,12 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       title: '📘 Procedimientos',
       description: 'Navegación a guías y protocolos del sistema.',
       commands: ['abrir procedimientos', 'ir a procedimientos', 'ver protocolos de [equipo o plato]']
+    },
+    {
+      page: 'guia-usuario',
+      title: '📚 Guía de Usuario',
+      description: 'Vista guiada para entender módulos, conexiones y flujo operativo completo.',
+      commands: ['abrir guía de usuario', 'ir a guía de usuario', 'cómo se conecta almacén con ventas', 'explica el flujo completo']
     },
     {
       page: 'clientes-puntos',
@@ -15771,6 +15787,3 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     });
   });
 })();
-
-
-
