@@ -98,6 +98,7 @@ button:active{transform:scale(.98)}
   line-height:1.5;
 }
 .pay-box{margin-top:8px;padding:10px;border:1px solid #37517f;border-radius:10px;background:#10203a}
+.pay-box[data-payment-mode="paypal_standard"]{border-color:#ffd166;background:#1d2337}
 .pay-box[data-payment-mode="paypal_link"]{border-color:#2f6eea;background:#0f1d34}
 .pay-box[data-payment-mode="unavailable"]{border-color:#7f4b4b;background:#24151a}
 .pay-note{margin:8px 0 0;color:#b8c7df;font-size:12px;line-height:1.45}

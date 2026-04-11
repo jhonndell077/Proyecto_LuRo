@@ -66,6 +66,12 @@
         note: "Suscripcion automatica lista."
       };
     }
+    if (mode === "paypal_standard") {
+      return {
+        buttonText: "Crear cuenta y abrir pasarela PayPal",
+        note: "Pasarela segura PayPal lista."
+      };
+    }
     if (mode === "paypal_link") {
       return {
         buttonText: "Crear cuenta y abrir pago PayPal",

@@ -272,19 +272,39 @@
     }
   }
 
-  function loadPayPalSdk(clientId, currency) {
+  function loadPayPalSdk(clientId, currency, options = {}) {
+    const intent = String(options?.intent || "capture").trim().toLowerCase();
+    const components = String(options?.components || "buttons").trim();
+    const enableFunding = String(options?.enableFunding || "").trim();
+    const vault = options?.vault === true;
+    const sdkUrl = new URL("https://www.paypal.com/sdk/js");
+    sdkUrl.searchParams.set("client-id", clientId);
+    sdkUrl.searchParams.set("currency", currency || "USD");
+    sdkUrl.searchParams.set("intent", intent);
+    sdkUrl.searchParams.set("components", components);
+    if (vault) sdkUrl.searchParams.set("vault", "true");
+    if (enableFunding) sdkUrl.searchParams.set("enable-funding", enableFunding);
+
     return new Promise((resolve, reject) => {
-      if (paypalSdkReady && window.paypal && window.paypal.Buttons) return resolve();
+      if (paypalSdkReady && window.paypal && window.paypal.Buttons) {
+        const existingReady = document.querySelector("script[data-paypal-sdk-access='1']");
+        if (existingReady?.dataset?.paypalSdkSrc === sdkUrl.toString()) return resolve();
+      }
       const existing = document.querySelector("script[data-paypal-sdk-access='1']");
       if (existing) {
-        existing.addEventListener("load", () => resolve(), { once: true });
-        existing.addEventListener("error", () => reject(new Error("No se pudo cargar PayPal SDK")), { once: true });
-        return;
+        if (existing.dataset?.paypalSdkSrc === sdkUrl.toString()) {
+          existing.addEventListener("load", () => resolve(), { once: true });
+          existing.addEventListener("error", () => reject(new Error("No se pudo cargar PayPal SDK")), { once: true });
+          return;
+        }
+        existing.remove();
+        paypalSdkReady = false;
       }
       const s = document.createElement("script");
-      s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${encodeURIComponent(currency || "USD")}&intent=subscription&vault=true&components=buttons`;
+      s.src = sdkUrl.toString();
       s.async = true;
       s.dataset.paypalSdkAccess = "1";
+      s.dataset.paypalSdkSrc = sdkUrl.toString();
       s.onload = () => {
         paypalSdkReady = true;
         resolve();
@@ -294,30 +314,22 @@
     });
   }
 
-  async function renderRegisterPayPalButton(payload) {
+  async function renderRegisterSubscriptionButton(payload, cfg, clientId, currency, planId) {
     const slot = payPalSlot();
-    if (!slot) return { rendered: false, cfg: null, reason: "slot_missing" };
-    slot.innerHTML = "";
-
-    const cfg = await getPublicBillingConfig();
-    const clientId = String(cfg?.paypalClientId || "").trim();
-    const currency = String(cfg?.currency || "USD").trim();
-    const planIds = cfg?.planIds && typeof cfg.planIds === "object" ? cfg.planIds : {};
-    const planId = String(planIds[String(payload?.plan || "").toLowerCase()] || payload?.paypalPlanId || "").trim();
-    if (cfg?.subscriptionsReady !== true || !clientId || !planId) {
-      return { rendered: false, cfg, reason: "subscriptions_not_ready" };
-    }
-
-    await loadPayPalSdk(clientId, currency);
-    if (!window.paypal || !window.paypal.Buttons) {
-      return { rendered: false, cfg, reason: "sdk_unavailable" };
-    }
-
     const owner = String(payload?.owner || "").trim().toLowerCase();
     const negocioId = String(payload?.negocioId || "").trim();
     const plan = String(payload?.plan || "basico").trim().toLowerCase();
     const pending = readPendingAuth();
     const ownerPassword = pending && pending.user === owner ? pending.pass : "";
+
+    await loadPayPalSdk(clientId, currency, {
+      intent: "subscription",
+      vault: true,
+      components: "buttons"
+    });
+    if (!window.paypal || !window.paypal.Buttons) {
+      return { rendered: false, cfg, reason: "sdk_unavailable" };
+    }
 
     showPayPalSlot();
     await window.paypal.Buttons({
@@ -347,7 +359,90 @@
         statusEl().textContent = "Error en PayPal Subscriptions. Intente nuevamente.";
       }
     }).render(slot);
-    return { rendered: true, cfg, reason: "ok" };
+    return { rendered: true, cfg, reason: "ok", mode: "subscription_sdk" };
+  }
+
+  async function renderRegisterStandardButton(payload, cfg, clientId, currency) {
+    const slot = payPalSlot();
+    const owner = String(payload?.owner || "").trim().toLowerCase();
+    const negocioId = String(payload?.negocioId || "").trim();
+    const plan = String(payload?.plan || "basico").trim().toLowerCase();
+    const pending = readPendingAuth();
+    const ownerPassword = pending && pending.user === owner ? pending.pass : "";
+
+    await loadPayPalSdk(clientId, currency, {
+      intent: "capture",
+      components: "buttons",
+      enableFunding: "venmo,paylater,card"
+    });
+    if (!window.paypal || !window.paypal.Buttons) {
+      return { rendered: false, cfg, reason: "sdk_unavailable" };
+    }
+
+    showPayPalSlot();
+    await window.paypal.Buttons({
+      style: { shape: "rect", layout: "vertical", color: "gold", label: "paypal", height: 42 },
+      async createOrder() {
+        const created = await call("createPaypalStandardOrder", {
+          owner,
+          negocioId,
+          plan,
+          password: ownerPassword
+        });
+        return String(created?.orderId || "").trim();
+      },
+      async onApprove(data, actions) {
+        try {
+          const orderId = String(data?.orderID || "").trim();
+          if (!orderId) throw new Error("PayPal no devolvio un orderID valido.");
+          await call("capturePaypalStandardOrder", {
+            owner,
+            negocioId,
+            plan,
+            password: ownerPassword,
+            orderId
+          });
+          statusEl().textContent = "Pago confirmado. Activando acceso...";
+          setTimeout(() => {
+            window.location.href = "app.html";
+          }, 900);
+        } catch (error) {
+          const issue = String(error?.message || error || "");
+          if (/instrument_declined/i.test(issue) && actions && typeof actions.restart === "function") {
+            return actions.restart();
+          }
+          throw error;
+        }
+      },
+      onError: function (error) {
+        console.error(error);
+        statusEl().textContent = "Error en la pasarela PayPal. Intente nuevamente.";
+      }
+    }).render(slot);
+    return { rendered: true, cfg, reason: "ok", mode: "paypal_standard" };
+  }
+
+  async function renderRegisterPayPalButton(payload) {
+    const slot = payPalSlot();
+    if (!slot) return { rendered: false, cfg: null, reason: "slot_missing" };
+    slot.innerHTML = "";
+
+    const cfg = await getPublicBillingConfig();
+    const clientId = String(cfg?.paypalClientId || "").trim();
+    const currency = String(cfg?.currency || "USD").trim();
+    const planIds = cfg?.planIds && typeof cfg.planIds === "object" ? cfg.planIds : {};
+    const planId = String(planIds[String(payload?.plan || "").toLowerCase()] || payload?.paypalPlanId || "").trim();
+
+    if (cfg?.subscriptionsReady === true && clientId && planId) {
+      return renderRegisterSubscriptionButton(payload, cfg, clientId, currency, planId);
+    }
+    if (cfg?.standardCheckoutReady === true && clientId) {
+      return renderRegisterStandardButton(payload, cfg, clientId, currency);
+    }
+    if (cfg?.subscriptionsReady !== true && cfg?.standardCheckoutReady !== true) {
+      return { rendered: false, cfg, reason: "gateway_not_ready" };
+    }
+    return { rendered: false, cfg, reason: "sdk_unavailable" };
   }
 
   window.loginSaas = async function (ev) {
@@ -429,14 +524,21 @@
       });
 
       if (rendered?.rendered) {
+        const isStandardGateway = String(rendered?.mode || "").trim().toLowerCase() === "paypal_standard";
         setPayBoxState({
-          mode: "subscription_sdk",
-          copy: `<strong>${planNombre}:</strong> autoriza la suscripcion por USD$${monto} para activar tu acceso.`,
+          mode: isStandardGateway ? "paypal_standard" : "subscription_sdk",
+          copy: isStandardGateway
+            ? `<strong>${planNombre}:</strong> completa el pago por la pasarela segura de PayPal para activar tu acceso.`
+            : `<strong>${planNombre}:</strong> autoriza la suscripcion por USD$${monto} para activar tu acceso.`,
           note: planDescripcion
-            ? `${planDescripcion} Tu cuenta ya fue creada; solo falta autorizar la suscripcion segura en PayPal.`
-            : "Tu cuenta ya fue creada; solo falta autorizar la suscripcion segura en PayPal."
+            ? `${planDescripcion} ${isStandardGateway ? "Tu cuenta ya fue creada; solo falta completar el pago seguro en PayPal." : "Tu cuenta ya fue creada; solo falta autorizar la suscripcion segura en PayPal."}`
+            : (isStandardGateway
+              ? "Tu cuenta ya fue creada; solo falta completar el pago seguro en PayPal."
+              : "Tu cuenta ya fue creada; solo falta autorizar la suscripcion segura en PayPal.")
         });
-        statusEl().textContent = `Cuenta creada. Autoriza ${planNombre} para activar tu acceso.`;
+        statusEl().textContent = isStandardGateway
+          ? `Cuenta creada. Completa el pago de ${planNombre} en la pasarela PayPal para activar tu acceso.`
+          : `Cuenta creada. Autoriza ${planNombre} para activar tu acceso.`;
       } else if (paymentUrl) {
         showPayLink(paymentUrl, "Abrir pago PayPal");
         setPayBoxState({
