@@ -308,7 +308,7 @@ nav a[href^="#"].active{background:#172a4b;border:1px solid #2a4778;box-shadow:0
 }
 
 /* ============================================================
-   Mobile-first refinamiento LuRo Control (Mar 2026)
+   Mobile-first refinamiento LuXo Sintrol (Mar 2026)
    ============================================================ */
 html{scroll-behavior:smooth}
 .container{width:min(1180px,94vw);padding:0 4vw;margin:auto}

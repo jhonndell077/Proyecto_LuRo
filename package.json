@@ -1,7 +1,7 @@
 {
   "name": "luro-control",
   "version": "1.0.0",
-  "description": "LuRo Control - Sistema de Gestión",
+  "description": "LuXo Sintrol - Sistema de Gestión",
   "main": "index.html",
   "scripts": {
     "start": "firebase serve",

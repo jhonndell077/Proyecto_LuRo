@@ -1901,7 +1901,7 @@ function generarImagenInfoCliente(tipo, cliente) {
   <text x="44" y="72" font-family="Segoe UI, Arial" font-size="44" font-weight="800" fill="#ffffff">${escaparTextoSVG(titulo)}</text>
   <text x="44" y="106" font-family="Segoe UI, Arial" font-size="22" font-weight="600" fill="#dbeafe">${escaparTextoSVG(subt)}</text>
   ${lineasSvg}
-  <text x="44" y="${svgH - 20}" font-family="Segoe UI, Arial" font-size="18" fill="#4b5563">LuRo Control</text>
+  <text x="44" y="${svgH - 20}" font-family="Segoe UI, Arial" font-size="18" fill="#4b5563">LuXo Sintrol</text>
 </svg>`;
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
@@ -2670,12 +2670,12 @@ function mostrarQRCodeCliente(clienteId) {
     win.document.write(`
       <html>
       <head>
-        <title>QR Cliente | LuRo Control</title>
+        <title>QR Cliente | LuXo Sintrol</title>
       </head>
       <body style="margin:0; font-family:'Segoe UI',Tahoma,sans-serif; background:linear-gradient(135deg,#1e272e 0%,#0f1419 100%); color:#fff; padding:20px;">
         <div style="max-width:980px; margin:0 auto; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:18px; box-shadow:0 14px 35px rgba(0,0,0,.45); overflow:hidden;">
           <div style="padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.1);">
-            <div style="font-size:22px; font-weight:800; color:#05c46b;">LuRo Control</div>
+            <div style="font-size:22px; font-weight:800; color:#05c46b;">LuXo Sintrol</div>
             <div style="font-size:12px; color:#d2dae2;">Cliente fidelización: ${cliente.nombre || '-'}</div>
           </div>
           <div style="padding:16px 18px;">
@@ -3268,7 +3268,7 @@ function imprimirTicket() {
     ventanaImpresion.document.write(`
         <html>
         <head>
-            <title>Factura - LuRo Control | El control en tus manos</title>
+            <title>Factura - LuXo Sintrol | El control en tus manos</title>
             <style>
                 body { font-family: 'Courier New', Courier, monospace; width: 300px; margin: 0 auto; padding: 20px; color: #000; }
                 .text-center { text-align: center; }
@@ -3316,7 +3316,7 @@ function imprimirTicket() {
             <div class="footer">
                 <p>Atendido por: ${usuario}</p>
                 <p>¡Gracias por su preferencia!</p>
-                <p>*** LuRo Control | El control en tus manos ***</p>
+                <p>*** LuXo Sintrol | El control en tus manos ***</p>
             </div>
         </body>
         </html>
@@ -4201,7 +4201,7 @@ function obtenerRegistroInicialActivo() {
 function obtenerNombreNegocioActual() {
     const regActivo = obtenerRegistroInicialActivo();
     const nombre = (regActivo?.businessName || "").trim();
-    return nombre || "LuRo Control";
+    return nombre || "LuXo Sintrol";
 }
 
 function obtenerTelefonoNegocioActual() {
@@ -4435,7 +4435,7 @@ function renderHomePerfilHeader(reg) {
     const businessName = String(reg?.businessName || info?.empresa || '').trim();
     const roleKey = String(sesionUser?.role || info?.role || 'admin').trim().toLowerCase();
     const roleLabel = obtenerEtiquetaRolInicio(roleKey);
-    const displayName = businessName || (activeUser ? `Perfil de ${activeUser}` : 'LuRo Control');
+    const displayName = businessName || (activeUser ? `Perfil de ${activeUser}` : 'LuXo Sintrol');
     const handleLabel = activeUser ? `@${activeUser.toLowerCase()}` : (ownerUser ? `@${ownerUser}` : '@lurocontrol');
     const moduleLabel = String(document.getElementById('current-module-display')?.textContent || moduloActual || '').trim();
     const reason = String(reg?.reason || '').trim();
@@ -5059,7 +5059,7 @@ function olvidastePassword() {
     db.recuperacionClave = { user: usuarioInput, code: codigo, expiresAt: expiraEn };
     guardarDatos();
 
-    const negocio = (regUsuario.businessName || "LuRo Control").toString().trim();
+    const negocio = (regUsuario.businessName || "LuXo Sintrol").toString().trim();
     const mensaje = `*${negocio}*\nRecuperación de contraseña.\nUsuario: ${usuarioInput}\nCódigo: *${codigo}*\nVálido por 10 minutos.`;
     abrirWhatsAppConMensaje(telefonoDestino, mensaje);
 
@@ -5324,7 +5324,7 @@ function generarMensajeContactoDesarrollador() {
     const negocio = (db?.registroInicial?.businessName || '').trim() || 'Negocio no registrado';
     const telefono = (db?.registroInicial?.phone || '').trim() || 'Sin teléfono registrado';
     return [
-        'Hola, necesito soporte técnico de LuRo Control.',
+        'Hola, necesito soporte técnico de LuXo Sintrol.',
         `Usuario: ${usuario}`,
         `Negocio: ${negocio}`,
         `Teléfono: ${telefono}`,
@@ -5357,7 +5357,7 @@ function enviarMensajeDesarrolladorWhatsapp() {
 function enviarMensajeDesarrolladorEmail() {
     const email = (document.getElementById('dev-contact-email')?.textContent || 'Jssantana077@gmail.com').trim();
     const body = (document.getElementById('dev-contact-message')?.value || generarMensajeContactoDesarrollador()).trim();
-    const subject = encodeURIComponent('Soporte LuRo Control');
+    const subject = encodeURIComponent('Soporte LuXo Sintrol');
     const url = `mailto:${email}?subject=${subject}&body=${encodeURIComponent(body)}`;
     window.location.href = url;
 }
@@ -6908,7 +6908,7 @@ function toggleDetallesProduccion(idx) {
 
         mensaje += `------------------------------------------\n`;
         mensaje += `*Costo total de reposición:* RD$${Number(costoTotalReposicion || 0).toFixed(2)}\n`;
-        mensaje += `_Generado por LuRo Control_`;
+        mensaje += `_Generado por LuXo Sintrol_`;
         abrirWhatsAppConMensaje(WHATSAPP_DEFAULT, mensaje);
     }
 
@@ -9588,7 +9588,7 @@ function enviarPedidoWhatsapp() {
     });
 
     mensaje += `------------------------------------------\n`;
-    mensaje += `_Generado automáticamente por LuRo Control - El control en tus manos_`;
+    mensaje += `_Generado automáticamente por LuXo Sintrol - El control en tus manos_`;
 
     // Codificar para URL con tu número de teléfono original
     abrirWhatsAppConMensaje(WHATSAPP_DEFAULT, mensaje);
@@ -10602,10 +10602,10 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
   function tituloMovil() {
     const active = document.querySelector('.content-section.active');
-    if (!active) return 'LuRo Control';
+    if (!active) return 'LuXo Sintrol';
     const h2 = active.querySelector('h2');
-    const txt = (h2?.textContent || active.id || 'LuRo Control').replace(/\s+/g, ' ').trim();
-    return txt || 'LuRo Control';
+    const txt = (h2?.textContent || active.id || 'LuXo Sintrol').replace(/\s+/g, ' ').trim();
+    return txt || 'LuXo Sintrol';
   }
 
   function actualizarTopbarMovil() {
@@ -11181,7 +11181,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       id: 'open-assistant',
       label: 'Asistente LuRo',
       aliases: ['abrir asistente', 'abre asistente', 'abrir asistente luro', 'abre asistente luro', 'mostrar asistente luro'],
-      help: 'Abre la consola flotante de comandos de LuRo Control.',
+      help: 'Abre la consola flotante de comandos de LuXo Sintrol.',
       response: 'Abriendo Asistente LuRo.',
       run: () => {
         if (typeof window.abrirAsistente === 'function') window.abrirAsistente();
@@ -11212,7 +11212,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       label: 'Cerrar Sesión',
       aliases: ['cerrar sesion', 'cerrar la sesion', 'salir de la sesion', 'terminar sesion'],
       help: 'Si quieres cerrar tu sesión actual, puedo ejecutar la salida segura del sistema.',
-      response: 'Cerrando sesión segura de LuRo Control.',
+      response: 'Cerrando sesión segura de LuXo Sintrol.',
       run: () => {
         if (typeof window.cerrarSesion === 'function') window.cerrarSesion();
       }
@@ -12235,7 +12235,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
     const meta = document.createElement('span');
     meta.className = 'luro-assistant-msg-meta';
-    meta.textContent = role === 'user' ? 'Tú' : (role === 'system' ? 'Sistema' : 'LuRo Control');
+    meta.textContent = role === 'user' ? 'Tú' : (role === 'system' ? 'Sistema' : 'LuXo Sintrol');
 
     const bubble = document.createElement('div');
     bubble.className = 'luro-assistant-bubble';
@@ -12299,7 +12299,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   function responderModulo(modulo, soloExplicacion = false, modoGuia = false) {
     if (!modulo) {
       return {
-        message: 'No encontré ese módulo dentro de LuRo Control.',
+        message: 'No encontré ese módulo dentro de LuXo Sintrol.',
         role: 'assistant'
       };
     }
@@ -14070,7 +14070,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (esCancelacionAsistente(textoNormalizado)) {
       assistantPendingAction = null;
       return {
-        message: 'Acción cancelada. No hice cambios en LuRo Control.',
+        message: 'Acción cancelada. No hice cambios en LuXo Sintrol.',
         role: 'assistant'
       };
     }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LuRo Control - Deploy Automático</title>
+  <title>LuXo Sintrol - Deploy Automático</title>
   <style>
 
   /* Efecto de resaltado para el producto buscado */
@@ -783,7 +783,7 @@ body.mobile-nav-open .mobile-nav-toggle {
         
         <div id="ticket-imprimible" style="font-family: 'Courier New', Courier, monospace; color: black;">
             <div style="text-align:center; border-bottom: 1px dashed #000; padding-bottom:10px; margin-bottom:10px;">
-                <h2 id="factura-negocio" style="margin:0;">LuRo Control</h2>
+                <h2 id="factura-negocio" style="margin:0;">LuXo Sintrol</h2>
                 <p style="margin:2px; font-size:12px;">Gestión de Ventas</p>
                 <p id="factura-fecha" style="margin:2px; font-size:11px;"></p>
             </div>
@@ -845,7 +845,7 @@ body.mobile-nav-open .mobile-nav-toggle {
         <div>
           <span class="login-pill">Suite SaaS</span>
           <h3>Acceso centralizado</h3>
-          <p>Autentica y gestiona todos los módulos de LuRo Control con la misma experiencia fluida, segura y responsive.</p>
+          <p>Autentica y gestiona todos los módulos de LuXo Sintrol con la misma experiencia fluida, segura y responsive.</p>
           <ul>
             <li><span>⚡</span>Sincronización cloud y offline</li>
             <li><span>🔒</span>Roles, permisos y auditoría</li>
@@ -859,7 +859,7 @@ body.mobile-nav-open .mobile-nav-toggle {
         </div>
       </div>
       <div class="login-box" style="text-align:left;">
-        <h2 class="brand-title-animated" style="text-align:center;">LuRo Control</h2>
+        <h2 class="brand-title-animated" style="text-align:center;">LuXo Sintrol</h2>
         <div class="brand-motion-text" style="text-align:center;">El control en tus manos</div>
         <h4>Bienvenido de nuevo</h4>
         <p id="login-subtitle" style="margin:0 0 12px; color: #cfd8dc; font-size: 0.9em;">Accede con tu usuario maestro o colaborador.</p>
@@ -926,12 +926,12 @@ body.mobile-nav-open .mobile-nav-toggle {
     <button class="btn btn-add-module-float" onclick="agregarNuevoModulo()">✨ AÑADIR NUEVO MÓDULO</button>
   </div>
   <button id="mobile-nav-toggle" class="mobile-nav-toggle" onclick="toggleSidebarMovil(event)" aria-label="Abrir menú">☰</button>
-  <div id="mobile-topbar"><span id="mobile-topbar-title">LuRo Control</span></div>
+  <div id="mobile-topbar"><span id="mobile-topbar-title">LuXo Sintrol</span></div>
   <div id="mobile-nav-backdrop" onclick="cerrarSidebarMovil('backdrop')"></div>
 
  <div class="sidebar" id="sidebar">
     <div id="sidebar-title" style="color:var(--accent); text-align:center; padding: 20px 0; font-size: 22px; font-weight: bold; letter-spacing: 1px;">COCINA</div>
-    <div class="sidebar-brand"><strong>LuRo Control</strong><span id="sidebar-brand-sub">El control en tus manos</span><div id="sidebar-brand-module" class="active-module-tag">Módulo: COCINA</div></div>
+    <div class="sidebar-brand"><strong>LuXo Sintrol</strong><span id="sidebar-brand-sub">El control en tus manos</span><div id="sidebar-brand-module" class="active-module-tag">Módulo: COCINA</div></div>
     <div id="admin-module-links" style="display:none; margin:0 12px 12px; padding:10px; border:1px dashed rgba(255,255,255,.2); border-radius:10px; background:rgba(255,255,255,.04);">
       <div style="font-size:11px; color:#b2bec3; margin-bottom:6px; font-weight:700;">ENLACES DE MÓDULOS</div>
       <div id="admin-module-links-list" style="display:grid; gap:6px;"></div>
@@ -3129,7 +3129,7 @@ function generarImagenInfoCliente(tipo, cliente) {
   <text x="44" y="72" font-family="Segoe UI, Arial" font-size="44" font-weight="800" fill="#ffffff">${escaparTextoSVG(titulo)}</text>
   <text x="44" y="106" font-family="Segoe UI, Arial" font-size="22" font-weight="600" fill="#dbeafe">${escaparTextoSVG(subt)}</text>
   ${lineasSvg}
-  <text x="44" y="${svgH - 20}" font-family="Segoe UI, Arial" font-size="18" fill="#4b5563">LuRo Control</text>
+  <text x="44" y="${svgH - 20}" font-family="Segoe UI, Arial" font-size="18" fill="#4b5563">LuXo Sintrol</text>
 </svg>`;
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
@@ -3845,12 +3845,12 @@ function mostrarQRCodeCliente(clienteId) {
     win.document.write(`
       <html>
       <head>
-        <title>QR Cliente | LuRo Control</title>
+        <title>QR Cliente | LuXo Sintrol</title>
       </head>
       <body style="margin:0; font-family:'Segoe UI',Tahoma,sans-serif; background:linear-gradient(135deg,#1e272e 0%,#0f1419 100%); color:#fff; padding:20px;">
         <div style="max-width:980px; margin:0 auto; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:18px; box-shadow:0 14px 35px rgba(0,0,0,.45); overflow:hidden;">
           <div style="padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.1);">
-            <div style="font-size:22px; font-weight:800; color:#05c46b;">LuRo Control</div>
+            <div style="font-size:22px; font-weight:800; color:#05c46b;">LuXo Sintrol</div>
             <div style="font-size:12px; color:#d2dae2;">Cliente fidelización: ${cliente.nombre || '-'}</div>
           </div>
           <div style="padding:16px 18px;">
@@ -4433,7 +4433,7 @@ function imprimirTicket() {
     ventanaImpresion.document.write(`
         <html>
         <head>
-            <title>Factura - LuRo Control | El control en tus manos</title>
+            <title>Factura - LuXo Sintrol | El control en tus manos</title>
             <style>
                 body { font-family: 'Courier New', Courier, monospace; width: 300px; margin: 0 auto; padding: 20px; color: #000; }
                 .text-center { text-align: center; }
@@ -4481,7 +4481,7 @@ function imprimirTicket() {
             <div class="footer">
                 <p>Atendido por: ${usuario}</p>
                 <p>¡Gracias por su preferencia!</p>
-                <p>*** LuRo Control | El control en tus manos ***</p>
+                <p>*** LuXo Sintrol | El control en tus manos ***</p>
             </div>
         </body>
         </html>
@@ -5268,7 +5268,7 @@ function obtenerRegistroInicialActivo() {
 function obtenerNombreNegocioActual() {
     const regActivo = obtenerRegistroInicialActivo();
     const nombre = (regActivo?.businessName || "").trim();
-    return nombre || "LuRo Control";
+    return nombre || "LuXo Sintrol";
 }
 
 function obtenerTelefonoNegocioActual() {
@@ -5596,7 +5596,7 @@ function olvidastePassword() {
     db.recuperacionClave = { user: usuarioInput, code: codigo, expiresAt: expiraEn };
     guardarDatos();
 
-    const negocio = (regUsuario.businessName || "LuRo Control").toString().trim();
+    const negocio = (regUsuario.businessName || "LuXo Sintrol").toString().trim();
     const mensaje = `*${negocio}*\nRecuperación de contraseña.\nUsuario: ${usuarioInput}\nCódigo: *${codigo}*\nVálido por 10 minutos.`;
     abrirWhatsAppConMensaje(telefonoDestino, mensaje);
 
@@ -5806,7 +5806,7 @@ function generarMensajeContactoDesarrollador() {
     const negocio = (db?.registroInicial?.businessName || '').trim() || 'Negocio no registrado';
     const telefono = (db?.registroInicial?.phone || '').trim() || 'Sin teléfono registrado';
     return [
-        'Hola, necesito soporte técnico de LuRo Control.',
+        'Hola, necesito soporte técnico de LuXo Sintrol.',
         `Usuario: ${usuario}`,
         `Negocio: ${negocio}`,
         `Teléfono: ${telefono}`,
@@ -5839,7 +5839,7 @@ function enviarMensajeDesarrolladorWhatsapp() {
 function enviarMensajeDesarrolladorEmail() {
     const email = (document.getElementById('dev-contact-email')?.textContent || 'Jssantana077@gmail.com').trim();
     const body = (document.getElementById('dev-contact-message')?.value || generarMensajeContactoDesarrollador()).trim();
-    const subject = encodeURIComponent('Soporte LuRo Control');
+    const subject = encodeURIComponent('Soporte LuXo Sintrol');
     const url = `mailto:${email}?subject=${subject}&body=${encodeURIComponent(body)}`;
     window.location.href = url;
 }
@@ -7268,7 +7268,7 @@ function toggleDetallesProduccion(idx) {
 
         mensaje += `------------------------------------------\n`;
         mensaje += `*Costo total de reposición:* RD$${Number(costoTotalReposicion || 0).toFixed(2)}\n`;
-        mensaje += `_Generado por LuRo Control_`;
+        mensaje += `_Generado por LuXo Sintrol_`;
         abrirWhatsAppConMensaje(WHATSAPP_DEFAULT, mensaje);
     }
 
@@ -9568,7 +9568,7 @@ function enviarPedidoWhatsapp() {
     });
 
     mensaje += `------------------------------------------\n`;
-    mensaje += `_Generado automáticamente por LuRo Control - El control en tus manos_`;
+    mensaje += `_Generado automáticamente por LuXo Sintrol - El control en tus manos_`;
 
     // Codificar para URL con tu número de teléfono original
     abrirWhatsAppConMensaje(WHATSAPP_DEFAULT, mensaje);
@@ -10556,10 +10556,10 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
   function tituloMovil() {
     const active = document.querySelector('.content-section.active');
-    if (!active) return 'LuRo Control';
+    if (!active) return 'LuXo Sintrol';
     const h2 = active.querySelector('h2');
-    const txt = (h2?.textContent || active.id || 'LuRo Control').replace(/\s+/g, ' ').trim();
-    return txt || 'LuRo Control';
+    const txt = (h2?.textContent || active.id || 'LuXo Sintrol').replace(/\s+/g, ' ').trim();
+    return txt || 'LuXo Sintrol';
   }
 
   function actualizarTopbarMovil() {
