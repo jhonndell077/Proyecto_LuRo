@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "site": "luro-control",
     "public": "public",
@@ -7,10 +10,22 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "source": "/",
+        "destination": "/app.html",
+        "type": 302
+      },
+      {
+        "source": "/index.html",
+        "destination": "/app.html",
+        "type": 302
+      }
+    ],
     "rewrites": [
       {
         "source": "**",
-        "destination": "/index.html"
+        "destination": "/app.html"
       }
     ]
   }

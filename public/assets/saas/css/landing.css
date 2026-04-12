@@ -38,7 +38,7 @@ body::after{
   width:42px;
   height:42px;
   object-fit:contain;
-  border-radius:9px;
+  border-radius:50%;
 }
 .luro-logo-toned{
   filter:saturate(1.2) contrast(1.08) brightness(1.04) drop-shadow(0 0 10px rgba(31,208,180,.34));
@@ -53,6 +53,15 @@ nav a[href^="#"]:hover{transform:translateY(-2px);background:#1a2844;box-shadow:
 nav a[href^="#"].active{background:#172a4b;border:1px solid #2a4778;box-shadow:0 0 0 1px #2a477855 inset}
 .btn-link{padding:8px 12px;border:1px solid var(--line);border-radius:8px;transition:.22s transform,.22s border-color}
 .btn-link:hover{transform:translateY(-2px);border-color:#2f6eea}
+.topbar-login{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:46px;
+  padding:10px 18px;
+  background:#121d33;
+  font-weight:700;
+}
 
 .carousel-shell{height:auto;overflow:visible;position:relative}
 .carousel-track{display:block;transition:transform .82s cubic-bezier(.22,.76,.2,1);will-change:transform}
@@ -68,16 +77,47 @@ nav a[href^="#"].active{background:#172a4b;border:1px solid #2a4778;box-shadow:0
   margin:0 auto 14px;
   width:clamp(200px,52vw,260px);
   height:auto;
+  position:relative;
+  isolation:isolate;
   text-decoration:none;
   cursor:pointer;
   text-align:center;
+  border-radius:22px;
+  transform:translateZ(0);
+  transition:transform .22s ease,filter .22s ease;
+  animation:heroLogoPulse 2.8s ease-in-out infinite;
+  will-change:transform,filter;
+  -webkit-tap-highlight-color:transparent;
+}
+.hero-logo-button::after{
+  content:none;
+}
+.hero-logo-button:hover,
+.hero-logo-button:focus-visible{
+  transform:translateY(-3px) scale(1.02);
+  filter:brightness(1.05);
+}
+.hero-logo-button:focus-visible{
+  outline:2px solid rgba(126,246,184,.72);
+  outline-offset:6px;
 }
 .hero-logo{
   width:100%;
   max-width:100%;
   height:auto;
-  border-radius:18px;
+  border-radius:0;
   object-fit:contain;
+  filter:none;
+  box-shadow:none;
+  transition:transform .22s ease,opacity .22s ease;
+  animation:heroLogoBlink 2.8s ease-in-out infinite;
+  will-change:transform,opacity;
+}
+.hero-logo-button:hover .hero-logo,
+.hero-logo-button:focus-visible .hero-logo{
+  transform:scale(1.015);
+  filter:none;
+  box-shadow:none;
 }
 .code-brand{
   display:flex;
@@ -194,6 +234,7 @@ nav a[href^="#"].active{background:#172a4b;border:1px solid #2a4778;box-shadow:0
 .module-item.open::after{opacity:1;transform:translateY(0)}
 .paypal-button-slot{margin-top:10px;min-height:44px}
 .paypal-button-slot:empty{display:none}
+.paypal-slot-note{margin-top:8px;font-size:12px;line-height:1.4;color:#b8c7df}
 .footer{border-top:1px solid var(--line);padding:18px 0;color:var(--muted);margin-top:22px}
 .footer-brand{
   display:flex;
@@ -313,30 +354,50 @@ nav a[href^="#"].active{background:#172a4b;border:1px solid #2a4778;box-shadow:0
 html{scroll-behavior:smooth}
 .container{width:min(1180px,94vw);padding:0 4vw;margin:auto}
 .topbar{padding:8px 0}
-.nav{align-items:center;gap:10px}
-.nav-toggle{
+.nav{
+  position:relative;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:nowrap !important;
+}
+.topbar .nav > #navToggle{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   width:46px;
   height:46px;
+  position:relative;
+  z-index:46;
+  margin-left:auto;
 }
-nav{
-  width:100%;
-  display:none;
+.topbar .nav > #topNav{
+  width:min(320px,calc(100vw - 32px));
+  display:none !important;
   flex-direction:column;
   align-items:stretch;
   gap:10px;
-  position:static;
+  position:absolute !important;
+  top:calc(100% + 10px);
+  right:0;
   background:#0b1220f5;
-  border-radius:12px;
-  padding:0;
+  border:1px solid rgba(42,75,119,.92);
+  border-radius:14px;
+  padding:12px;
+  box-shadow:0 20px 44px rgba(0,0,0,.34);
+  backdrop-filter:blur(12px);
+  max-height:calc(100vh - 84px);
+  overflow:auto;
+  z-index:45;
 }
-nav.open{
-  display:flex;
-  margin-top:10px;
+.topbar .nav > #topNav[hidden],
+.topbar .nav > #topNav:not(.open){
+  display:none !important;
 }
-.nav-toggle{
+.topbar .nav > #topNav.open{
+  display:flex !important;
+}
+.topbar .nav > #navToggle{
   border:1px solid var(--line);
   background:#121d33;
   color:var(--text);
@@ -346,13 +407,14 @@ nav.open{
   line-height:1;
   cursor:pointer;
 }
-nav a{
+.topbar .nav > #topNav a{
+  display:block;
   width:100%;
   text-align:left;
   border:1px solid #1e3155;
   background:#121d33;
 }
-.btn-link{width:100%;text-align:center}
+.topbar .nav > #topNav .btn-link{width:100%;text-align:center}
 .hero{padding:8px 0 24px}
 .hero-grid{
   display:grid;
@@ -383,36 +445,24 @@ nav a{
 .panel{min-width:100%;height:auto;overflow:visible;padding:22px 0}
 
 @media (min-width:480px){
-  nav{flex-direction:row;flex-wrap:wrap}
-  nav a{width:auto;flex:1 1 calc(50% - 8px)}
-  .btn-link{flex:1 1 100%}
+  .topbar .nav > #topNav{flex-direction:column;flex-wrap:nowrap}
+  .topbar .nav > #topNav a{width:100%;flex:0 0 auto}
+  .topbar .nav > #topNav .btn-link{flex:0 0 auto}
 }
 
 @media (min-width:768px){
   .hero-grid{grid-template-columns:1.15fr 1fr;gap:20px}
   .grid3{grid-template-columns:repeat(2,1fr);gap:14px}
-  nav{
-    display:flex;
-    position:static;
-    width:auto;
-    background:transparent;
-    border:none;
-    padding:0;
-    gap:14px;
-    flex-wrap:nowrap;
-    align-items:center;
-    justify-content:center;
+  .nav{flex-wrap:nowrap}
+  .topbar .nav > #topNav{
+    width:min(360px,calc(100vw - 48px));
+    gap:12px;
   }
-  nav a{
-    border:none;
-    background:transparent;
-    width:auto;
-    flex:0 0 auto;
+  .topbar .nav > #topNav a{
     padding:10px 12px;
-    text-align:center;
+    text-align:left;
   }
-  .btn-link{width:auto;flex:0 0 auto;text-align:center}
-  .nav-toggle{display:none}
+  .topbar .nav > #topNav .btn-link{width:100%;flex:0 0 auto;text-align:center}
   .btn{width:auto}
 }
 
@@ -431,8 +481,52 @@ nav a{
 @keyframes shine{0%{left:-65%}100%{left:160%}}
 @keyframes typingCode{from{width:0}to{width:18ch}}
 @keyframes blinkCaret{50%{border-color:transparent}}
+@keyframes heroLogoPulse{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-2px) scale(1.02)}
+}
+@keyframes heroLogoGlow{
+  0%,100%{opacity:.26;transform:scale(.96)}
+  50%{opacity:.52;transform:scale(1.03)}
+}
+@keyframes heroLogoBlink{
+  0%,100%{
+    opacity:1;
+    filter:none;
+    box-shadow:none;
+  }
+  50%{
+    opacity:1;
+    filter:none;
+    box-shadow:none;
+  }
+}
 @keyframes codeReveal{
   0%{clip-path:inset(0 100% 0 0);opacity:.2;transform:translateY(8px)}
   100%{clip-path:inset(0 0 0 0);opacity:1;transform:translateY(0)}
 }
 
+@media (hover:none) and (pointer:coarse){
+  .hero-logo-button{
+    animation:heroLogoPulse 2.25s ease-in-out infinite;
+  }
+  .hero-logo-button::after{
+    animation:heroLogoGlow 2.25s ease-in-out infinite;
+    opacity:.48;
+  }
+  .hero-logo{
+    animation:heroLogoBlink 2.25s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .hero-logo-button,
+  .hero-logo-button::after,
+  .hero-logo{
+    animation:none;
+  }
+  .hero-logo-button,
+  .hero-logo{
+    transition:none;
+  }
+}

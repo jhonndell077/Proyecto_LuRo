@@ -15,18 +15,26 @@
   let isAnimating = false;
   let touchStartX = null;
 
-  const closeNavMenu = () => {
+  const setNavState = (isOpen) => {
     if (!topNav || !navToggle) return;
-    topNav.classList.remove('open');
-    navToggle.setAttribute('aria-expanded', 'false');
+    topNav.classList.toggle('open', isOpen);
+    topNav.hidden = !isOpen;
+    topNav.style.display = isOpen ? 'flex' : 'none';
+    topNav.setAttribute('aria-hidden', String(!isOpen));
+    navToggle.setAttribute('aria-expanded', String(isOpen));
+    navToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
+  };
+
+  const closeNavMenu = () => {
+    setNavState(false);
   };
 
   const toggleNavMenu = () => {
     if (!topNav || !navToggle) return;
-    const willOpen = !topNav.classList.contains('open');
-    topNav.classList.toggle('open', willOpen);
-    navToggle.setAttribute('aria-expanded', String(willOpen));
+    setNavState(!topNav.classList.contains('open'));
   };
+
+  closeNavMenu();
 
   const updateNav = () => {
     navLinks.forEach((link) => {
@@ -76,6 +84,7 @@
   }
 
   window.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') closeNavMenu();
     if (isAnimating || isMobile()) return;
     if (ev.key === 'ArrowRight') goTo(currentIndex + 1);
     if (ev.key === 'ArrowLeft') goTo(currentIndex - 1);
@@ -103,7 +112,7 @@
   });
 
   window.addEventListener('resize', () => {
-    if (!isMobile()) closeNavMenu();
+    closeNavMenu();
     if (!isMobile()) moduleItems.forEach((it) => it.classList.remove('open'));
     goTo(currentIndex, false, { scrollMobile: false });
   });
@@ -127,7 +136,11 @@
       if (willOpen) item.classList.add('open');
     });
   });
-  document.addEventListener('click', () => {
+  document.addEventListener('click', (ev) => {
+    const target = ev.target;
+    if (topNav && navToggle && target instanceof Node && !topNav.contains(target) && !navToggle.contains(target)) {
+      closeNavMenu();
+    }
     if (!isMobile()) return;
     closeModuleTips();
   });
