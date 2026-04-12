@@ -10,7 +10,7 @@ const FORCED_REMOVED_USER = "__forced_removed_user_disabled__";
 const INACTIVE_MSG = "Usuario Inactivo o eliminado. Comuníquese con su proveedor.";
 const PAYPAL_RECEIVER = String(process.env.PAYPAL_RECEIVER || "Jssantana077@gmail.com").trim();
 const PAYPAL_ME_USER = String(process.env.PAYPAL_ME_USER || "Jhonn0723").trim();
-const PAYPAL_PRODUCT_NAME = "LuRo Control SaaS";
+const PAYPAL_PRODUCT_NAME = "LuXo Sintrol SaaS";
 const PAYPAL_RUNTIME_OPTS = {
   secrets: ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET", "PAYPAL_WEBHOOK_ID", "PAYPAL_PLAN_BASICO", "PAYPAL_PLAN_PROFESIONAL", "PAYPAL_PLAN_EMPRESARIAL", "PAYPAL_PRODUCT_ID"]
 };
@@ -432,7 +432,7 @@ function buildPaypalLink({ plan, negocioId, owner }) {
   const legacy = new URL("https://www.paypal.com/cgi-bin/webscr");
   legacy.searchParams.set("cmd", "_xclick");
   legacy.searchParams.set("business", PAYPAL_RECEIVER);
-  legacy.searchParams.set("item_name", `LuRo Control ${cfg.nombre}`);
+  legacy.searchParams.set("item_name", `LuXo Sintrol ${cfg.nombre}`);
   legacy.searchParams.set("amount", amount);
   legacy.searchParams.set("currency_code", "USD");
   legacy.searchParams.set("no_shipping", "1");
@@ -506,7 +506,7 @@ async function createPayPalProductIfMissing(existingProductId = "") {
   const reqId = `luro-product-${Date.now()}`;
   const json = await paypalRequest("/v1/catalogs/products", "POST", {
     name: PAYPAL_PRODUCT_NAME,
-    description: "Suscripción mensual LuRo Control SaaS",
+    description: "Suscripción mensual LuXo Sintrol SaaS",
     type: "SERVICE",
     category: "SOFTWARE"
   }, { "PayPal-Request-Id": reqId });
@@ -1633,7 +1633,7 @@ exports.createPaypalStandardOrder = onCall(PAYPAL_RUNTIME_OPTS, async (request) 
       {
         reference_id: access.negocioId.slice(0, 64),
         custom_id: customId,
-        description: safeText(`LuRo Control ${access.planCfg.nombre || access.plan}`, 127),
+        description: safeText(`LuXo Sintrol ${access.planCfg.nombre || access.plan}`, 127),
         amount: {
           currency_code: "USD",
           value: amount,
