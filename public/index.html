@@ -5,17 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LuRo Control SaaS | Gestión Gastronómica</title>
   <meta name="description" content="Plataforma SaaS para restaurantes y negocios gastronómicos.">
-  <link rel="stylesheet" href="assets/saas/css/landing.css?v=20260410-plan-sync-1">
+  <link rel="stylesheet" href="assets/saas/css/landing.css?v=20260318-1140">
 </head>
 <body>
   <header class="topbar">
     <div class="container nav">
-      <a class="site-brand" aria-label="Instagram LuRo Control" href="https://www.instagram.com/lurocontrol?igsh=eWFza3NzN3RoODl2" target="_blank" rel="noopener">
+      <strong class="site-brand" aria-label="LuRo Control SaaS">
         <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo luro-logo-toned">
-      </a>
-      <a class="btn-link topbar-login" href="acceder.html">Iniciar sesión</a>
+      </strong>
+      <button id="navToggle" class="nav-toggle" type="button" aria-label="Abrir menú" aria-expanded="false">☰</button>
+      <nav id="topNav">
+        <a href="#inicio">Inicio</a>
+        <a href="#funciones">Funciones</a>
+        <a href="#modulos">Módulos</a>
+        <a href="#beneficios">Beneficios</a>
+        <a href="#planes">Planes</a>
+        <a href="#contacto">Contacto</a>
+        <a class="btn-link" href="acceder.html">Iniciar sesión</a>
+      </nav>
     </div>
   </header>
+
   <main class="carousel-shell">
     <div class="carousel-track" id="carouselTrack">
       <section id="inicio" class="panel hero">
@@ -125,26 +135,26 @@
         <div class="container">
           <h2>Planes de suscripción</h2>
           <div class="grid3">
-            <article class="card reveal pricing-plan-card" data-plan-card="basico">
-              <h3 class="plan-card-title">Basic Control</h3>
-              <p class="plan-card-price">USD$44.99 / mes</p>
-              <p class="plan-card-description">Incluye: Inventario, Gestion de Platos, Ventas/Comandas, Clientes, Reportes basicos, Configuracion basica, Salidas de inventario. 1 sucursal.</p>
-              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/44.99" style="display:none;">Pagar Basic Control</a>
-              <div class="paypal-button-slot" data-plan="basico" data-amount="44.99"></div>
+            <article class="card reveal">
+              <h3>Básico</h3>
+              <p>USD$20.00 / mes</p>
+              <p>Incluye: Inventario, Gestión de Platos, Ventas/Comandas, Clientes, Reportes básicos, Configuración básica, Salidas de inventario. 1 sucursal.</p>
+              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/20.00">Pagar Plan Básico</a>
+              <div class="paypal-button-slot" data-plan="basico" data-amount="20.00"></div>
             </article>
-            <article class="card reveal pricing-plan-card" data-plan-card="profesional">
-              <h3 class="plan-card-title">Professional Control</h3>
-              <p class="plan-card-price">USD$99.99 / mes</p>
-              <p class="plan-card-description">Todos los modulos del sistema: Inventario, Gestion de Platos, Ventas/Comandas, Clientes, Reportes avanzados, Configuracion completa, Produccion, Control de costos, Control de desperdicios, Usuarios y permisos, Dashboard en tiempo real, Proveedores, Auditoria, Notificaciones, Control de caja, Boveda del sistema. Hasta 2 sucursales.</p>
-              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/99.99" style="display:none;">Pagar Professional Control</a>
+            <article class="card reveal">
+              <h3>Profesional</h3>
+              <p>USD$99.99 / mes</p>
+              <p>Todos los módulos del sistema: Inventario, Gestión de Platos, Ventas/Comandas, Clientes, Reportes avanzados, Configuración completa, Producción, Control de costos, Control de desperdicios, Usuarios y permisos, Dashboard en tiempo real, Proveedores, Auditoría, Notificaciones, Control de caja, Bóveda del sistema. Hasta 2 sucursales.</p>
+              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/99.99">Pagar Plan Profesional</a>
               <div class="paypal-button-slot" data-plan="profesional" data-amount="99.99"></div>
             </article>
-            <article class="card reveal pricing-plan-card" data-plan-card="empresarial">
-              <h3 class="plan-card-title">Master Control</h3>
-              <p class="plan-card-price">USD$149.99 / mes</p>
-              <p class="plan-card-description">Mismos modulos que Professional Control (todo incluido). Hasta 10 sucursales.</p>
-              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/149.99" style="display:none;">Pagar Master Control</a>
-              <div class="paypal-button-slot" data-plan="empresarial" data-amount="149.99"></div>
+            <article class="card reveal">
+              <h3>Empresarial</h3>
+              <p>USD$349.99 / mes</p>
+              <p>Mismos módulos que Profesional (todo incluido). Hasta 10 sucursales.</p>
+              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/349.99">Pagar Plan Empresarial</a>
+              <div class="paypal-button-slot" data-plan="empresarial" data-amount="349.99"></div>
             </article>
           </div>
           <a class="btn motion-btn" href="acceder.html">Crear cuenta</a>
@@ -165,8 +175,8 @@
     </div>
   </main>
 
-  <script src="assets/saas/js/landing.js?v=20260403-0002"></script>
-  <script src="assets/saas/js/paypal-buttons.js?v=20260410-paypal-standard-1"></script>
+  <script src="assets/saas/js/landing.js?v=20260306-0041"></script>
+  <script src="assets/saas/js/paypal-buttons.js?v=20260305-2305"></script>
 </body>
 </html>
 

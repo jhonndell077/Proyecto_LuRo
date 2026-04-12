@@ -1,7 +1,7 @@
-name: Deploy to Firebase Hosting
+name: Deploy to Firebase
 
 run-name: >-
-  Firebase Hosting Deploy ·
+  Firebase Deploy ·
   ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_target || 'hosting' }} ·
   ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
 
@@ -42,10 +42,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    concurrency:
-      group: firebase-deploy-production
-      cancel-in-progress: true
-
     permissions:
       contents: read
 
@@ -65,15 +61,6 @@ jobs:
       with:
         node-version: 20
 
-    - name: Validate Firebase credentials secret
-      shell: bash
-      run: |
-        if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
-          echo "Missing required GitHub secret: FIREBASE_SERVICE_ACCOUNT" >&2
-          echo "Create it with the Firebase service account JSON for project: luro-control" >&2
-          exit 1
-        fi
-
     - name: Prepare Firebase credentials
       shell: bash
       run: |
@@ -84,9 +71,6 @@ jobs:
 
     - name: Install Firebase CLI
       run: npm install -g firebase-tools
-
-    - name: Show Firebase CLI version
-      run: firebase --version
 
     - name: Install Functions dependencies
       if: env.DEPLOY_TARGET == 'functions' || env.DEPLOY_TARGET == 'all'

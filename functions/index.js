@@ -84,17 +84,15 @@ function getPayPalMode() {
 const PLAN_CATALOG = {
   basico: {
     id: "basico",
-    nombre: "Basic Control",
-    descripcion: "Incluye: Inventario, Gestion de Platos, Ventas/Comandas, Clientes, Reportes basicos, Configuracion basica, Salidas de inventario. 1 sucursal.",
-    montoUSD: 44.99,
+    nombre: "Plan Básico",
+    montoUSD: 20.0,
     usuariosMax: 3,
     modulosMax: 8,
     sucursalesMax: 1
   },
   profesional: {
     id: "profesional",
-    nombre: "Professional Control",
-    descripcion: "Todos los modulos del sistema: Inventario, Gestion de Platos, Ventas/Comandas, Clientes, Reportes avanzados, Configuracion completa, Produccion, Control de costos, Control de desperdicios, Usuarios y permisos, Dashboard en tiempo real, Proveedores, Auditoria, Notificaciones, Control de caja, Boveda del sistema. Hasta 2 sucursales.",
+    nombre: "Plan Profesional",
     montoUSD: 99.99,
     usuariosMax: 30,
     modulosMax: 999,
@@ -102,9 +100,8 @@ const PLAN_CATALOG = {
   },
   empresarial: {
     id: "empresarial",
-    nombre: "Master Control",
-    descripcion: "Mismos modulos que Professional Control (todo incluido). Hasta 10 sucursales.",
-    montoUSD: 149.99,
+    nombre: "Plan Empresarial",
+    montoUSD: 349.99,
     usuariosMax: 30,
     modulosMax: 999,
     sucursalesMax: 10
@@ -117,23 +114,6 @@ function norm(v) {
 
 function safeText(v, max = 160) {
   return String(v || "").trim().slice(0, max);
-}
-
-function serializePublicPlanCatalog() {
-  const payload = {};
-  Object.keys(PLAN_CATALOG).forEach((key) => {
-    const cfg = PLAN_CATALOG[key] || {};
-    payload[key] = {
-      id: safeText(cfg.id || key, 40),
-      nombre: safeText(cfg.nombre, 120),
-      descripcion: safeText(cfg.descripcion, 600),
-      montoUSD: Number(cfg.montoUSD || 0),
-      usuariosMax: Number(cfg.usuariosMax || 0),
-      modulosMax: Number(cfg.modulosMax || 0),
-      sucursalesMax: Number(cfg.sucursalesMax || 0)
-    };
-  });
-  return payload;
 }
 
 function isMasterPasswordAccepted(password, masterEntry = null) {
@@ -174,12 +154,11 @@ async function getPayPalRuntimeSnapshot(options = {}) {
   if (!clientSecret) missingConfig.push("client_secret");
   missingPlanKeys.forEach((key) => missingConfig.push(`plan_${key}`));
 
-  const standardCheckoutReady = Boolean(clientId) && Boolean(clientSecret);
-  const subscriptionsReady = standardCheckoutReady && missingPlanKeys.length === 0;
+  const subscriptionsReady = Boolean(clientId) && missingPlanKeys.length === 0;
   const manualPaymentReady = hasManualPayPalLink();
   const paymentMode = subscriptionsReady
     ? "subscription_sdk"
-    : (standardCheckoutReady ? "paypal_standard" : (manualPaymentReady ? "paypal_link" : "unavailable"));
+    : (manualPaymentReady ? "paypal_link" : "unavailable");
 
   return {
     clientId,
@@ -187,7 +166,6 @@ async function getPayPalRuntimeSnapshot(options = {}) {
     productId: safeText(productId, 80),
     planIds,
     missingConfig,
-    standardCheckoutReady,
     subscriptionsReady,
     manualPaymentReady,
     paymentMode,
@@ -555,24 +533,17 @@ async function ensurePayPalCatalog() {
     const cfg = PLAN_CATALOG[key];
     const planRef = rootRef.collection("plans").doc(planNodeId(key));
     const planSnap = await planRef.get();
-    const planData = planSnap.data() || {};
-    const existing = safeText(planData.planId, 80);
-    const storedName = safeText(planData.nombre, 120);
-    const storedAmount = Number(planData.montoUSD || 0);
-    const expectedAmount = Number(cfg.montoUSD || 0);
-    const needsRefresh = !existing || storedName !== String(cfg.nombre || "") || Math.abs(storedAmount - expectedAmount) > 0.01;
+    const existing = safeText(planSnap.data()?.planId, 80);
     let planId = existing;
-    if (needsRefresh) {
+    if (!planId) {
       planId = await createPayPalPlan({ productId, planKey: key, planCfg: cfg });
       if (!planId) throw new HttpsError("internal", `No se pudo crear plan PayPal ${key}.`);
       await planRef.set({
         key,
         planId,
         nombre: cfg.nombre,
-        descripcion: safeText(cfg.descripcion, 600),
-        montoUSD: expectedAmount,
+        montoUSD: Number(cfg.montoUSD || 0),
         billingInterval: "MONTH",
-        previousPlanId: existing || null,
         updatedAt: now,
         createdAt: now
       }, { merge: true });
@@ -702,57 +673,6 @@ async function getPayPalOrder(orderId) {
     throw new HttpsError("failed-precondition", "No se pudo validar la orden PayPal.");
   }
   return json || null;
-}
-
-async function capturePayPalOrder(orderId) {
-  const id = safeText(orderId, 120);
-  if (!id) throw new HttpsError("invalid-argument", "orderId de PayPal requerido.");
-  return paypalRequest(`/v2/checkout/orders/${encodeURIComponent(id)}/capture`, "POST", {});
-}
-
-async function assertOwnerPaymentAccess({ owner, password, negocioId, plan }) {
-  const ownerId = norm(owner);
-  if (!ownerId) throw new HttpsError("invalid-argument", "Owner requerido.");
-  const ownerEntry = await getOwnerDoc(ownerId);
-  if (!ownerEntry) throw new HttpsError("not-found", "Cuenta no encontrada.");
-  if (!isPasswordMatch(ownerEntry.data?.pass, password)) {
-    throw new HttpsError("permission-denied", "No autorizado para procesar este pago.");
-  }
-  const resolvedBizId = safeText(negocioId || ownerEntry.data?.negocioId, 120);
-  if (!resolvedBizId) throw new HttpsError("failed-precondition", "Negocio no configurado.");
-  const planCfg = PLAN_CATALOG[norm(plan)] || PLAN_CATALOG.basico;
-  return {
-    ownerEntry,
-    owner: ownerId,
-    negocioId: resolvedBizId,
-    plan: planCfg.id,
-    planCfg
-  };
-}
-
-function extractCapturedPayPalOrderDetails(order, planCfg = {}) {
-  const pu = Array.isArray(order?.purchase_units) ? order.purchase_units[0] : null;
-  const capture = pu?.payments?.captures?.[0] || pu?.payments?.authorizations?.[0] || null;
-  const amountValue = Number(
-    capture?.amount?.value ||
-    pu?.amount?.value ||
-    planCfg?.montoUSD ||
-    0
-  );
-  const currency = String(
-    capture?.amount?.currency_code ||
-    pu?.amount?.currency_code ||
-    "USD"
-  ).toUpperCase();
-  return {
-    amountUSD: amountValue,
-    currency,
-    payerEmail: safeText(order?.payer?.email_address, 160),
-    paymentRef: safeText(capture?.id || order?.id, 120),
-    orderId: safeText(order?.id, 120),
-    status: String(order?.status || "").toUpperCase(),
-    captureStatus: String(capture?.status || "").toUpperCase()
-  };
 }
 
 async function activateBusinessSubscription({
@@ -1492,14 +1412,12 @@ exports.getPublicBillingConfig = onCall(PAYPAL_RUNTIME_OPTS, async () => {
     productName: PAYPAL_PRODUCT_NAME,
     productId: safeText(billingState.productId, 80),
     planIds: billingState.planIds,
-    standardCheckoutReady: billingState.standardCheckoutReady,
     subscriptionsReady: billingState.subscriptionsReady,
     manualPaymentReady: billingState.manualPaymentReady,
     paymentMode: billingState.paymentMode,
     missingConfig: Array.isArray(billingState.missingConfig) ? billingState.missingConfig : [],
     currency: "USD",
-    mode: billingState.mode,
-    plans: serializePublicPlanCatalog()
+    mode: billingState.mode
   };
 });
 
@@ -1609,156 +1527,6 @@ exports.confirmPaypalBusinessPayment = onCall(PAYPAL_RUNTIME_OPTS, async (reques
     paymentRef: orderId,
     payerEmail
   });
-});
-
-exports.createPaypalStandardOrder = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
-  const password = String(request.data?.password || "");
-  const access = await assertOwnerPaymentAccess({
-    owner: request.data?.owner,
-    password,
-    negocioId: request.data?.negocioId,
-    plan: request.data?.plan
-  });
-
-  if (!getPaypalClientSecret()) {
-    throw new HttpsError("failed-precondition", "PayPal Standard no esta configurado en backend.");
-  }
-
-  const amount = Number(access.planCfg.montoUSD || 0).toFixed(2);
-  const customId = `${access.owner}|${access.negocioId}|${access.plan}`.slice(0, 127);
-  const description = safeText(access.planCfg.descripcion || access.planCfg.nombre || "", 127);
-  const order = await paypalRequest("/v2/checkout/orders", "POST", {
-    intent: "CAPTURE",
-    purchase_units: [
-      {
-        reference_id: access.negocioId.slice(0, 64),
-        custom_id: customId,
-        description: safeText(`LuRo Control ${access.planCfg.nombre || access.plan}`, 127),
-        amount: {
-          currency_code: "USD",
-          value: amount,
-          breakdown: {
-            item_total: {
-              currency_code: "USD",
-              value: amount
-            }
-          }
-        },
-        items: [
-          {
-            name: safeText(access.planCfg.nombre || access.plan, 127),
-            description,
-            unit_amount: {
-              currency_code: "USD",
-              value: amount
-            },
-            quantity: "1",
-            category: "DIGITAL_GOODS"
-          }
-        ]
-      }
-    ],
-    payment_source: {
-      paypal: {
-        experience_context: {
-          payment_method_preference: "IMMEDIATE_PAYMENT_REQUIRED",
-          user_action: "PAY_NOW",
-          landing_page: "LOGIN"
-        }
-      }
-    }
-  });
-
-  const orderId = safeText(order?.id, 120);
-  if (!orderId) throw new HttpsError("internal", "PayPal no devolvio un orderId valido.");
-
-  await db.collection("paypal_orders").doc(orderId).set({
-    owner: access.owner,
-    negocioId: access.negocioId,
-    plan: access.plan,
-    amountUSD: Number(access.planCfg.montoUSD || 0),
-    status: safeText(order?.status || "CREATED", 40),
-    customId,
-    provider: "paypal_standard",
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-
-  return {
-    ok: true,
-    orderId,
-    status: safeText(order?.status || "CREATED", 40),
-    owner: access.owner,
-    negocioId: access.negocioId,
-    plan: access.plan,
-    planInfo: access.planCfg
-  };
-});
-
-exports.capturePaypalStandardOrder = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
-  const password = String(request.data?.password || "");
-  const access = await assertOwnerPaymentAccess({
-    owner: request.data?.owner,
-    password,
-    negocioId: request.data?.negocioId,
-    plan: request.data?.plan
-  });
-
-  const orderId = safeText(request.data?.orderId, 120);
-  if (!orderId) throw new HttpsError("invalid-argument", "orderId requerido.");
-
-  let capturedOrder = null;
-  try {
-    capturedOrder = await capturePayPalOrder(orderId);
-  } catch (error) {
-    const fallbackOrder = await getPayPalOrder(orderId).catch(() => null);
-    if (!fallbackOrder || String(fallbackOrder?.status || "").toUpperCase() !== "COMPLETED") {
-      throw error;
-    }
-    capturedOrder = fallbackOrder;
-  }
-
-  const payment = extractCapturedPayPalOrderDetails(capturedOrder, access.planCfg);
-  if (payment.currency !== "USD") {
-    throw new HttpsError("failed-precondition", "Moneda de pago invalida.");
-  }
-  if (Math.abs(Number(payment.amountUSD || 0) - Number(access.planCfg.montoUSD || 0)) > 0.01) {
-    throw new HttpsError("failed-precondition", "Monto de pago no coincide con el plan.");
-  }
-  if (payment.status !== "COMPLETED" && payment.captureStatus !== "COMPLETED") {
-    throw new HttpsError("failed-precondition", "La orden PayPal no esta completada.");
-  }
-
-  await db.collection("paypal_orders").doc(orderId).set({
-    owner: access.owner,
-    negocioId: access.negocioId,
-    plan: access.plan,
-    amountUSD: Number(payment.amountUSD || access.planCfg.montoUSD || 0),
-    status: "COMPLETED",
-    payerEmail: payment.payerEmail,
-    paymentRef: payment.paymentRef,
-    provider: "paypal_standard",
-    completedAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-
-  const activated = await activateBusinessSubscription({
-    owner: access.owner,
-    negocioId: access.negocioId,
-    plan: access.plan,
-    provider: "paypal_standard",
-    montoUSD: Number(payment.amountUSD || access.planCfg.montoUSD || 0),
-    paymentRef: payment.paymentRef || payment.orderId || orderId,
-    payerEmail: payment.payerEmail
-  });
-
-  return {
-    ok: true,
-    orderId,
-    paymentRef: payment.paymentRef || orderId,
-    plan: access.plan,
-    ...activated
-  };
 });
 
 exports.createMembershipCheckout = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
