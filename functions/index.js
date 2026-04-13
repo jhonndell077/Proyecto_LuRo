@@ -1,5 +1,6 @@
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+const { registerWhatsAppNotifications } = require("./whatsapp-notifications");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -2678,6 +2679,24 @@ exports.getOwnerData = onCall(async (request) => {
     raw: data
   };
 });
+
+const whatsappNotifications = registerWhatsAppNotifications({
+  db,
+  admin,
+  norm,
+  safeText,
+  canAccessByStatus,
+  MASTER_USER,
+  FORCED_REMOVED_USER,
+  getCloudRuntimeConfig,
+  resolveSession,
+  getOwnerDoc
+});
+
+exports.notifyWhatsAppOnOwnerDataUpdate = whatsappNotifications.notifyWhatsAppOnOwnerDataUpdate;
+exports.notifyWhatsAppOnMasterNotificationCreate = whatsappNotifications.notifyWhatsAppOnMasterNotificationCreate;
+exports.setOwnerWhatsAppConfig = whatsappNotifications.setOwnerWhatsAppConfig;
+exports.sendWhatsAppTestNotification = whatsappNotifications.sendWhatsAppTestNotification;
 
 const GITHUB_DEPLOY_RUNTIME_OPTS = {
   secrets: ["GITHUB_DEPLOY_TOKEN"]
