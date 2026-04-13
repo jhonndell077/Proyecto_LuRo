@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0f1419">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20260413-hotfix-1">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260413-asistencia-dev-2">
 </head>
 <body onload="cargarDatos()">
 
@@ -261,6 +261,7 @@
             <a onclick="showPage('produccion-interna')">🏭 Producción Interna</a>
             <a onclick="showPage('disponibilidad')">👁️ Disponibilidad</a>
             <a onclick="showPage('salida')">📤 Registrar Salida</a>
+            <a onclick="showPage('asistencia')">🕒 Asistencia</a>
             <a onclick="showPage('entrenamientos')">🎓 Entrenamientos</a>
             <a onclick="showPage('procedimientos')">📘 Procedimientos</a>
             <a onclick="showPage('clientes-puntos')">👥 Clientes y Puntos</a>
@@ -757,6 +758,109 @@
       </div>
     </div>
 
+    <div id="asistencia" class="content-section">
+      <div class="card">
+        <h2>🕒 Asistencia</h2>
+        <div id="asistencia-status-modulo" style="margin-bottom:12px; padding:10px; border:1px dashed #dfe6e9; border-radius:8px; background:#f8fafc; font-size:12px; color:#57606f;">Estado del módulo: cargando...</div>
+        <div class="asistencia-main-grid" style="margin-bottom:12px;">
+          <div class="asistencia-colaboradores-panel" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+              <div style="font-size:12px; font-weight:bold; color:var(--secondary);">Colaboradores activos</div>
+              <button class="btn btn-blue" style="padding:8px 10px;" onclick="renderAsistenciaModulo()">ACTUALIZAR</button>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+              <button id="btn-asistencia-add-colab" class="btn btn-purple" style="padding:8px 10px;" onclick="abrirGestionColaboradoresAsistencia()">+ AÑADIR COLABORADOR</button>
+            </div>
+            <div id="asistencia-colaboradores-lista" class="asistencia-colab-lista">
+              <div style="font-size:12px; color:#777;">Sin colaboradores activos.</div>
+            </div>
+          </div>
+          <div class="asistencia-tablero-panel" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
+            <div id="asistencia-fecha-operativa" style="font-size:12px; color:#666; margin-bottom:8px;">Jornada: --</div>
+            <div id="asistencia-tablero-header" style="font-size:13px; font-weight:800; color:var(--secondary); margin-bottom:8px;">Seleccione un colaborador para ver su casilla de asistencia.</div>
+            <div class="asistencia-tablero-wrap">
+              <table class="asistencia-tablero-table">
+                <thead>
+                  <tr>
+                    <th>FECHA</th>
+                    <th class="asistencia-col-mark">MARCAR</th>
+                    <th class="asistencia-col-entrada">ENTRADA</th>
+                    <th class="asistencia-col-mark">MARCAR</th>
+                    <th class="asistencia-col-salida">SALIDA</th>
+                    <th>TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody id="asistencia-tablero-body">
+                  <tr><td colspan="6" style="text-align:center; color:#777;">Seleccione un colaborador.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="asistencia-registro-estado" style="font-size:12px; color:#57606f; margin-top:10px;">Seleccione un colaborador para comenzar.</div>
+          </div>
+        </div>
+        <div style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff; margin-bottom:12px;">
+            <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Acciones administrativas</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+              <button class="btn btn-warning" onclick="actualizarCicloAsistencia()">ACTUALIZAR CICLO</button>
+              <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="limpiarFiltrosAsistencia()">LIMPIAR FECHAS</button>
+              <button class="btn btn-danger" onclick="limpiarRegistrosAsistencia()">LIMPIAR REGISTROS</button>
+              <button class="btn btn-danger" onclick="limpiarAutorizacionesAsistencia()">LIMPIAR AUTORIZACIONES</button>
+            </div>
+            <div style="font-size:11px; color:#777;">Las acciones de limpieza requieren validación de contraseña.</div>
+          </div>
+
+        <div style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+            <strong>📋 Reporte consolidado por colaborador</strong>
+            <input type="text" id="asistencia-filtro-colaborador" onkeyup="renderAsistenciaRegistros()" placeholder="Buscar colaborador..." style="max-width:280px;">
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+            <input type="date" id="filtro-asistencia-desde" onchange="renderAsistenciaRegistros()">
+            <input type="date" id="filtro-asistencia-hasta" onchange="renderAsistenciaRegistros()">
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Colaborador</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Total horas</th>
+                <th>Estado</th>
+                <th>Operador</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-asistencia-registros"></tbody>
+          </table>
+        </div>
+
+        <div id="asistencia-autorizaciones-card" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
+          <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+            <strong>🔐 Historial de autorizaciones de asistencia</strong>
+            <button class="btn btn-purple" style="padding:8px 10px;" onclick="desbloquearClavesAsistencia()">VER CLAVES</button>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+            <input type="date" id="filtro-asistencia-auth-desde" onchange="renderAsistenciaAutorizaciones()">
+            <input type="date" id="filtro-asistencia-auth-hasta" onchange="renderAsistenciaAutorizaciones()">
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Colaborador</th>
+                <th>Acción</th>
+                <th>Clave usada</th>
+                <th>Resultado</th>
+                <th>Operador</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-asistencia-autorizaciones"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div id="autorizaciones" class="content-section">
         <div class="card">
           <h2>✅ Historial de Autorizaciones <button class="btn btn-danger" onclick="limpiarHistorial('autorizaciones')">BORRAR TODO</button></h2>
@@ -945,7 +1049,34 @@
                     <thead><tr><th>Fecha Copia</th><th>Motivo</th><th>Fecha Eliminado</th><th>Eliminado Por</th><th>Acción</th></tr></thead>
                     <tbody id="config-registro-backups-body"><tr><td colspan="5" style="text-align:center; color:#777;">Copias bloqueadas.</td></tr></tbody>
                 </table>
-            </div>            <div id="section-admin-master" style="display:none; margin-bottom:30px; padding:15px; border:2px solid var(--accent); border-radius:10px;">
+            </div>
+            <div id="section-asistencia-config" style="margin-bottom:30px; padding:15px; border:1px solid #dfe6e9; border-radius:10px; background:#f8fafc;">
+                <h3 style="color: var(--blue);">🕒 Configuración de Asistencia</h3>
+                <div style="font-size:12px; color:#666; margin-bottom:10px;">Controla activación del módulo, autorización por clave, hora límite de salida y claves de colaboradores.</div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin-bottom:10px;">
+                    <label class="team-check-row"><input type="checkbox" id="cfg-asistencia-activa"><span>Módulo activo</span></label>
+                    <label class="team-check-row"><input type="checkbox" id="cfg-asistencia-requiere-clave"><span>Solicitar clave para confirmar</span></label>
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Hora límite salida (madrugada)</label>
+                        <input id="cfg-asistencia-hora-limite" type="number" min="0" max="12" step="1" placeholder="4">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Contraseña maestra asistencia</label>
+                        <input id="cfg-asistencia-master-pass" type="password" placeholder="Defina contraseña maestra">
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                    <button class="btn btn-save" onclick="guardarConfigAsistenciaDesdeUI()">GUARDAR CONFIGURACIÓN</button>
+                    <button class="btn btn-purple" onclick="generarClavesAsistenciaColaboradores()">GENERAR CLAVES</button>
+                    <button class="btn btn-blue" onclick="desbloquearClavesAsistencia()">VER CLAVES</button>
+                </div>
+                <div id="config-asistencia-status" style="font-size:12px; color:#666; margin-bottom:8px;">Configuración de asistencia pendiente de carga.</div>
+                <table>
+                    <thead><tr><th>Colaborador</th><th>Estado</th><th>Clave</th><th>Última actualización</th><th>Acción</th></tr></thead>
+                    <tbody id="config-asistencia-colaboradores-body"><tr><td colspan="5" style="text-align:center; color:#777;">Sin colaboradores vinculados.</td></tr></tbody>
+                </table>
+            </div>
+            <div id="section-admin-master" style="display:none; margin-bottom:30px; padding:15px; border:2px solid var(--accent); border-radius:10px;">
                 <h3 style="color: var(--accent);">👑 Usuarios Administradores</h3>
                 <div style="margin-bottom:10px; font-size:12px; color:var(--secondary);">Los administradores delegados pueden gestionar equipo, pero no crear nuevos administradores.</div>
                 <div class="admin-master-create-row" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:10px;">
@@ -999,6 +1130,7 @@
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad"><span>👁️ Disponibilidad (completa)</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad-lite"><span>🔎 Disponibilidad (básica)</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="salida"><span>&#x1F4E4; Registrar Salida</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="asistencia"><span>&#x1F552; Asistencia</span></label>
                         </div>
                     </section>
 
@@ -1469,12 +1601,13 @@
     </div>
   </section>
 
-  <script src="assets/js/app.js?v=20260413-hotfix-1"></script>
+  <script src="assets/js/app.js?v=20260413-asistencia-dev-2"></script>
+  <script src="assets/js/asistencia-module.js?v=20260413-asistencia-dev-2"></script>
   <script src="assets/js/cloud-bridge.js?v=20260413-hotfix-1"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/service-worker.js?v=20260413-hotfix-1', {
+        navigator.serviceWorker.register('/service-worker.js?v=20260413-asistencia-dev-2', {
           updateViaCache: 'none'
         }).then(function (registration) {
           registration.update().catch(function () {});

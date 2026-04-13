@@ -3366,6 +3366,11 @@ body.mobile-web-like #distribuidores .dist-contact-grid #dist_direccion {
   padding: 18px;
   background: rgba(12, 19, 28, 0.42);
   z-index: 2590;
+  overscroll-behavior: contain;
+}
+
+body.salida-overlay-open {
+  overflow: hidden;
 }
 
 .salida-facturacion-overlay.is-open {
@@ -3383,6 +3388,7 @@ body.mobile-web-like #distribuidores .dist-contact-grid #dist_direccion {
   background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,249,252,0.98) 100%);
   box-shadow: 0 28px 54px rgba(10, 20, 28, 0.28);
   backdrop-filter: blur(8px);
+  min-height: 0;
 }
 
 .salida-facturacion-head {
@@ -3448,8 +3454,12 @@ body.mobile-web-like #distribuidores .dist-contact-grid #dist_direccion {
   border-radius: 0 0 18px 18px;
   border-top: 0 !important;
   max-height: calc(100vh - 170px);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   box-shadow: none;
+  min-height: 0;
 }
 
 .salida-facturacion-overlay.is-minimized #salida-facturacion-card {
@@ -3665,6 +3675,169 @@ body.mobile-web-like #distribuidores .dist-contact-grid #dist_direccion {
 
   .inventory-metric-card {
     padding: 11px 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .salida-facturacion-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .salida-facturacion-shell {
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: 0;
+  }
+
+  .salida-facturacion-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .salida-facturacion-overlay #salida-facturacion-card {
+    height: calc(100dvh - 86px);
+    max-height: calc(100dvh - 86px);
+    border-radius: 0;
+  }
+
+  #salida .sale-table-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  #salida #lista-cobro {
+    min-height: 170px !important;
+  }
+}
+
+.asistencia-main-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 12px;
+}
+
+.asistencia-colab-lista {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.asistencia-colab-btn {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #dfe6e9;
+  background: #fff;
+  color: #2f3542;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.asistencia-colab-btn:hover {
+  border-color: var(--blue);
+}
+
+.asistencia-colab-btn.active {
+  background: #0b5ed7;
+  border-color: #0b5ed7;
+  color: #fff;
+}
+
+.asistencia-colab-meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #57606f;
+}
+
+.asistencia-colab-btn.active .asistencia-colab-meta {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.asistencia-tablero-wrap {
+  border: 1px solid #dfe6e9;
+  border-radius: 10px;
+  overflow: auto;
+  background: #fff;
+}
+
+.asistencia-tablero-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.asistencia-tablero-table th,
+.asistencia-tablero-table td {
+  border: 1px solid #dfe6e9;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.asistencia-tablero-table th {
+  background: #f1f2f6;
+  color: #1f2937;
+}
+
+.asistencia-tablero-table th.asistencia-col-entrada {
+  background: #00d414;
+  color: #022500;
+}
+
+.asistencia-tablero-table th.asistencia-col-salida {
+  background: #ff2d2d;
+  color: #fff;
+}
+
+.asistencia-tablero-table th.asistencia-col-mark {
+  background: #e5e7eb;
+}
+
+.asistencia-mark-btn {
+  width: 38px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid #c9d1d9;
+  background: #f8fafc;
+  color: #1f2937;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.asistencia-mark-btn:hover {
+  border-color: #0b5ed7;
+}
+
+.asistencia-mark-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.asistencia-mark-btn.asistencia-mark-ok {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.asistencia-total-ok {
+  color: #0f766e;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .asistencia-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #btn-asistencia-add-colab {
+    width: 100%;
   }
 }
 
