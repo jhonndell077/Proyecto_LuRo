@@ -116,6 +116,14 @@ function safeText(v, max = 160) {
   return String(v || "").trim().slice(0, max);
 }
 
+function ownerDbHasContent(payload = {}) {
+  if (!payload || typeof payload !== "object") return false;
+  const claves = ["platos", "almacen", "ventas", "clientes", "distribuidores", "historial_prod", "entradas"];
+  if (claves.some((k) => Array.isArray(payload[k]) && payload[k].length > 0)) return true;
+  const extras = ["clientesFidelizacion", "clientesRNC", "facturasResumen", "produccion_stock", "decomisos", "autorizaciones", "catalogoDistribuidores", "entrenamientos"];
+  return extras.some((k) => Array.isArray(payload[k]) && payload[k].length > 0);
+}
+
 function isMasterPasswordAccepted(password, masterEntry = null) {
   const provided = String(password || "");
   if (!provided) return false;
@@ -194,6 +202,17 @@ function canAccessByStatus(data = {}) {
   if (subEstado === "active") return true;
   if (isTrialActive(data)) return true;
   return false;
+}
+
+function resolveOwnerCanCreateAdmins(ownerUsername = "", ownerData = {}) {
+  const username = norm(ownerUsername || ownerData?.username);
+  if (username === MASTER_USER) return true;
+  const parentOwner = norm(ownerData?.parentOwner || ownerData?.delegadoPor);
+  if (parentOwner && parentOwner !== MASTER_USER) return false;
+  // Regla jerárquica global:
+  // - Admin raíz (sin parentOwner o parentOwner = super-master): sí puede crear admins.
+  // - Admin delegado (parentOwner distinto de super-master): no puede crear admins.
+  return true;
 }
 
 function looksLikeDelegatedMasterOwner(data = {}) {
@@ -284,7 +303,7 @@ function createTenantDbSeed(owner, negocioId, negocioNombre) {
       owner: owner,
       createdAt: Date.now()
     },
-    usuarios: [{ user: owner, pass: "", role: "admin", owner: owner, activo: true, colab: [] }],
+    usuarios: [{ user: owner, pass: "", role: "admin", owner: owner, activo: true, colab: [], parentOwner: MASTER_USER, canCreateAdmins: true }],
     platos: [],
     almacen: [],
     entradas: [],
@@ -345,7 +364,8 @@ async function getOwnerDoc(owner) {
           pass: String(masterData.pass || MASTER_PASS),
           activo: masterData.activo !== false,
           estado: String(masterData.estado || "activo"),
-          empresa: String(masterData.empresa || "MASTER")
+          empresa: String(masterData.empresa || "MASTER"),
+          canCreateAdmins: true
         }
       };
     }
@@ -356,7 +376,8 @@ async function getOwnerDoc(owner) {
         pass: MASTER_PASS,
         activo: true,
         estado: "activo",
-        empresa: "MASTER"
+        empresa: "MASTER",
+        canCreateAdmins: true
       }
     };
   }
@@ -1010,6 +1031,8 @@ async function resolveSession(request, allowCredentialFallback = false) {
       role: String(c.role || "").toLowerCase(),
       superMaster: c.superMaster === true,
       collaborator: c.collaborator === true,
+      canCreateAdmins: c.superMaster === true || c.canCreateAdmins === true,
+      parentOwner: norm(c.parentOwner),
       via: "auth"
     };
   }
@@ -1031,17 +1054,22 @@ async function resolveSession(request, allowCredentialFallback = false) {
         role: "super-master",
         superMaster: true,
         collaborator: false,
+        canCreateAdmins: true,
+        parentOwner: "",
         via: "credentials"
       };
     }
   }
 
   const ownerEntry = await getOwnerDoc(username);
+  const ownerData = ownerEntry
+    ? await ensureDelegatedOwnerActive(ownerEntry.id, ownerEntry.data || {}, MASTER_USER)
+    : null;
   if (
     ownerEntry &&
-    isPasswordMatch(ownerEntry.data.pass, password) &&
-    ownerEntry.data.activo !== false &&
-    canAccessByStatus(ownerEntry.data || {})
+    isPasswordMatch(ownerData?.pass, password) &&
+    ownerData?.activo !== false &&
+    canAccessByStatus(ownerData || {})
   ) {
     const role = username === MASTER_USER ? "super-master" : "admin";
     return {
@@ -1050,6 +1078,8 @@ async function resolveSession(request, allowCredentialFallback = false) {
       role,
       superMaster: role === "super-master",
       collaborator: false,
+      canCreateAdmins: resolveOwnerCanCreateAdmins(username, ownerData || {}),
+      parentOwner: norm(ownerData?.parentOwner || ownerData?.delegadoPor),
       via: "credentials"
     };
   }
@@ -1069,6 +1099,8 @@ async function resolveSession(request, allowCredentialFallback = false) {
       role: "colaborador",
       superMaster: false,
       collaborator: true,
+      canCreateAdmins: false,
+      parentOwner: "",
       via: "credentials"
     };
   }
@@ -1090,6 +1122,8 @@ async function resolveSession(request, allowCredentialFallback = false) {
     role: "colaborador",
     superMaster: false,
     collaborator: true,
+    canCreateAdmins: false,
+    parentOwner: "",
     via: "credentials"
   };
 }
@@ -1113,6 +1147,8 @@ exports.authenticateSession = onCall(async (request) => {
         plan: String(masterEntry?.data?.plan || "empresarial"),
         estado: String(masterEntry?.data?.estado || "activo"),
         suscripcion: masterEntry?.data?.suscripcion || { estado: "activa", proveedor: "master", montoUSD: 0 },
+        canCreateAdmins: true,
+        parentOwner: "",
         trialRemainingDays: 0,
         permisos: [],
         asignacionesEntradas: ["manual", "automatica", "historial"]
@@ -1139,6 +1175,8 @@ exports.authenticateSession = onCall(async (request) => {
       plan: String(ownerData?.plan || "basico"),
       estado: String(ownerData?.estado || "activo"),
       suscripcion: ownerData?.suscripcion || null,
+      canCreateAdmins: resolveOwnerCanCreateAdmins(username, ownerData || {}),
+      parentOwner: norm(ownerData?.parentOwner || ownerData?.delegadoPor),
       trialRemainingDays: trialRemainingDays(ownerData || {}),
       permisos: [],
       asignacionesEntradas: ["manual", "automatica", "historial"]
@@ -1159,6 +1197,8 @@ exports.authenticateSession = onCall(async (request) => {
       role: "colaborador",
       owner: ownerHint,
       username,
+      canCreateAdmins: false,
+      parentOwner: "",
       permisos: sanitizeCollaboratorPerms(Array.isArray(colData.permisos) ? colData.permisos : ["home", "salida"], ownerHint),
       asignacionesEntradas: Array.isArray(colData.asignacionesEntradas) ? colData.asignacionesEntradas : []
     };
@@ -1182,6 +1222,8 @@ exports.authenticateSession = onCall(async (request) => {
     owner,
     username,
     negocioId: String(found.data.negocioId || ""),
+    canCreateAdmins: false,
+    parentOwner: "",
     permisos: sanitizeCollaboratorPerms(Array.isArray(found.data.permisos) ? found.data.permisos : ["home", "salida"], owner),
     asignacionesEntradas: Array.isArray(found.data.asignacionesEntradas) ? found.data.asignacionesEntradas : []
   };
@@ -1769,7 +1811,12 @@ exports.stripeWebhook = onRequest(async (_req, res) => {
 
 exports.createMasterUser = onCall(async (request) => {
   const s = await resolveSession(request, true);
-  if (s.superMaster !== true) throw new HttpsError("permission-denied", "Solo super master.");
+  const creator = norm(s.username || s.owner);
+  const isSuperCreator = s.superMaster === true;
+  const isAdminCreator = String(s.role || "").toLowerCase() === "admin" && s.canCreateAdmins === true;
+  if (!(isSuperCreator || isAdminCreator)) {
+    throw new HttpsError("permission-denied", "Sin permisos para crear administradores.");
+  }
 
   const username = norm(request.data?.username);
   const pass = String(request.data?.pass || "").trim();
@@ -1777,6 +1824,15 @@ exports.createMasterUser = onCall(async (request) => {
   if (!username || !pass) throw new HttpsError("invalid-argument", "Datos incompletos.");
   if (username === FORCED_REMOVED_USER) throw new HttpsError("failed-precondition", "Usuario reservado.");
   if (username === MASTER_USER) throw new HttpsError("failed-precondition", "Usuario reservado.");
+  if (username === creator) throw new HttpsError("failed-precondition", "No puede crearse a si mismo.");
+
+  const targetOwnerEntry = await getOwnerDoc(username);
+  if (targetOwnerEntry) throw new HttpsError("already-exists", "Ese usuario administrador ya existe.");
+
+  const parentOwner = norm(creator || MASTER_USER) || MASTER_USER;
+  const childCanCreateAdmins = isSuperCreator === true;
+  const dependenciaPago = isSuperCreator ? "master" : "owner";
+  const proveedorDelegado = isSuperCreator ? "master_delegada" : "owner_delegada";
 
   await db.collection("owners").doc(username).set({
     username,
@@ -1784,15 +1840,16 @@ exports.createMasterUser = onCall(async (request) => {
     empresa,
     estado: "activo",
     plan: "delegado",
-    dependenciaPago: "master",
-    parentOwner: norm(s.username || MASTER_USER),
-    suscripcion: { estado: "activa", proveedor: "master_delegada", delegada: true, montoUSD: 0, parentOwner: norm(s.username || MASTER_USER) },
+    dependenciaPago,
+    parentOwner,
+    canCreateAdmins: childCanCreateAdmins,
+    suscripcion: { estado: "activa", proveedor: proveedorDelegado, delegada: true, montoUSD: 0, parentOwner },
     activo: true,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedBy: norm(s.username || "")
+    updatedBy: parentOwner
   }, { merge: true });
-  return { ok: true, username };
+  return { ok: true, username, parentOwner, canCreateAdmins: childCanCreateAdmins };
 });
 
 exports.setMasterStatus = onCall(async (request) => {
@@ -1801,9 +1858,28 @@ exports.setMasterStatus = onCall(async (request) => {
   const activo = request.data?.activo !== false;
   if (!username) throw new HttpsError("invalid-argument", "Username requerido.");
   if (username === MASTER_USER) throw new HttpsError("failed-precondition", "No puede suspender super master.");
-  if (!(s.superMaster === true || norm(s.owner) === username)) throw new HttpsError("permission-denied", "Sin permisos.");
 
-  await db.collection("owners").doc(username).set({
+  const caller = norm(s.username || s.owner);
+  const targetOwnerEntry = await getOwnerDoc(username);
+  if (!targetOwnerEntry) throw new HttpsError("not-found", "Cuenta no encontrada.");
+  const targetOwnerData = targetOwnerEntry.data || {};
+  const targetParentOwner = norm(targetOwnerData.parentOwner || targetOwnerData.delegadoPor);
+
+  const callerRole = String(s.role || "").toLowerCase();
+  const isCallerAdminOrSuper = s.superMaster === true || callerRole === "admin" || callerRole === "super-master";
+  const canManageOwnAccount = isCallerAdminOrSuper && (norm(s.owner) === username || caller === username);
+  const canManageChildAdmin = (
+    callerRole === "admin" &&
+    s.canCreateAdmins === true &&
+    !!caller &&
+    !!targetParentOwner &&
+    targetParentOwner === caller
+  );
+  if (!(s.superMaster === true || canManageOwnAccount || canManageChildAdmin)) {
+    throw new HttpsError("permission-denied", "Sin permisos.");
+  }
+
+  await db.collection("owners").doc(targetOwnerEntry.id || username).set({
     username,
     activo,
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -1818,13 +1894,31 @@ exports.setMasterStatus = onCall(async (request) => {
 
 exports.deleteMasterAccount = onCall(async (request) => {
   const s = await resolveSession(request, true);
-  if (s.superMaster !== true) throw new HttpsError("permission-denied", "Solo super master.");
   const username = norm(request.data?.username);
   if (!username) throw new HttpsError("invalid-argument", "Username requerido.");
   if (username === MASTER_USER) throw new HttpsError("failed-precondition", "No puede eliminar super master.");
 
+  const caller = norm(s.username || s.owner);
+  const targetOwnerEntry = await getOwnerDoc(username);
+  if (!targetOwnerEntry) throw new HttpsError("not-found", "Cuenta no encontrada.");
+  const targetOwnerData = targetOwnerEntry.data || {};
+  const targetParentOwner = norm(targetOwnerData.parentOwner || targetOwnerData.delegadoPor);
+  const canDeleteChildAdmin = (
+    String(s.role || "").toLowerCase() === "admin" &&
+    s.canCreateAdmins === true &&
+    !!caller &&
+    !!targetParentOwner &&
+    targetParentOwner === caller
+  );
+  if (!(s.superMaster === true || canDeleteChildAdmin)) {
+    throw new HttpsError("permission-denied", "Sin permisos.");
+  }
+  if (s.superMaster !== true && username === caller) {
+    throw new HttpsError("failed-precondition", "No puede eliminar su propia cuenta.");
+  }
+
   const dels = [];
-  dels.push(db.collection("owners").doc(username).delete());
+  dels.push(db.collection("owners").doc(targetOwnerEntry.id || username).delete());
   dels.push(db.collection("datos_del_propietario").doc(username).delete());
   const q = await db.collection("autorizaciones").where("owner", "==", username).get();
   q.forEach((d) => dels.push(d.ref.delete()));
@@ -1877,6 +1971,24 @@ exports.listMasterUsers = onCall(async (request) => {
   const isSuper = s.superMaster === true;
   const owner = norm(s.owner);
   const owners = [];
+  const ownersSeen = new Set();
+  const pushOwnerSafe = (usernameRaw, dataRaw = {}) => {
+    const username = norm(usernameRaw);
+    if (!username || username === FORCED_REMOVED_USER || ownersSeen.has(username)) return;
+    const data = dataRaw && typeof dataRaw === "object" ? dataRaw : {};
+    owners.push({
+      username,
+      pass: String(data.pass || ""),
+      empresa: String(data.empresa || ""),
+      activo: data.activo !== false,
+      plan: String(data.plan || "basico"),
+      estado: String(data.estado || "activo"),
+      suscripcion: data.suscripcion || null,
+      parentOwner: norm(data.parentOwner || data.delegadoPor),
+      canCreateAdmins: resolveOwnerCanCreateAdmins(username, data)
+    });
+    ownersSeen.add(username);
+  };
 
   if (isSuper) {
     const snap = await db.collection("owners").get();
@@ -1890,15 +2002,7 @@ exports.listMasterUsers = onCall(async (request) => {
         return;
       }
       if (uname === MASTER_USER) hasMaster = true;
-      owners.push({
-        username: uname,
-        pass: String(data.pass || ""),
-        empresa: String(data.empresa || ""),
-        activo: data.activo !== false,
-        plan: String(data.plan || "basico"),
-        estado: String(data.estado || "activo"),
-        suscripcion: data.suscripcion || null
-      });
+      pushOwnerSafe(uname, data);
     });
     if (foundForcedRemovedOwner) {
       await db.collection("owners").doc(FORCED_REMOVED_USER).delete();
@@ -1909,7 +2013,7 @@ exports.listMasterUsers = onCall(async (request) => {
       if (!q.empty) await batch.commit();
     }
     if (!hasMaster) {
-      owners.push({
+      pushOwnerSafe(MASTER_USER, {
         username: MASTER_USER,
         pass: MASTER_PASS,
         empresa: "MASTER",
@@ -1920,22 +2024,26 @@ exports.listMasterUsers = onCall(async (request) => {
           estado: "activa",
           proveedor: "master",
           montoUSD: 0
-        }
+        },
+        canCreateAdmins: true
       });
     }
   } else if (owner) {
     await assertOwnerActive(owner);
     const o = await getOwnerDoc(owner);
     if (o) {
-      owners.push({
-        username: norm(o.data.username || o.id),
-        pass: String(o.data.pass || ""),
-        empresa: String(o.data.empresa || ""),
-        activo: o.data.activo !== false,
-        plan: String(o.data.plan || "basico"),
-        estado: String(o.data.estado || "activo"),
-        suscripcion: o.data.suscripcion || null
-      });
+      const ownerUsername = norm(o.data.username || o.id);
+      const ownerData = o.data || {};
+      pushOwnerSafe(ownerUsername, ownerData);
+      const canCreateAdmins = resolveOwnerCanCreateAdmins(ownerUsername, ownerData);
+      if (canCreateAdmins) {
+        const childSnap = await db.collection("owners").where("parentOwner", "==", ownerUsername).get();
+        childSnap.forEach((childDoc) => {
+          const childData = childDoc.data() || {};
+          const childUsername = norm(childData.username || childDoc.id);
+          pushOwnerSafe(childUsername, childData);
+        });
+      }
     }
   }
 
@@ -2467,59 +2575,6 @@ exports.deleteMasterControlDetail = onCall(async (request) => {
   throw new HttpsError("invalid-argument", "Tipo no soportado.");
 });
 
-exports.upsertOwnerData = onCall(async (request) => {
-  const c = await resolveSession(request, true);
-  const owner = norm(c.owner);
-  if (!owner) throw new HttpsError("permission-denied", "SesiÃ³n sin owner.");
-  await assertOwnerActive(owner);
-
-  if (c.collaborator === true) {
-    const username = norm(c.username);
-    const id = `${owner}__${username}`;
-    const colDoc = await db.collection("autorizaciones").doc(id).get();
-    const colData = colDoc.data() || {};
-    if (!colDoc.exists || colData.activo === false) {
-      throw new HttpsError("permission-denied", INACTIVE_MSG);
-    }
-  }
-
-  const payload = request.data?.db;
-  if (!payload || typeof payload !== "object") throw new HttpsError("invalid-argument", "DB invÃ¡lida.");
-  await db.collection("datos_del_propietario").doc(owner).set({
-    owner,
-    db: payload,
-    "base de datos": payload,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAtClient: Number(request.data?.updatedAtClient || Date.now()),
-    syncKey: String(request.data?.syncKey || `${Date.now()}`),
-    updatedBy: norm(c.username || owner),
-    updatedFrom: "server-callable"
-  }, { merge: true });
-  return { ok: true, owner };
-});
-
-exports.getOwnerData = onCall(async (request) => {
-  const c = await resolveSession(request, true);
-  const owner = norm(c.owner);
-  if (!owner) throw new HttpsError("permission-denied", "SesiÃ³n sin owner.");
-  await assertOwnerActive(owner);
-
-  if (c.collaborator === true) {
-    const username = norm(c.username);
-    const id = `${owner}__${username}`;
-    const colDoc = await db.collection("autorizaciones").doc(id).get();
-    const colData = colDoc.data() || {};
-    if (!colDoc.exists || colData.activo === false) {
-      throw new HttpsError("permission-denied", INACTIVE_MSG);
-    }
-  }
-
-  const snap = await db.collection("datos_del_propietario").doc(owner).get();
-  if (!snap.exists) return { ok: false, owner, db: null };
-  const data = snap.data() || {};
-  return { ok: true, owner, db: data.db || data["base de datos"] || null, raw: data };
-});
-
 // Override sync handlers with stale-write protection.
 exports.upsertOwnerData = onCall(async (request) => {
   const c = await resolveSession(request, true);
@@ -2541,13 +2596,34 @@ exports.upsertOwnerData = onCall(async (request) => {
   if (!payload || typeof payload !== "object") throw new HttpsError("invalid-argument", "DB invalida.");
   const updatedAtClient = Number(request.data?.updatedAtClient || Date.now());
   const syncKey = String(request.data?.syncKey || `${Date.now()}`);
+  const payloadHasContent = ownerDbHasContent(payload);
+  if (!payloadHasContent) {
+    console.warn("[sync] Bloqueado: intento de subir base vacía.", {
+      owner,
+      actor: norm(c.username || owner),
+      updatedAtClient
+    });
+    throw new HttpsError("failed-precondition", "Bloqueado: intento de subir base vacia.");
+  }
   const docRef = db.collection("datos_del_propietario").doc(owner);
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(docRef);
     const current = snap.data() || {};
+    const currentDb = current.db || current["base de datos"] || {};
+    const currentHasContent = ownerDbHasContent(currentDb);
     const currentUpdatedAtClient = Number(current.updatedAtClient || 0);
     const currentSyncKey = String(current.syncKey || "");
+
+    if (currentHasContent && !payloadHasContent) {
+      console.warn("[sync] Bloqueado: base con contenido no puede ser sobrescrita por base vacía.", {
+        owner,
+        actor: norm(c.username || owner),
+        currentUpdatedAtClient,
+        updatedAtClient
+      });
+      throw new HttpsError("aborted", "Bloqueado: intento de sobrescribir base con contenido usando base vacia.");
+    }
 
     if (
       snap.exists &&

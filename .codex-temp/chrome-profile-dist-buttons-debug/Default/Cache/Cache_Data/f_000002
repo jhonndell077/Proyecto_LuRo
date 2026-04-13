@@ -1,0 +1,968 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/* eslint-env browser */
+
+/**
+ * Script injected by the VS Code Live Preview Extension.
+ * http://aka.ms/live-preview
+ */
+
+window.addEventListener('message', (event) => handleMessage(event), false);
+window.addEventListener('error', (event) => handleError(event), false);
+
+document.addEventListener('DOMContentLoaded', function (e) {
+	onLoad();
+});
+
+if (window.parent !== window) {
+	console.error = createConsoleOverride('ERROR');
+
+	console.log = createConsoleOverride('LOG');
+
+	console.warn = createConsoleOverride('WARN');
+
+	console.info = createConsoleOverride('INFO');
+
+	console.clear = createConsoleOverride('CLEAR');
+}
+
+/**
+ * @description run initialization on load.
+ */
+function onLoad() {
+	const connection = new WebSocket('ws://127.0.0.1:4201/243b9f7a2d00db936968748ec14e5e589da60444');
+	connection.addEventListener('message', (e) => handleSocketMessage(e.data));
+
+	let onlyCtrlDown = false;
+
+	const commandPayload = {
+		path: window.location,
+		title: document.title,
+	};
+
+	// In embedded preview, tell the webview panel which page it is on now.
+	postParentMessage({
+		command: 'update-path',
+		text: JSON.stringify(commandPayload),
+	});
+
+	handleLinkHoverEnd();
+
+	const links = document.getElementsByTagName('a');
+	for (const link of links) {
+		// In embedded preview, all link clicks must be checked to see if the target page can be injected with this file's script.
+		link.addEventListener('click', (e) => handleLinkClick(e.target.href));
+		link.addEventListener('mouseenter', (e) =>
+			handleLinkHoverStart(e.target.href)
+		);
+		link.addEventListener('mouseleave', () => handleLinkHoverEnd());
+	}
+
+	document.addEventListener('keydown', (e) => {
+		onlyCtrlDown = (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey;
+		if ((e.key == 'F' || e.key == 'f') && onlyCtrlDown) {
+			postParentMessage({
+				command: 'show-find',
+			});
+			return;
+		}
+		postParentMessage({
+			command: 'did-keydown',
+			key: {
+				key: e.key,
+				keyCode: e.keyCode,
+				code: e.code,
+				shiftKey: e.shiftKey,
+				altKey: e.altKey,
+				ctrlKey: e.ctrlKey,
+				metaKey: e.metaKey,
+				repeat: e.repeat,
+			},
+		});
+	});
+
+	document.addEventListener('keyup', (e) => {
+		onlyCtrlDown = (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey;
+		postParentMessage({
+			command: 'did-keyup',
+			key: {
+				key: e.key,
+				keyCode: e.keyCode,
+				code: e.code,
+				shiftKey: e.shiftKey,
+				altKey: e.altKey,
+				ctrlKey: e.ctrlKey,
+				metaKey: e.metaKey,
+				repeat: e.repeat,
+			},
+		});
+	});
+}
+
+/**
+ * Helper function to insert a `postParentMesssage` call into console function calls.
+ * This will also send the printed information to the output channel if in embedded preview.
+ * @param {string} type the type of console log (e.g. info, warn, error, etc.).
+ */
+function createConsoleOverride(type) {
+	// Override console messages to allow the user to see console messages in the output channel (embedded preview only).
+	const consoleOverrides = {
+		ERROR: console.error,
+		LOG: console.log,
+		WARN: console.warn,
+		INFO: console.info,
+		CLEAR: console.clear,
+	};
+	return function (msg) {
+		let stringifiedMsg = 'undefined';
+
+		try {
+			stringifiedMsg = JSON.stringify(msg);
+			if (!stringifiedMsg) throw new Error('message is not in JSON format');
+		} catch (err) {
+			try {
+				stringifiedMsg = msg.toString();
+			} catch (err) {
+				// noop
+			}
+		}
+
+		const messagePayload = {
+			type: type,
+			data: stringifiedMsg,
+		};
+		postParentMessage({
+			command: 'console',
+			text: JSON.stringify(messagePayload),
+		});
+		consoleOverrides[type].apply(console, arguments);
+	};
+}
+
+/**
+ * Handle reload requests from WebSocket server.
+ * @param {any} data
+ */
+function handleSocketMessage(data) {
+	const parsedMessage = JSON.parse(data);
+	switch (parsedMessage.command) {
+		case 'reload': {
+			reloadPage();
+		}
+	}
+}
+
+/**
+ * Handle messages from the parent (specifically for embedded preview).
+ * @param {any} event
+ */
+function handleMessage(event) {
+	const message = event.data;
+
+	switch (message.command) {
+		case 'refresh':
+			reloadPage();
+			break;
+		case 'refresh-forced':
+			window.location.reload();
+			break;
+		case 'setup-parent-listener': {
+			const commandPayload = {
+				path: window.location,
+				title: document.title,
+			};
+
+			postParentMessage({
+				command: 'update-path',
+				text: JSON.stringify(commandPayload),
+			});
+			break;
+		}
+		case 'find-next': {
+			let findResult = window.find(message.text);
+			if (!findResult) {
+				if (hasFindResults(message.text)) {
+					findToBeginning(message.text);
+					findResult = true;
+				}
+			}
+			postParentMessage({
+				command: 'show-find-icon',
+				text: findResult,
+			});
+			break;
+		}
+		case 'find-prev': {
+			let findResult = window.find(message.text, false, true);
+			if (!findResult) {
+				if (hasFindResults(message.text)) {
+					findToEnd(message.text);
+					findResult = true;
+				}
+			}
+			postParentMessage({
+				command: 'show-find-icon',
+				text: findResult,
+			});
+			break;
+		}
+		default: {
+			if (
+				event.data.command != 'perform-url-check' &&
+				event.data.command != 'update-path'
+			) {
+				postParentMessage(event.data);
+			}
+		}
+	}
+}
+
+/**
+ * Handle errors from the parent (specifically for embedded preview).
+ * @param {any} event
+ */
+function handleError(event) {
+	const stackMessage = event.error.stack;
+	// stackMessages given in the form:
+	//    "errorType: errorMessage"
+	// Example:
+	//    "SyntaxError: Illegal newline after throw"
+	const errorType = stackMessage.split(':')[0];
+
+	// ignore errors such as SyntaxError, ReferenceError, etc
+	if (errorType === 'Error') {
+		const messagePayload = {
+			type: 'UNCAUGHT_ERROR',
+			data: stackMessage,
+		};
+		postParentMessage({
+			command: 'console',
+			text: JSON.stringify(messagePayload),
+		});
+	}
+}
+
+/**
+ * @param {string} searchString the string to search for.
+ * @returns whether this string has find results on the page.
+ */
+function hasFindResults(searchString) {
+	window.getSelection().removeAllRanges();
+	const canGoForward = window.find(searchString);
+	const canGoBack = window.find(searchString, false, true);
+	return canGoForward || canGoBack;
+}
+
+/**
+ * @param {string} searchString the string to search for.
+ * @returns move the find position to the beginning of the page.
+ */
+function findToBeginning(searchString) {
+	window.getSelection().removeAllRanges();
+	window.find(searchString);
+}
+
+/**
+ * @param {string} searchString the string to search for.
+ * @returns move the find position to the end of the page.
+ */
+function findToEnd(searchString) {
+	window.getSelection().removeAllRanges();
+	window.find(searchString, false, true);
+}
+
+/**
+ * Send message to the parent frame if this is an iframe (specifically for embedded preview).
+ * @param {any} data
+ */
+function postParentMessage(data) {
+	if (window.parent !== window) {
+		window.parent.postMessage(data, '*');
+	}
+}
+
+/**
+ * @description Monitor link clicks for non-injectable files (files that cannot be injected with this script) or for external links.
+ * Primarily for embedded previews.
+ * @param {string} linkTarget
+ */
+function handleLinkClick(linkTarget) {
+	const host = 'http://127.0.0.1:4200';
+	if (linkTarget && linkTarget != '' && !linkTarget.startsWith('javascript:')) {
+		if (!linkTarget.startsWith(host)) {
+			// The embedded preview does not support external sites; let the extension know that an external link has been
+			// opened in the embedded preview; this will open the modal to ask the user to navigate in an external browser
+			// and will force the embedded preview back to the previous page.
+			postParentMessage({ command: 'open-external-link', text: linkTarget });
+		} else {
+			// Check all local URLs to make sure to catch pages that won't be injectable
+			postParentMessage({ command: 'perform-url-check', text: linkTarget });
+		}
+	}
+}
+
+/**
+ * @description Show link preview on embedded preview.
+ * @param {string} linkTarget
+ */
+function handleLinkHoverStart(linkTarget) {
+	// In embedded preview, trigger the link preview.
+	postParentMessage({
+		command: 'link-hover-start',
+		text: linkTarget,
+	});
+}
+
+/**
+ * @description Hide link preview on embedded preview.
+ */
+function handleLinkHoverEnd() {
+	postParentMessage({
+		command: 'link-hover-end',
+	});
+}
+
+/**
+ * Reloads page when requested by a socket message or parent.
+ * Auto-reloading is prevented if the document body has a `data-server-no-reload` attribute.
+ */
+function reloadPage() {
+	const block = document.body
+		? document.body.hasAttribute('data-server-no-reload')
+		: false;
+	if (block) return;
+	window.location.reload();
+}
+
+// ============================================================
+// AG Smart Element Inspector
+// Ctrl+Shift+Click to inspect any element and copy selectors
+// ============================================================
+(function () {
+	let inspectMode = false;
+	let highlightOverlay = null;
+	let popup = null;
+	let currentTarget = null;
+
+	// --- CSS Selector Generator ---
+	function getCssSelector(el) {
+		if (el.id) return '#' + CSS.escape(el.id);
+		const parts = [];
+		let current = el;
+		while (current && current !== document.body && current !== document.documentElement) {
+			let selector = current.tagName.toLowerCase();
+			if (current.id) {
+				parts.unshift('#' + CSS.escape(current.id));
+				break;
+			}
+			if (current.className && typeof current.className === 'string') {
+				const classes = current.className.trim().split(/\s+/).filter(c => c && !c.startsWith('ag-inspect'));
+				if (classes.length > 0) {
+					selector += '.' + classes.map(c => CSS.escape(c)).join('.');
+				}
+			}
+			const parent = current.parentElement;
+			if (parent) {
+				const siblings = Array.from(parent.children).filter(c => c.tagName === current.tagName);
+				if (siblings.length > 1) {
+					const idx = siblings.indexOf(current) + 1;
+					selector += ':nth-of-type(' + idx + ')';
+				}
+			}
+			parts.unshift(selector);
+			current = current.parentElement;
+		}
+		return parts.join(' > ');
+	}
+
+	// --- XPath Generator ---
+	function getXPath(el) {
+		if (el.id) return '//*[@id="' + el.id + '"]';
+		const parts = [];
+		let current = el;
+		while (current && current.nodeType === Node.ELEMENT_NODE) {
+			let idx = 1;
+			let sibling = current.previousSibling;
+			while (sibling) {
+				if (sibling.nodeType === Node.ELEMENT_NODE && sibling.tagName === current.tagName) idx++;
+				sibling = sibling.previousSibling;
+			}
+			const tag = current.tagName.toLowerCase();
+			parts.unshift(tag + '[' + idx + ']');
+			current = current.parentElement;
+		}
+		return '/' + parts.join('/');
+	}
+
+	// --- Inject popup styles ---
+	function injectStyles() {
+		if (document.getElementById('ag-inspect-styles')) return;
+		const style = document.createElement('style');
+		style.id = 'ag-inspect-styles';
+		style.textContent = `
+			.ag-inspect-highlight {
+				position: fixed;
+				pointer-events: none;
+				border: 2px solid #00d4ff;
+				background: rgba(0, 212, 255, 0.08);
+				z-index: 999998;
+				transition: all 0.1s ease;
+				border-radius: 3px;
+			}
+			.ag-inspect-popup {
+				position: fixed;
+				z-index: 999999;
+				background: #1e1e2e;
+				border: 1px solid #45475a;
+				border-radius: 10px;
+				padding: 6px;
+				min-width: 220px;
+				max-width: 350px;
+				box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+				font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+				font-size: 12px;
+				color: #cdd6f4;
+				animation: ag-popup-in 0.15s ease;
+			}
+			@keyframes ag-popup-in {
+				from { opacity: 0; transform: translateY(4px) scale(0.97); }
+				to { opacity: 1; transform: translateY(0) scale(1); }
+			}
+			.ag-inspect-popup .ag-popup-title {
+				padding: 4px 8px 6px;
+				font-size: 11px;
+				color: #a6adc8;
+				border-bottom: 1px solid #313244;
+				margin-bottom: 4px;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			.ag-inspect-popup .ag-popup-title .ag-tag {
+				background: #7B2FBE;
+				color: #fff;
+				padding: 1px 6px;
+				border-radius: 4px;
+				font-size: 10px;
+				font-weight: 600;
+			}
+			.ag-inspect-popup .ag-popup-close {
+				cursor: pointer;
+				color: #6c7086;
+				font-size: 14px;
+				line-height: 1;
+				padding: 2px;
+			}
+			.ag-inspect-popup .ag-popup-close:hover { color: #f38ba8; }
+			.ag-inspect-btn {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				width: 100%;
+				padding: 6px 8px;
+				border: none;
+				background: transparent;
+				color: #cdd6f4;
+				cursor: pointer;
+				border-radius: 6px;
+				font-size: 12px;
+				font-family: inherit;
+				text-align: left;
+				transition: background 0.12s;
+			}
+			.ag-inspect-btn:hover {
+				background: #313244;
+			}
+			.ag-inspect-btn .ag-btn-icon {
+				font-size: 14px;
+				width: 18px;
+				text-align: center;
+				flex-shrink: 0;
+			}
+			.ag-inspect-btn .ag-btn-label {
+				flex: 1;
+				font-weight: 500;
+			}
+			.ag-inspect-btn .ag-btn-preview {
+				font-size: 10px;
+				color: #6c7086;
+				max-width: 120px;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				font-family: 'Cascadia Code', 'Consolas', monospace;
+			}
+			.ag-color-swatch {
+				width: 14px;
+				height: 14px;
+				border-radius: 50%;
+				border: 1px solid #585b70;
+				flex-shrink: 0;
+			}
+			.ag-inspect-toast {
+				position: fixed;
+				bottom: 60px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: #7B2FBE;
+				color: #fff;
+				padding: 6px 16px;
+				border-radius: 8px;
+				font-size: 12px;
+				font-family: 'Inter', system-ui, sans-serif;
+				z-index: 1000000;
+				animation: ag-toast-in 0.2s ease, ag-toast-out 0.3s ease 1.2s;
+				animation-fill-mode: forwards;
+				pointer-events: none;
+			}
+			@keyframes ag-toast-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+			@keyframes ag-toast-out { from { opacity: 1; } to { opacity: 0; } }
+			.ag-inspect-mode-hint {
+				position: fixed;
+				bottom: 8px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: #1e1e2e;
+				border: 1px solid #7B2FBE;
+				color: #cdd6f4;
+				padding: 6px 16px;
+				border-radius: 20px;
+				font-size: 12px;
+				font-family: 'Inter', system-ui, sans-serif;
+				z-index: 999997;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+			}
+			.ag-inspect-mode-hint .ag-dot {
+				width: 8px; height: 8px;
+				background: #a6e3a1;
+				border-radius: 50%;
+				animation: ag-pulse 1s infinite;
+			}
+			@keyframes ag-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+		`;
+		document.head.appendChild(style);
+	}
+
+	// --- Create highlight overlay ---
+	function createHighlight() {
+		if (highlightOverlay) return;
+		highlightOverlay = document.createElement('div');
+		highlightOverlay.className = 'ag-inspect-highlight';
+		highlightOverlay.style.display = 'none';
+		document.body.appendChild(highlightOverlay);
+	}
+
+	function updateHighlight(el) {
+		if (!highlightOverlay || !el) return;
+		const rect = el.getBoundingClientRect();
+		highlightOverlay.style.display = 'block';
+		highlightOverlay.style.top = rect.top + 'px';
+		highlightOverlay.style.left = rect.left + 'px';
+		highlightOverlay.style.width = rect.width + 'px';
+		highlightOverlay.style.height = rect.height + 'px';
+	}
+
+	function hideHighlight() {
+		if (highlightOverlay) highlightOverlay.style.display = 'none';
+	}
+
+	// --- Show toast ---
+	function showToast(msg) {
+		const toast = document.createElement('div');
+		toast.className = 'ag-inspect-toast';
+		toast.textContent = msg;
+		document.body.appendChild(toast);
+		setTimeout(() => toast.remove(), 1600);
+	}
+
+	// --- Copy to clipboard ---
+	function copyText(text, label) {
+		navigator.clipboard.writeText(text).then(() => {
+			showToast('✓ Đã copy ' + label);
+		}).catch(() => {
+			// Fallback
+			const ta = document.createElement('textarea');
+			ta.value = text;
+			ta.style.position = 'fixed';
+			ta.style.opacity = '0';
+			document.body.appendChild(ta);
+			ta.select();
+			document.execCommand('copy');
+			ta.remove();
+			showToast('✓ Đã copy ' + label);
+		});
+		removePopup();
+	}
+
+	// --- Show popup ---
+	function showPopup(el, x, y) {
+		removePopup();
+		currentTarget = el;
+
+		const cssSelector = getCssSelector(el);
+		const xpath = getXPath(el);
+		const jsQuery = "document.querySelector('" + cssSelector.replace(/'/g, "\\'") + "')";
+		const outerHTML = el.outerHTML;
+		const textContent = (el.textContent || '').trim().substring(0, 200);
+		const tagInfo = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).filter(c => !c.startsWith('ag-inspect')).join('.') : '');
+
+		// Get computed colors
+		const computed = window.getComputedStyle(el);
+		const bgColor = computed.backgroundColor;
+		const textColor = computed.color;
+		const borderColor = computed.borderColor;
+
+		popup = document.createElement('div');
+		popup.className = 'ag-inspect-popup';
+
+		popup.innerHTML = '<div class="ag-popup-title">' +
+			'<span><span class="ag-tag">AG</span> &nbsp;' + tagInfo.substring(0, 40) + '</span>' +
+			'<span class="ag-popup-close" id="ag-popup-close">✕</span>' +
+			'</div>';
+
+		const items = [
+			{ label: 'CSS Selector', value: cssSelector },
+			{ label: 'XPath', value: xpath },
+			{ label: 'JS Query', value: jsQuery },
+			{ label: 'Text Content', value: textContent },
+			{ label: 'Outer HTML', value: outerHTML.substring(0, 500) },
+		];
+
+		// Color items with color swatch
+		const colorItems = [];
+		if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+			colorItems.push({ label: 'Background', value: rgbToHex(bgColor), raw: bgColor });
+		}
+		if (textColor) {
+			colorItems.push({ label: 'Text Color', value: rgbToHex(textColor), raw: textColor });
+		}
+		if (borderColor && borderColor !== textColor && borderColor !== 'rgb(0, 0, 0)') {
+			colorItems.push({ label: 'Border', value: rgbToHex(borderColor), raw: borderColor });
+		}
+
+		items.forEach(item => {
+			if (!item.value) return;
+			const btn = document.createElement('button');
+			btn.className = 'ag-inspect-btn';
+			btn.innerHTML = '<span class="ag-btn-label">' + item.label + '</span>' +
+				'<span class="ag-btn-preview">' + escapeHtml(item.value.substring(0, 30)) + '</span>';
+			btn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				e.preventDefault();
+				copyText(item.value, item.label);
+			});
+			popup.appendChild(btn);
+		});
+
+		// Add color items with swatches
+		if (colorItems.length > 0) {
+			const divider = document.createElement('div');
+			divider.style.cssText = 'height:1px;background:#313244;margin:4px 8px;';
+			popup.appendChild(divider);
+
+			colorItems.forEach(ci => {
+				const btn = document.createElement('button');
+				btn.className = 'ag-inspect-btn';
+				btn.innerHTML = '<span class="ag-color-swatch" style="background:' + ci.raw + ';"></span>' +
+					'<span class="ag-btn-label">' + ci.label + '</span>' +
+					'<span class="ag-btn-preview">' + ci.value + '</span>';
+				btn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					e.preventDefault();
+					copyText(ci.value, ci.label);
+				});
+				popup.appendChild(btn);
+			});
+		}
+
+		// Position popup
+		let posX = x + 10;
+		let posY = y + 10;
+		document.body.appendChild(popup);
+
+		const popupRect = popup.getBoundingClientRect();
+		if (posX + popupRect.width > window.innerWidth - 10) posX = x - popupRect.width - 10;
+		if (posY + popupRect.height > window.innerHeight - 10) posY = y - popupRect.height - 10;
+		if (posX < 5) posX = 5;
+		if (posY < 5) posY = 5;
+
+		popup.style.left = posX + 'px';
+		popup.style.top = posY + 'px';
+
+		document.getElementById('ag-popup-close').addEventListener('click', (e) => {
+			e.stopPropagation();
+			removePopup();
+		});
+
+		// Close popup on outside click
+		setTimeout(() => {
+			document.addEventListener('click', onOutsideClick, true);
+		}, 100);
+	}
+
+	function onOutsideClick(e) {
+		if (popup && !popup.contains(e.target)) {
+			removePopup();
+		}
+	}
+
+	function removePopup() {
+		if (popup) {
+			popup.remove();
+			popup = null;
+		}
+		hideHighlight();
+		document.removeEventListener('click', onOutsideClick, true);
+	}
+
+	function escapeHtml(text) {
+		const div = document.createElement('div');
+		div.textContent = text;
+		return div.innerHTML;
+	}
+
+	// --- Inspect mode hint bar ---
+	let hintBar = null;
+	function showHintBar() {
+		if (hintBar) return;
+		hintBar = document.createElement('div');
+		hintBar.className = 'ag-inspect-mode-hint';
+		hintBar.innerHTML = '<span class="ag-dot"></span> AG Inspector — Click chọn element | ESC để thoát';
+		document.body.appendChild(hintBar);
+	}
+	function hideHintBar() {
+		if (hintBar) { hintBar.remove(); hintBar = null; }
+	}
+
+	// --- Toggle inspect mode ---
+	function enableInspect() {
+		if (inspectMode) return;
+		inspectMode = true;
+		injectStyles();
+		createHighlight();
+		showHintBar();
+		document.body.style.cursor = 'crosshair';
+		document.addEventListener('mouseover', onInspectHover, true);
+		document.addEventListener('click', onInspectClick, true);
+		document.addEventListener('keydown', onInspectKey, true);
+	}
+
+	function disableInspect() {
+		inspectMode = false;
+		hideHintBar();
+		removePopup();
+		document.body.style.cursor = '';
+		document.removeEventListener('mouseover', onInspectHover, true);
+		document.removeEventListener('click', onInspectClick, true);
+		document.removeEventListener('keydown', onInspectKey, true);
+	}
+
+	// Stop inspect mode but KEEP the popup visible
+	function stopInspectKeepPopup() {
+		inspectMode = false;
+		hideHighlight();
+		hideHintBar();
+		document.body.style.cursor = '';
+		document.removeEventListener('mouseover', onInspectHover, true);
+		document.removeEventListener('click', onInspectClick, true);
+		document.removeEventListener('keydown', onInspectKey, true);
+		// Update floating button state
+		const floatBtn = document.getElementById('ag-inspect-float-btn');
+		if (floatBtn) {
+			floatBtn.innerHTML = '<span class="ag-btn-emoji">🔍</span> AG Inspector';
+			floatBtn.classList.remove('ag-active');
+		}
+	}
+
+	function onInspectHover(e) {
+		if (!inspectMode) return;
+		const el = e.target;
+		if (el === highlightOverlay || el === popup || (popup && popup.contains(el))) return;
+		const floatBtn = document.getElementById('ag-inspect-float-btn');
+		if (el === floatBtn || (floatBtn && floatBtn.contains(el))) return;
+		updateHighlight(el);
+	}
+
+	function onInspectClick(e) {
+		if (!inspectMode) return;
+		const el = e.target;
+		if (el === popup || (popup && popup.contains(el)) || el === hintBar || (hintBar && hintBar.contains(el))) return;
+		const floatBtn = document.getElementById('ag-inspect-float-btn');
+		if (el === floatBtn || (floatBtn && floatBtn.contains(el))) return;
+		e.preventDefault();
+		e.stopPropagation();
+		e.stopImmediatePropagation();
+		showPopup(el, e.clientX, e.clientY);
+		stopInspectKeepPopup();
+	}
+
+	function onInspectKey(e) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			e.stopPropagation();
+			disableInspect();
+		}
+	}
+
+	// --- Activate with Ctrl+Shift+Click ---
+	document.addEventListener('click', function(e) {
+		if (e.ctrlKey && e.shiftKey && !inspectMode) {
+			e.preventDefault();
+			e.stopPropagation();
+			enableInspect();
+		}
+	}, true);
+
+	// --- Also listen for keyboard shortcut Ctrl+Shift+E to toggle ---
+	document.addEventListener('keydown', function(e) {
+		if (e.ctrlKey && e.shiftKey && e.key === 'E' && !inspectMode) {
+			e.preventDefault();
+			enableInspect();
+		}
+	}, true);
+
+	// --- Listen for message from parent (extension) ---
+	window.addEventListener('message', function(event) {
+		if (event.data && event.data.command === 'ag-start-inspect') {
+			enableInspect();
+		}
+	});
+
+	// --- Floating Inspector Button (always visible) ---
+	function createFloatingButton() {
+		injectStyles();
+
+		// Add floating button styles
+		const btnStyle = document.createElement('style');
+		btnStyle.id = 'ag-float-btn-styles';
+		btnStyle.textContent = `
+			.ag-float-btn {
+				position: fixed;
+				bottom: 16px;
+				left: 16px;
+				z-index: 999990;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				background: linear-gradient(135deg, #7B2FBE, #5B1F9E);
+				color: #fff;
+				border: none;
+				padding: 8px 14px;
+				border-radius: 24px;
+				font-size: 12px;
+				font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+				font-weight: 600;
+				cursor: pointer;
+				box-shadow: 0 4px 16px rgba(123, 47, 190, 0.4);
+				transition: all 0.2s ease;
+				opacity: 0.85;
+			}
+			.ag-float-btn:hover {
+				opacity: 1;
+				transform: translateY(-2px);
+				box-shadow: 0 6px 24px rgba(123, 47, 190, 0.6);
+			}
+			.ag-float-btn:active {
+				transform: translateY(0);
+			}
+			.ag-float-btn.ag-active {
+				background: linear-gradient(135deg, #e74c3c, #c0392b);
+				box-shadow: 0 4px 16px rgba(231, 76, 60, 0.4);
+				animation: ag-btn-pulse 1.5s infinite;
+			}
+			@keyframes ag-btn-pulse {
+				0%,100% { box-shadow: 0 4px 16px rgba(231, 76, 60, 0.4); }
+				50% { box-shadow: 0 4px 24px rgba(231, 76, 60, 0.7); }
+			}
+			.ag-float-btn .ag-btn-emoji {
+				font-size: 16px;
+			}
+		`;
+		document.head.appendChild(btnStyle);
+
+		const btn = document.createElement('button');
+		btn.className = 'ag-float-btn';
+		btn.id = 'ag-inspect-float-btn';
+		btn.innerHTML = '<span class="ag-btn-emoji">🔍</span> AG Inspector';
+		btn.title = 'Bật AG Inspector để chọn element và copy CSS/XPath/JS (Ctrl+Shift+E)';
+
+		btn.addEventListener('click', function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			if (inspectMode) {
+				disableInspect();
+				btn.innerHTML = '<span class="ag-btn-emoji">🔍</span> AG Inspector';
+				btn.classList.remove('ag-active');
+			} else {
+				enableInspect();
+				btn.innerHTML = '<span class="ag-btn-emoji">✕</span> Đang chọn...';
+				btn.classList.add('ag-active');
+			}
+		});
+
+		document.body.appendChild(btn);
+
+		// Update button state when inspect is disabled by ESC or element selection
+		const origDisable = disableInspect;
+		disableInspect = function() {
+			origDisable();
+			const floatBtn = document.getElementById('ag-inspect-float-btn');
+			if (floatBtn) {
+				floatBtn.innerHTML = '<span class="ag-btn-emoji">🔍</span> AG Inspector';
+				floatBtn.classList.remove('ag-active');
+			}
+		};
+	}
+
+	// Auto-create the floating button when page loads
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', createFloatingButton);
+	} else {
+		createFloatingButton();
+	}
+
+	// --- RGB to Hex converter ---
+	function rgbToHex(rgb) {
+		if (!rgb) return '';
+		if (rgb.startsWith('#')) return rgb;
+		const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+		if (!match) return rgb;
+		const r = parseInt(match[1]);
+		const g = parseInt(match[2]);
+		const b = parseInt(match[3]);
+		return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+	}
+})();
+
+// ============================================================
+// AG Zoom — Forward Ctrl+/- from iframe to parent webview
+// ============================================================
+(function() {
+	document.addEventListener('keydown', function(e) {
+		if (e.ctrlKey || e.metaKey) {
+			if (e.key === '=' || e.key === '+') {
+				e.preventDefault();
+				window.parent.postMessage({ command: 'ag-zoom-in' }, '*');
+			} else if (e.key === '-') {
+				e.preventDefault();
+				window.parent.postMessage({ command: 'ag-zoom-out' }, '*');
+			} else if (e.key === '0') {
+				e.preventDefault();
+				window.parent.postMessage({ command: 'ag-zoom-reset' }, '*');
+			}
+		}
+	}, true);
+
+	document.addEventListener('wheel', function(e) {
+		if (e.ctrlKey || e.metaKey) {
+			e.preventDefault();
+			window.parent.postMessage({ command: e.deltaY < 0 ? 'ag-zoom-in' : 'ag-zoom-out' }, '*');
+		}
+	}, { passive: false });
+})();

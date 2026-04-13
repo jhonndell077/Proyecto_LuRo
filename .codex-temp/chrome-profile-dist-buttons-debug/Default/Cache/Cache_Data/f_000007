@@ -1,0 +1,1267 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head><script type="text/javascript" src="/___vscode_livepreview_injected_script"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LuRo Control - El control en tus manos</title>
+  <meta name="theme-color" content="#0f1419">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260403-no-swipe-cache-1">
+</head>
+<body onload="cargarDatos()">
+
+<div id="modal-factura" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background:white; width:400px; padding:20px; border-radius:10px; position:relative; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+        <button onclick="cerrarFactura()" style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
+        
+        <div id="ticket-imprimible" style="font-family: 'Courier New', Courier, monospace; color: black;">
+            <div style="text-align:center; border-bottom: 1px dashed #000; padding-bottom:10px; margin-bottom:10px;">
+                <h2 id="factura-negocio" class="factura-brand" style="margin:0;">
+                  <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo-app luro-logo-toned-app">
+                  <span>LuRo Control</span>
+                </h2>
+                <p style="margin:2px; font-size:12px;">Gestión de Ventas</p>
+                <p id="factura-fecha" style="margin:2px; font-size:11px;"></p>
+            </div>
+
+            <table style="width:100%; font-size:13px; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #000;">
+                        <th style="text-align:left;">Cant.</th>
+                        <th style="text-align:left;">Producto</th>
+                        <th style="text-align:right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-factura"></tbody>
+            </table>
+
+            <div style="border-top: 1px dashed #000; margin-top:15px; padding-top:10px;">
+                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
+                    <span>TOTAL:</span>
+                    <span id="factura-total">RD$0.00</span>
+                </div>
+            </div>
+
+            <div style="text-align:center; margin-top:20px; font-size:11px;">
+                <p>*** Gracias por su compra ***</p>
+                <p>Usuario: <span id="factura-usuario"></span></p>
+            </div>
+        </div>
+
+        <button class="btn" onclick="imprimirTicket()" style="width:100%; margin-top:20px; background:var(--accent); color:white;">🖨️ IMPRIMIR FACTURA</button>
+        
+        <button onclick="document.getElementById('modal-factura').style.display='none'" 
+                style="margin-top:10px; width:100%; padding:12px; background:var(--secondary); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; text-transform: uppercase;">
+            CERRAR VENTANA
+        </button>
+
+        <button class="btn" id="btn-whatsapp-factura" onclick="enviarFacturaWhatsapp()" style="width:100%; margin-top:10px; background:#25D366; color:white;">
+            💬 ENVIAR POR WHATSAPP
+        </button>
+    </div>
+</div>
+
+<div id="modal-cierre-total" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:3205; justify-content:center; align-items:center; padding:16px;">
+    <div style="background:#fff; width:min(760px,96vw); max-height:92vh; overflow:auto; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--danger);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
+            <strong>📌 Cierre Total del Turno</strong>
+            <button class="btn btn-danger" onclick="cerrarModalCierreTotal()">X</button>
+        </div>
+        <div id="cierre-total-contenido" style="padding:14px;"></div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; padding:12px 14px; border-top:1px solid #eee;">
+            <button class="btn btn-blue" onclick="imprimirCierreTotal()">🖨️ IMPRIMIR CIERRE</button>
+            <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalCierreTotal()">CERRAR</button>
+        </div>
+    </div>
+</div>
+
+  <div id="login-overlay">
+    <div class="login-box">
+      <h2 class="brand-title-animated">
+        <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo-app luro-logo-toned-app">
+        <span>LuRo Control</span>
+      </h2>
+      <div class="brand-motion-text">El control en tus manos</div>
+      <p id="login-subtitle" style="margin-bottom:20px; color: #aaa; font-size: 0.9em;">Inicie sesión para continuar</p>
+      <div class="form-group"><input type="text" id="log_user" placeholder="Nombre de Usuario"></div>
+      <div class="form-group"><input type="password" id="log_pass" placeholder="Contraseña"></div>
+      <button id="btn-login-acceder" class="btn btn-save" style="width:100%; padding: 15px;" onclick="intentarLogin()">ACCEDER AL PANEL</button>
+      <button id="btn-olvido-login" class="btn btn-warning" style="width:100%; padding: 10px; margin-top:10px;" onclick="olvidastePassword()">¿Olvidaste tu contraseña?</button>
+      <button id="btn-contacto-dev-login" class="btn btn-blue" style="width:100%; padding:10px; margin-top:10px;" onclick="abrirModalContactoDesarrollador()">CONTACTAR CON EL DESARROLLADOR</button>
+    </div>
+  </div>
+
+  <div id="modal-contacto-desarrollador" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:3300; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:min(560px,96vw); background:#fff; border-radius:12px; border-top:6px solid var(--blue); box-shadow:0 20px 45px rgba(0,0,0,.35);">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
+        <strong style="font-size:16px;">Contactar con el desarrollador</strong>
+        <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalContactoDesarrollador()">X</button>
+      </div>
+      <div style="padding:14px;">
+        <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:10px; margin-bottom:10px;">
+          <div><strong>Teléfono:</strong> <span id="dev-contact-phone">+18293666947</span></div>
+          <div style="margin-top:6px;"><strong>Correo:</strong> <span id="dev-contact-email">Jssantana077@gmail.com</span></div>
+        </div>
+        <label style="font-size:12px; color:#666; font-weight:700;">Mensaje predeterminado</label>
+        <textarea id="dev-contact-message" rows="5" style="width:100%; margin-top:6px;"></textarea>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn btn-blue" onclick="enviarMensajeDesarrolladorWhatsapp()">WHATSAPP</button>
+          <button class="btn btn-warning" onclick="enviarMensajeDesarrolladorEmail()">CORREO</button>
+          <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalContactoDesarrollador()">CERRAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="registro-inicial-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:2100; justify-content:center; align-items:center; padding:16px;">
+    <div class="login-box" style="width:min(620px, 96vw); text-align:left;">
+      <h2 style="margin-bottom:6px;">Registro Inicial</h2>
+      <p style="margin:0 0 16px; color:#d2dae2; font-size:13px;">Complete estos datos antes de ingresar al sistema.</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="form-group"><input type="text" id="reg_user" placeholder="Usuario"></div>
+        <div class="form-group"><input type="password" id="reg_pass" placeholder="Contraseña"></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="form-group"><input type="text" id="reg_phone" placeholder="Número telefónico (WhatsApp)"></div>
+        <div class="form-group"><input type="text" id="reg_business" placeholder="Nombre del negocio"></div>
+      </div>
+      <div class="form-group">
+        <label style="font-size:12px; color:#d2dae2;">Foto/Logo del negocio</label>
+        <input type="file" id="reg_logo" accept="image/*" style="color:#d2dae2;">
+      </div>
+      <div class="form-group">
+        <textarea id="reg_reason" placeholder="Motivo por el que utiliza el sistema" rows="3" style="width:100%;"></textarea>
+      </div>
+      <button class="btn btn-save" style="width:100%; padding:12px;" onclick="completarRegistroInicial()">GUARDAR REGISTRO E INGRESAR</button>
+    </div>
+  </div>
+
+  <div id="module-selector">
+    <div id="module-cards-grid"></div>
+    <button class="btn btn-add-module-float" onclick="agregarNuevoModulo()">✨ AÑADIR NUEVO MÓDULO</button>
+  </div>
+  <button id="mobile-nav-toggle" class="mobile-nav-toggle" onclick="toggleSidebarMovil(event)" aria-label="Abrir menú">☰</button>
+  <div id="mobile-topbar">
+    <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="mobile-topbar-logo luro-logo-toned-app">
+    <span id="mobile-topbar-title">LuRo Control</span>
+  </div>
+  <div id="mobile-nav-backdrop" onclick="cerrarSidebarMovil('backdrop')"></div>
+
+ <div class="sidebar" id="sidebar">
+    <div id="sidebar-title" style="color:var(--accent); text-align:center; padding: 20px 0; font-size: 22px; font-weight: bold; letter-spacing: 1px;">COCINA</div>
+    <div class="sidebar-brand">
+      <strong class="sidebar-brand-title">
+        <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo-app luro-logo-toned-app">
+        <span>LuRo Control</span>
+      </strong>
+      <span id="sidebar-brand-sub">El control en tus manos</span>
+      <div id="sidebar-brand-module" class="active-module-tag">Módulo: COCINA</div>
+    </div>
+    <div id="admin-module-links" style="display:none; margin:0 12px 12px; padding:10px; border:1px dashed rgba(255,255,255,.2); border-radius:10px; background:rgba(255,255,255,.04);">
+      <div style="font-size:11px; color:#b2bec3; margin-bottom:6px; font-weight:700;">ENLACES DE MÓDULOS</div>
+      <div id="admin-module-links-list" style="display:grid; gap:6px;"></div>
+    </div>
+    
+    <a onclick="showPage('home')" style="border-left: 15px solid var(--warning);" class="active">🏠 Inicio</a>
+    <a id="nav-item-plato" onclick="showPage('agregar')" style="border-left: 15px solid var(--warning);">🧪 Agregar Plato</a>
+
+    <div class="folder-container">
+        <a class="menu-folder" onclick="toggleFolder(this)">
+            <span>💰 COSTOS</span>
+            <span class="folder-arrow">▶</span>
+        </a>
+        <div class="folder-content">
+            <a onclick="showPage('inventario')">📦 Almacén</a>
+            <a onclick="showPage('distribuidores')">🚚 Distribuidores</a>
+            <a onclick="showPage('produccion-interna')">🏭 Producción Interna</a>
+            <a onclick="showPage('disponibilidad')">👁️ Disponibilidad</a>
+            <a onclick="showPage('salida')">📤 Registrar Salida</a>
+            <a onclick="showPage('entrenamientos')">🎓 Entrenamientos</a>
+            <a onclick="showPage('procedimientos')">📘 Procedimientos</a>
+            <a onclick="showPage('clientes-puntos')">👥 Clientes y Puntos</a>
+        </div>
+    </div>
+
+<div class="folder-container">
+    <a class="menu-folder" onclick="toggleFolder(this)">
+        <span>🕙 HISTORIAL</span>
+        <span class="folder-arrow">▶</span>
+    </a>
+    <div class="folder-content">
+        <a onclick="showPage('historial-produccion')">📜 Historial Producción</a>
+        <a onclick="showPage('entradas-almacen')">📥 Entradas Almacén</a>
+        <a onclick="showPage('ventas')">📊 Historial de Ventas</a>
+        <a onclick="showPage('reporte-compras-distribuidor')">📑 Reporte Compras Distribuidor</a>
+        <a onclick="showPage('rnc-dgii')">🧾 Resumen de facturas</a> 
+        <a onclick="showPage('autorizaciones')">✅ Autorizaciones</a>
+        <a onclick="showPage('historial-decomiso')">📑 Historial Decomiso</a>
+    </div>
+</div>
+
+    <a onclick="showPage('decomiso')" style="border-left: 15px solid var(--warning);">🗑️ Registrar Decomiso</a>
+    <a onclick="showPage('produccion')" style="border-left: 15px solid var(--warning);">📊 Departamentos A-B-C</a>
+    <a onclick="showPage('diagnostico')" style="border-left: 15px solid var(--blue);">🧠 Diagnóstico Inteligente</a>
+    
+    <a id="btn-config-nav" onclick="showPage('configuracion')" style="background: #1e272e; margin-top: 10px;">⚙️ Configuración</a>
+    <a onclick="cerrarSesion()" style="background:var(--danger); margin-top:20px; text-align:center;">Cerrar Sesión</a>
+    <a onclick="regresarAModulos()" style="background:var(--secondary); text-align:center; border-top: 1px solid rgba(255,255,255,0.1);">🔄 Cambiar Módulo</a>
+    <a onclick="cambiarUsuario()" style="background:var(--primary); text-align:center; border-top: 1px solid rgba(255,255,255,0.1);">👤 Cambiar de Usuario</a>
+</div>
+
+  <div class="main" id="main-content">
+    <div id="home" class="content-section active">
+        <div class="card">
+            <h2>Panel de Control General</h2>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div style="background:#f8f9fa; padding:15px; border-radius:10px;">
+                    <span style="color:gray; font-size:12px;">USUARIO ACTIVO</span><br>
+                    <strong id="session-user" style="font-size:18px;"></strong>
+                </div>
+                <div style="background:#f8f9fa; padding:15px; border-radius:10px;">
+                    <span style="color:gray; font-size:12px;">MODO ACTUAL</span><br>
+                    <strong id="current-module-display" style="font-size:18px;"></strong>
+                </div>
+            </div>
+
+            <div style="margin-top:18px; background:#f8f9fa; padding:15px; border-radius:10px; border-left:5px solid var(--accent);">
+                <span style="color:gray; font-size:12px;">DATOS DEL REGISTRO INICIAL</span>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px;">
+                    <div>
+                        <span style="color:gray; font-size:11px;">USUARIO REGISTRADO</span><br>
+                        <strong id="home-reg-user">-</strong>
+                    </div>
+                    <div>
+                        <span style="color:gray; font-size:11px;">NEGOCIO</span><br>
+                        <strong id="home-reg-business">-</strong>
+                    </div>
+                    <div>
+                        <span style="color:gray; font-size:11px;">WHATSAPP DEL NEGOCIO</span><br>
+                        <strong id="home-reg-phone">-</strong>
+                    </div>
+                    <div>
+                        <span style="color:gray; font-size:11px;">FECHA DE REGISTRO</span><br>
+                        <strong id="home-reg-created">-</strong>
+                    </div>
+                </div>
+                <div style="margin-top:12px;">
+                    <span style="color:gray; font-size:11px;">MOTIVO DE USO</span><br>
+                    <span id="home-reg-reason" style="font-weight:600;">-</span>
+                </div>
+                <div style="margin-top:12px;">
+                    <span style="color:gray; font-size:11px;">PERFIL DEL NEGOCIO</span><br>
+                    <img id="home-reg-logo" src="" alt="Perfil negocio" style="display:none; width:88px; height:88px; object-fit:cover; border-radius:10px; border:1px solid #ddd; margin-top:6px;">
+                </div>
+                <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                    <button id="home-btn-eliminar-registro" class="btn btn-danger" onclick="eliminarRegistroInicialDesdeInicio()">🧨 ELIMINAR REGISTRO INICIAL</button>
+                </div>
+            </div>
+
+            <div style="margin-top:18px; background:#f8f9fa; padding:15px; border-radius:10px; border-left:5px solid var(--blue);">
+                <span style="color:gray; font-size:12px;">MEMBRESÍA Y SUSCRIPCIÓN</span>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px;">
+                    <div>
+                        <span style="color:gray; font-size:11px;">PLAN ACTUAL</span><br>
+                        <strong id="home-plan-actual">-</strong>
+                    </div>
+                    <div>
+                        <span style="color:gray; font-size:11px;">ESTADO</span><br>
+                        <strong id="home-estado-suscripcion">-</strong>
+                    </div>
+                </div>
+                <div id="home-trial-notice" style="display:none; margin-top:10px; font-size:12px; font-weight:700; color:#a66a00; background:#fff7e6; border:1px solid #ffe0a3; padding:8px 10px; border-radius:8px;"></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-top:12px;">
+                    <select id="home-plan-select">
+                        <option value="basico">Plan Básico</option>
+                        <option value="profesional">Plan Profesional</option>
+                        <option value="empresarial">Plan Empresarial</option>
+                    </select>
+                    <select id="home-billing-day-select">
+                        <option value="1">Cobro día 1</option>
+                        <option value="5">Cobro día 5</option>
+                        <option value="10" selected>Cobro día 10</option>
+                        <option value="15">Cobro día 15</option>
+                        <option value="20">Cobro día 20</option>
+                        <option value="25">Cobro día 25</option>
+                        <option value="28">Cobro día 28</option>
+                    </select>
+                    <button class="btn btn-blue" onclick="iniciarCambioMembresiaDesdeInicio()">💳 CAMBIAR MEMBRESÍA</button>
+                </div>
+                <div id="home-membership-status" style="margin-top:10px; font-size:12px; color:#666;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="agregar" class="content-section">
+      <div class="card">
+        <h2 id="titulo-receta">🧪 Crear Receta Nueva</h2>
+        <div id="alerta-existente" style="display:none; background:#fff3cd; color:#856404; padding:10px; border-radius:8px; margin-bottom:15px; font-size:13px;">
+            ⚠️ Este plato ya existe. Si continúa, se actualizará la receta actual.
+        </div>
+        <div class="form-group">
+          <label id="label-nombre-item">Nombre del Plato</label>
+          <input type="text" id="p_nombre" onkeyup="verificarPlatoExistente()" placeholder="Ej. Pollo a la Plancha">
+        </div>
+        <div class="tax-container">
+          <span style="font-size: 12px; color: var(--secondary);">IMPUESTOS:</span>
+          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.13" onclick="recalcularCostoReceta()"> Cobertura 13%</label>
+          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.10" onclick="recalcularCostoReceta()"> Añadir 10%</label>
+          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.16" onclick="recalcularCostoReceta()"> Añadir 16%</label>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-group"><label>Costo Producción (RD$)</label><input type="number" id="p_costo" value="0.00" readonly style="background: #f1f2f6;"></div>
+          <div class="form-group" id="row-tax-visual" style="display:none;">
+            <label style="color: var(--purple); font-weight: bold;">Costo con Impuestos (RD$)</label>
+            <input type="number" id="p_costo_tax" value="0.00" readonly style="background: #fff0f3; border: 1px solid var(--purple);">
+          </div>
+        </div>
+        <div class="form-group">
+          <label style="color: var(--success); font-weight: bold;">Venta Recomendada (x3) (RD$)</label>
+          <input type="number" id="p_recom" value="0.00" readonly style="background: #e8f5e9; border: 1px solid var(--success);">
+        </div>
+        <div class="form-group">
+          <label>Precio de Venta Final (RD$)</label>
+          <input type="number" id="p_precio" placeholder="Ingrese el precio final">
+        </div>
+        <div id="contenedor-ingredientes"></div>
+        <button class="btn btn-warning" onclick="agregarFilaIngrediente()" style="width:100%; margin-top:10px;">+ VINCULAR INGREDIENTE (ALMACÉN / PROD)</button>
+        <button class="btn btn-save" id="btn-guardar-plato" onclick="guardarPlatoNuevo()" style="width:100%; margin-top:15px;">GUARDAR EN EL MENÚ</button>
+      </div>
+    </div>
+
+<div id="inventario" class="content-section">
+      <div class="card">
+        <h2>📦 Almacén de Suministros</h2>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+          <input type="text" id="inv_nombre" placeholder="Nombre del Producto (ej. Yuca)">
+          <select id="inv_dist_select">
+            <option value="">Distribuidor / Proveedor</option>
+          </select>
+          <select id="inv_unidad">
+            <option value="" disabled selected>Unidad de Medida</option>
+            <option value="Lb">Libras (Lb)</option>
+            <option value="Oz">Onzas (Oz)</option>
+            <option value="g">Gramos (g)</option>
+            <option value="mL">Mililitros (mL)</option>
+            <option value="Litros">Litros</option>
+            <option value="Unidad">Unidad</option>
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:15px;">
+          <div title="Cantidad que está entrando físicamente">
+             <label style="font-size: 10px; color: #666;">CANT. ENTRADA</label>
+             <input type="number" id="inv_actual" placeholder="0.00">
+          </div>
+          <div title="Nivel de stock que siempre deberías tener">
+             <label style="font-size: 10px; color: #666;">STOCK IDEAL (META)</label>
+             <input type="number" id="inv_ideal" placeholder="0.00">
+          </div>
+          <div title="Precio total pagado por esta entrada">
+             <label style="font-size: 10px; color: #666;">COSTO TOTAL (RD$)</label>
+             <input type="number" id="inv_costo_total" placeholder="0.00">
+          </div>
+        </div>
+
+        <button class="btn btn-save" style="width:100%; background:#d8f7e5; color:#136a43; border:1px solid #b8e8cb;" onclick="agregarAlmacen()">REGISTRAR ENTRADA</button>
+        <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; margin-top:10px;">
+            <div style="font-size:12px; color:#666; align-self:center;">Puede seleccionar el mejor proveedor desde el comparador de distribuidores.</div>
+            <button class="btn btn-purple" style="background:#eedcff; color:#5d3b8c; border:1px solid #d8b7ff;" onclick="buscarMejorProveedorEnAlmacen()">🏆 MEJOR PROVEEDOR</button>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button class="btn" style="flex: 1; background-color: #dceeff; color:#1d567f; border:1px solid #bddcff;" onclick="entradaAutomaticaMasiva()">
+                🧮 RELLENAR STOCK IDEAL
+            ></button>
+            <button class="btn btn-blue" style="flex: 1; background-color: #dcf7e6; color:#1e6e46; border:1px solid #bfeccc;" onclick="enviarPedidoWhatsapp()">
+                🛒 LISTA DE COMPRAS (WA)
+            ></button>
+        </div>
+
+        <button class="btn btn-danger" style="width: 100%; margin-top: 10px; background-color: #ffcfc7; color:#8f2412; border:1px solid #ffb4aa;" onclick="borrarTodoElAlmacen()">
+    🗑️ ELIMINAR TODO EL ALMACÉN
+></button>
+
+        <div style="margin-top: 20px; position: relative;">
+            <input type="text" id="buscarProductoAlmacen" placeholder="🔎 Buscar producto en inventario..." 
+                   onkeyup="resaltarProducto()" 
+                   style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; background-color: #f9f9f9;">
+        </div>
+
+        <div style="overflow-x: auto; margin-top: 15px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto (Existencia Ideal)</th>
+                        <th>Disponible</th>
+                        <th>Costo Unit. (RD$)</th>
+                        <th>Faltante</th>
+                        <th>Costo p/ Faltante</th> 
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-inventario">
+                    </tbody>
+            </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="distribuidores" class="content-section">
+      <div class="card">
+        <h2>🚚 Gestión de Distribuidores</h2>
+        <div class="dist-form-shell">
+          <div class="dist-toolbar">
+            <div class="dist-toolbar-fields">
+              <input type="text" id="dist_nombre" placeholder="Nombre del distribuidor (ej. Pricesmart)">
+              <select id="dist_estado">
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="dist-contact-grid">
+            <input type="text" id="dist_contacto" placeholder="Contacto">
+            <input type="text" id="dist_telefono" placeholder="Teléfono">
+            <input type="email" id="dist_email" placeholder="Email">
+            <input type="text" id="dist_direccion" placeholder="Dirección">
+          </div>
+          <div class="dist-actions-row">
+            <button class="btn btn-save" onclick="guardarDistribuidor()">GUARDAR</button>
+            <button class="btn btn-warning" onclick="limpiarFormularioDistribuidor()">LIMPIAR</button>
+            <button class="btn btn-danger" onclick="eliminarDistribuidorSeleccionado()">ELIMINAR</button>
+          </div>
+        </div>
+        <input type="hidden" id="dist_edit_id">
+        <table>
+          <thead><tr><th>Distribuidor</th><th>Estado</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th>Alerta Producto</th><th>Productos</th><th>Acción</th></tr></thead>
+          <tbody id="tabla-distribuidores"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <div id="modal-catalogo-distribuidor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2700; align-items:center; justify-content:center; padding:14px;">
+      <div style="width:min(900px, 97vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--purple); box-shadow:0 18px 40px rgba(0,0,0,.35);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
+          <strong id="modal-catalogo-titulo" style="font-size:18px; color:var(--primary);">Productos del Distribuidor</strong>
+          <button class="btn btn-danger" onclick="cerrarModalCatalogoDistribuidor()">X</button>
+        </div>
+        <div style="padding:14px;">
+          <input type="hidden" id="modal-catalogo-dist-id" value="">
+          <table>
+            <thead><tr><th>Producto</th><th>Unidad</th><th>Precio</th><th>Disponible</th><th>Actualizado</th><th>Acción</th></tr></thead>
+            <tbody id="modal-catalogo-productos-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-gestion-productos-distribuidor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2750; align-items:center; justify-content:center; padding:14px;">
+      <div style="width:min(980px, 98vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--accent); box-shadow:0 18px 40px rgba(0,0,0,.35);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
+          <strong id="dist-productos-titulo" style="font-size:18px; color:var(--primary);">Productos del distribuidor seleccionado</strong>
+          <button class="btn btn-danger" onclick="cerrarModalProductosDistribuidor()">X</button>
+        </div>
+        <div style="padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
+            <div style="font-size:12px; color:#666;">Seleccione productos para pedir por WhatsApp.</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label style="font-size:12px; color:#555; display:flex; align-items:center; gap:5px;">
+                <input type="checkbox" id="dist-prod-select-all" onchange="seleccionarTodosProductosDistribuidor(this.checked)"> Seleccionar todos
+              </label>
+              <button class="btn btn-blue" onclick="pedirProductosDistribuidorSeleccionados()">PEDIR</button>
+            </div>
+          </div>
+          <input type="hidden" id="dist-productos-dist-id" value="">
+          <table>
+            <thead><tr><th></th><th>Producto</th><th>Unidad</th><th>Precio</th><th>Faltante</th><th>Disponible</th><th>Acción</th></tr></thead>
+            <tbody id="tabla-dist-productos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-detalle-compra-distribuidor" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2760; align-items:center; justify-content:center; padding:14px;">
+      <div style="width:min(900px, 98vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--blue); box-shadow:0 18px 40px rgba(0,0,0,.35);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
+          <strong id="detalle-compra-dist-titulo" style="font-size:18px; color:var(--primary);">Detalle de Compra</strong>
+          <button class="btn btn-danger" onclick="cerrarModalDetalleCompraDistribuidor()">X</button>
+        </div>
+        <div style="padding:14px;">
+          <table>
+            <thead><tr><th>Producto</th><th>Cantidad</th><th>Medida</th><th>Monto Entrada</th></tr></thead>
+            <tbody id="tabla-detalle-compra-distribuidor"></tbody>
+          </table>
+          <div id="total-detalle-compra-distribuidor" class="resumen-caja resumen-ganancia" style="margin-top:10px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="produccion-interna" class="content-section">
+      <div class="card">
+        <h2>🏭 Gestión de Producción (Semielaborados)</h2>
+        <p style="font-size: 0.9em; color: #666;">Cree productos preparados a partir de insumos del almacén.</p>
+        
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; margin-bottom:15px;">
+          <input type="text" id="prod_nombre" placeholder="Nombre de la Producción (Ej: Salsa Boloñesa)">
+          <input type="number" id="prod_cantidad" placeholder="Cant. Producida">
+          <select id="prod_unidad">
+            <option value="g">g</option>
+            <option value="mL">mL</option>
+            <option value="Lb">Lb</option>
+            <option value="Lt">Litros</option>
+            <option value="Oz">Oz</option>
+            <option value="Unidad">Unidad</option>
+          </select>
+          <button class="btn btn-purple" onclick="agregarFilaIngredienteProduccion()">+ Insumo</button>
+        </div>
+
+        <div id="contenedor-insumos-produccion" style="margin-bottom: 15px;"></div>
+        
+        <button class="btn btn-save" style="width:100%" onclick="procesarNuevaProduccion()">FINALIZAR Y CARGAR A PRODUCCIÓN</button>
+        
+        <h3 style="margin-top:30px;">Inventario de Producción Actual</h3>
+        <table>
+          <thead>
+            <tr><th>Producto</th><th>Existencia Disponible</th><th>Costo Unit. (RD$)</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="tabla-stock-produccion"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="historial-produccion" class="content-section">
+      <div class="card">
+        <h2>📜 Historial de Producción <button class="btn btn-danger" onclick="limpiarHistorial('produccion')">BORRAR TODO</button></h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+          <input type="date" id="filtro-prod-desde" onchange="renderHistorialProduccion()">
+          <input type="date" id="filtro-prod-hasta" onchange="renderHistorialProduccion()">
+        </div>
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Costo Op.</th><th>Operador</th></tr>
+          </thead>
+          <tbody id="tabla-historial-produccion"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="entradas-almacen" class="content-section">
+      <div class="card">
+        <h2>📥 Registro de Entradas <button class="btn btn-danger" onclick="limpiarHistorial('entradas')">BORRAR TODO</button></h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+          <input type="date" id="filtro-entradas-desde" onchange="renderEntradas()">
+          <input type="date" id="filtro-entradas-hasta" onchange="renderEntradas()">
+        </div>
+        <table><thead><tr><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Medida</th><th>Operador</th></tr></thead><tbody id="tabla-registro-entradas"></tbody></table>
+      </div>
+    </div>
+
+    <div id="rnc-dgii" class="content-section">
+      <div class="card">
+        <h2>🧾 Resumen de facturas <button class="btn btn-danger" onclick="limpiarHistorial('rnc')">BORRAR TODO</button></h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+          <input type="date" id="filtro-rnc-desde" onchange="actualizarTablaRNC()">
+          <input type="date" id="filtro-rnc-hasta" onchange="actualizarTablaRNC()">
+        </div>
+        <input type="text" id="busqueda-rnc-clientes" onkeyup="actualizarTablaRNC()" placeholder="Buscar por cliente, RNC/Cédula, NCF, mesa, código o WhatsApp..." style="width:100%; margin-bottom:10px; padding:12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Operador</th>
+              <th>Mesa</th>
+              <th>Cliente</th>
+              <th>NCF</th>
+              <th>RNC / Cédula</th>
+              <th>Código</th>
+              <th>Total</th>
+              <th>WhatsApp</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-rnc-dgii"></tbody>
+        </table>
+      </div>
+    </div>
+
+<div id="disponibilidad" class="content-section">
+    <div class="card">
+        <div class="card" style="border-top: 5px solid var(--blue); background: #f1f2f6;">
+            <h3 style="font-size: 14px; color: var(--secondary); margin-bottom: 10px;">💹 AJUSTE MASIVO DE PRECIOS (COSTO DE VENTA)</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.05)">+5%</button>
+                <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.10)">+10%</button>
+                <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.15)">+15%</button>
+                <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.20)">+20%</button>
+                <button class="btn btn-purple" onclick="validarYEjecutarAjuste('manual')">MANUAL</button>
+                
+                <button class="btn btn-danger" onclick="borrarTodoElMenu()" style="margin-left: 10px;">🗑️ BORRAR TODO EL MENÚ</button>
+                
+                <button id="btn-revertir" class="btn btn-danger" style="display:none; margin-left: auto;" onclick="revertirCambioPrecio()">↩️ REVERTIR</button>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0 10px;">
+            <h2 style="margin:0;">📋 Disponibilidad del Menú</h2>
+            <button class="btn btn-blue" onclick="abrirModalPlatoDirecto()">Añadir Directamente</button>
+        </div>
+        <table>
+            <thead id="thead-disponibilidad-full">
+                <tr>
+                    <th>Plato / Receta</th>
+                    <th>Precio</th>
+                    <th>Existencia</th>
+                    <th>Nueva Existencia</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-disponibilidad-full"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-plato-directo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3320; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:min(520px,96vw); background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
+            <strong style="font-size:18px; color:var(--primary);">Añadir Directamente</strong>
+            <button class="btn btn-danger" onclick="cerrarModalPlatoDirecto()">X</button>
+        </div>
+        <div style="padding:14px; display:grid; gap:12px;">
+            <div style="font-size:12px; color:#666;">Agregue un plato rápido con solo nombre y precio.</div>
+            <div>
+                <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Nombre</label>
+                <input id="plato-directo-nombre" type="text" placeholder="Ej. Chimi clásico">
+            </div>
+            <div>
+                <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Precio</label>
+                <input id="plato-directo-precio" type="number" min="0" step="0.01" placeholder="0.00">
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 14px; border-top:1px solid #eee;">
+            <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalPlatoDirecto()">CANCELAR</button>
+            <button class="btn btn-save" onclick="guardarPlatoDirecto()">GUARDAR</button>
+        </div>
+    </div>
+</div>
+
+    <div id="ventas" class="content-section">
+      <div class="card">
+        <h2>📊 Historial Ventas <button class="btn btn-danger" onclick="limpiarHistorial('ventas')">BORRAR TODO</button></h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+          <input type="date" id="filtro-ventas-desde" onchange="renderHistorialVentas()">
+          <input type="date" id="filtro-ventas-hasta" onchange="renderHistorialVentas()">
+        </div>
+        <table><thead><tr><th>Fecha</th><th>Ítem</th><th>Total</th><th>Ganancia</th><th>Operador</th></tr></thead><tbody id="tabla-historial-ventas"></tbody></table>
+        <div id="total-ganancias-cuadro" class="resumen-caja resumen-ganancia"></div>
+      </div>
+    </div>
+
+    <div id="autorizaciones" class="content-section">
+        <div class="card">
+          <h2>✅ Historial de Autorizaciones <button class="btn btn-danger" onclick="limpiarHistorial('autorizaciones')">BORRAR TODO</button></h2>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <input type="date" id="filtro-auth-desde" onchange="renderAutorizaciones()">
+            <input type="date" id="filtro-auth-hasta" onchange="renderAutorizaciones()">
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Operador</th>
+                <th>Ítem</th>
+                <th>Ingredientes en 0</th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-historial-autorizaciones"></tbody>
+          </table>
+        </div>
+    </div>
+
+    <div id="historial-decomiso" class="content-section">
+      <div class="card">
+        <h2>📑 Historial Decomiso <button class="btn btn-danger" onclick="limpiarHistorial('decomisos')">BORRAR TODO</button></h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+          <input type="date" id="filtro-decomiso-desde" onchange="renderHistorialDecomiso()">
+          <input type="date" id="filtro-decomiso-hasta" onchange="renderHistorialDecomiso()">
+        </div>
+        <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Cant.</th><th>Medida</th><th>Pérdida (RD$)</th><th>Operador</th></tr></thead><tbody id="tabla-historial-decomiso"></tbody></table>
+        <div id="total-perdidas-cuadro" class="resumen-caja resumen-perdida"></div>
+      </div>
+    </div>
+
+    <div id="reporte-compras-distribuidor" class="content-section">
+      <div class="card">
+        <h2>📑 Reporte de Compras por Distribuidor</h2>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+          <input type="date" id="filtro-compra-dist-desde" onchange="renderHistorialComprasDistribuidor()">
+          <input type="date" id="filtro-compra-dist-hasta" onchange="renderHistorialComprasDistribuidor()">
+        </div>
+        <table>
+          <thead><tr><th>Distribuidor</th><th>Entradas</th><th>Monto</th><th>Última Compra</th></tr></thead>
+          <tbody id="tabla-historial-compras-distribuidor"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="clientes-puntos" class="content-section">
+      <div class="card">
+        <h2>👥 Registro de Clientes y Puntos</h2>
+        <div style="margin-bottom:12px; padding:12px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
+          <strong style="display:block; margin-bottom:8px; color:var(--secondary);">📋 Tipos de Planes de Membresía</strong>
+          <div id="plan-membresia-resumen" style="font-size:17px; font-weight:800; color:#2f3542; margin:6px 0 10px; padding:10px; background:#fff; border-left:5px solid var(--blue); border-radius:8px;">Plan actual no configurado.</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+            <button class="btn btn-danger" onclick="limpiarClientesPuntosMasivo()">ELIMINAR TODOS LOS CLIENTES</button>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
+          <input type="text" id="cliente_nombre_reg" placeholder="Nombre del cliente">
+          <input type="text" id="cliente_cedula_reg" placeholder="Cédula">
+          <input type="text" id="cliente_telefono_reg" placeholder="Teléfono">
+          <button class="btn btn-save" onclick="registrarClientePuntos()">REGISTRAR</button>
+        </div>
+        <input type="text" id="clientes-puntos-buscar" onkeyup="renderTablaClientesPuntos()" placeholder="Buscar por cédula o código generado (CLI-00001)..." style="width:100%; margin-bottom:10px; padding:12px;">
+        <div id="clientes-puntos-resumen" style="font-size:12px; color:#666; margin-bottom:8px;">Sin clientes registrados.</div>
+        <table>
+          <thead><tr><th>Nombre</th><th>Cédula</th><th>Código</th><th>Teléfono</th><th>Puntos</th><th>RD$ Acumulado</th></tr></thead>
+          <tbody id="tabla-clientes-puntos"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="configuracion" class="content-section">
+        <div class="card">
+            <h2>⚙️ Configuración</h2>
+            <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-danger" onclick="realizarCierreTotalConCodigo()">CIERRE TOTAL</button>
+              <button class="btn btn-warning" onclick="borrarBaseDatosConPassword()">Borrar base de datos</button>
+            </div>
+            <div id="section-cloud-masters" style="margin-bottom:20px; padding:12px; border:1px solid #dfe6e9; border-radius:10px; background:#f8fafc;">
+              <h3 style="margin:0 0 10px; color:var(--blue);">☁️ Usuarios Maestros en la Nube</h3>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
+                <input id="cloud-owner-username" type="text" placeholder="Username">
+                <input id="cloud-owner-pass" type="password" placeholder="Contraseña">
+                <input id="cloud-owner-empresa" type="text" placeholder="Empresa">
+                <button class="btn btn-blue" onclick="crearOwner()">GUARDAR EN FIRESTORE</button>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                <button class="btn btn-save" onclick="subirBaseActualAlCloud()">☁️ SUBIR BASE ACTUAL AL CLOUD</button>
+                <button class="btn btn-warning" onclick="descargarBaseDesdeCloud()">⬇️ DESCARGAR BASE DESDE CLOUD</button>
+              </div>
+              <div id="cloud-sync-status" style="font-size:12px; color:#666; margin-bottom:8px;">Sincronización manual disponible.</div>
+              <div id="cloud-owner-status" style="font-size:12px; color:#666; margin-bottom:8px;">Conectando a Firebase...</div>
+              <ul id="cloud-owner-lista" style="margin:0; padding-left:18px; max-height:180px; overflow:auto;"></ul>
+            </div>
+            <div id="section-servidor-master" style="display:none; margin-bottom:20px; padding:12px; border:2px solid #0b5ed7; border-radius:10px; background:#f5f9ff;">
+              <h3 style="margin:0 0 10px; color:#0b5ed7;">🛡️ CONTROL TOTAL MASTER</h3>
+              <div id="master-global-stats" style="display:grid; grid-template-columns:repeat(4,minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
+                <button type="button" onclick="abrirDetalleControlMaster('owners')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Maestros</strong><div id="master-stat-owners" style="font-size:20px; font-weight:800;">0</div></button>
+                <button type="button" onclick="abrirDetalleControlMaster('collaborators')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Colaboradores</strong><div id="master-stat-colabs" style="font-size:20px; font-weight:800;">0</div></button>
+                <button type="button" onclick="abrirDetalleControlMaster('clients_saas')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Clientes (SaaS)</strong><div id="master-stat-clients" style="font-size:20px; font-weight:800;">0</div></button>
+                <button type="button" onclick="abrirDetalleControlMaster('clients_fidelizacion')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Clientes (fidelización)</strong><div id="master-stat-clients-fid" style="font-size:20px; font-weight:800;">0</div></button>
+                <button type="button" onclick="abrirDetalleControlMaster('subs_active')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Suscripciones activas</strong><div id="master-stat-subs-active" style="font-size:20px; font-weight:800;">0</div></button>
+                <button type="button" onclick="abrirDetalleControlMaster('pay_done')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Pagos realizados</strong><div id="master-stat-pay-done" style="font-size:20px; font-weight:800;">0</div></button>
+                <button type="button" onclick="abrirDetalleControlMaster('pay_pending')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Pagos pendientes</strong><div id="master-stat-pay-pending" style="font-size:20px; font-weight:800;">0</div></button>
+                <button type="button" onclick="abrirDetalleControlMaster('pay_failed')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Pagos fallidos</strong><div id="master-stat-pay-failed" style="font-size:20px; font-weight:800;">0</div></button>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                <button class="btn btn-blue" onclick="cargarBovedaMaster()">ACTUALIZAR BÓVEDA</button>
+                <span id="master-vault-status" style="font-size:12px; color:#666; align-self:center;">Sin cargar.</span>
+              </div>
+              <div style="overflow:auto; margin-bottom:14px;">
+                <table>
+                  <thead><tr><th>Usuario Maestro</th><th>Empresa</th><th>Tiempo en sistema</th><th>Estado</th><th>Colaboradores</th><th>Acciones</th></tr></thead>
+                  <tbody id="master-vault-body"><tr><td colspan="6" style="text-align:center; color:#777;">Sin datos.</td></tr></tbody>
+                </table>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div style="padding:10px; border:1px solid #dfe6e9; border-radius:8px; background:#fff;">
+                  <strong id="master-vault-collab-title" style="display:block; margin-bottom:8px;">Colaboradores del maestro seleccionado</strong>
+                  <div style="overflow:auto; max-height:260px;">
+                <table>
+                  <thead><tr><th>Usuario</th><th>Estado</th><th>Creación</th><th>Acción</th></tr></thead>
+                  <tbody id="master-vault-collab-body"><tr><td colspan="4" style="text-align:center; color:#777;">Seleccione un maestro.</td></tr></tbody>
+                </table>
+              </div>
+                </div>
+                <div style="padding:10px; border:1px solid #dfe6e9; border-radius:8px; background:#fff;">
+                  <strong style="display:block; margin-bottom:8px;">🔔 Notificaciones de pagos</strong>
+                  <div style="overflow:auto; max-height:260px;">
+                    <table>
+                      <thead><tr><th>Usuario</th><th>Fecha</th><th>Estado</th><th>Monto</th></tr></thead>
+                      <tbody id="master-vault-payments-body"><tr><td colspan="4" style="text-align:center; color:#777;">Sin notificaciones.</td></tr></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="master-detail-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:2900; align-items:center; justify-content:center; padding:14px;">
+              <div style="width:min(1100px, 98vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid #0b5ed7; box-shadow:0 18px 40px rgba(0,0,0,.35);">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid #eee;">
+                  <strong id="master-detail-title" style="font-size:18px; color:#0b5ed7;">Detalle</strong>
+                  <button class="btn btn-danger" onclick="cerrarDetalleControlMaster()">X</button>
+                </div>
+                <div style="padding:12px 14px;">
+                  <div id="master-detail-status" style="font-size:12px; color:#666; margin-bottom:8px;">Cargando...</div>
+                  <table>
+                    <thead id="master-detail-head"></thead>
+                    <tbody id="master-detail-body"><tr><td style="text-align:center; color:#777;">Sin datos.</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div id="section-my-security" style="margin-bottom:30px; padding:15px; border:1px solid #eee; border-radius:10px;">
+              <h3>🔒 Seguridad</h3>
+              <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px;">
+                  <input type="password" id="my_old_pass" placeholder="Clave Actual">
+                  <input type="password" id="my_new_pass" placeholder="Clave Nueva">
+                  <input type="password" id="my_new_pass_confirm" placeholder="Confirmar Nueva">
+                  <button class="btn btn-warning" onclick="cambiarMiPassword()">ACTUALIZAR</button>
+              </div>
+            </div>
+            <div id="section-registro-backups" style="margin-bottom:30px; padding:15px; border:1px solid #eee; border-radius:10px;">
+                <h3 style="color: var(--blue);">🧾 Copias de Seguridad del Registro Inicial</h3>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                    <button class="btn btn-warning" onclick="desbloquearCopiasRegistroConPassword()">📂 VER COPIAS (CONTRASEÑA)</button>
+                    <button class="btn btn-blue" onclick="crearCopiaRegistroManual()">🧾 CREAR COPIA</button>
+                </div>
+                <div id="config-registro-backups-status" style="font-size:12px; color:#666; margin-bottom:8px;">Copias bloqueadas. Ingrese contraseña para visualizar.</div>
+                <table>
+                    <thead><tr><th>Fecha Copia</th><th>Motivo</th><th>Fecha Eliminado</th><th>Eliminado Por</th><th>Acción</th></tr></thead>
+                    <tbody id="config-registro-backups-body"><tr><td colspan="5" style="text-align:center; color:#777;">Copias bloqueadas.</td></tr></tbody>
+                </table>
+            </div>            <div id="section-admin-master" style="display:none; margin-bottom:30px; padding:15px; border:2px solid var(--accent); border-radius:10px;">
+                <h3 style="color: var(--accent);">👑 Usuarios Maestros</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:10px;">
+                    <input type="text" id="new_u_name" placeholder="Nuevo Admin">
+                    <input type="password" id="new_u_pass" placeholder="Clave">
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-blue" onclick="abrirModalPagoUsuarioMaestro()">REGISTRAR PAGO</button>
+                        <button class="btn btn-save" onclick="crearUsuario()">AÑADIR</button>
+                    </div>
+                </div>
+                <div id="new_u_payment_status" style="font-size:12px; color:#666; margin-bottom:15px;">Debe registrar método de pago antes de añadir el usuario.</div>
+                <table><thead><tr><th>Usuario</th><th>Estado</th><th>Membresía</th><th>Método de Pago</th><th>Cobro</th><th>Acción</th></tr></thead><tbody id="lista-usuarios-tabla"></tbody></table>
+            </div>
+            <div id="section-user-colaboradores" style="padding:15px; border:1px solid #eee; border-radius:10px;">
+                <h3 style="color: var(--purple);">👥 Gestión de Mi Equipo</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr auto auto; gap:10px; margin-bottom:10px;">
+                    <input type="text" id="colab_name" placeholder="Nombre Miembro">
+                    <input type="password" id="colab_pass" placeholder="Clave Acceso">
+                    <button id="btn-colab-guardar" class="btn btn-purple" onclick="crearColaborador()">AÑADIR</button>
+                    <button id="btn-colab-cancelar" class="btn" style="display:none; background:#7f8c8d; color:#fff;" onclick="cancelarEdicionColaborador()">CANCELAR</button>
+                </div>
+                <div style="margin-bottom:10px; font-size:12px; color: var(--secondary);">
+                    Se pedirá la clave de un <strong>Usuario Maestro</strong> para autorizar la creación del colaborador.
+                </div>
+                <div style="margin-bottom:15px; padding:10px; border:1px dashed #ccc; border-radius:8px;">
+                    <strong style="display:block; margin-bottom:8px; color: var(--secondary);">Renglones que utilizará el colaborador (módulos/casillas)</strong>
+                    <div style="margin-bottom:8px;">
+                        <label><input type="checkbox" id="colab-group-admin" class="colab-perm-group" onchange="togglePermisosGrupo('admin', this.checked)"> &#x1F4CB; ÁREAS GENERALES (marcar/desmarcar todo)</label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
+                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="agregar"> 🧪 Agregar Plato</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="clientes-puntos"> &#x1F465; Clientes y Puntos</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="entrenamientos"> &#x1F393; Entrenamientos</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="procedimientos"> &#x1F4D8; Procedimientos</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="configuracion"> &#x2699;&#xFE0F; Configuración</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="comandas"> &#x1F9FE; Comandas</label>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label><input type="checkbox" id="colab-group-costos" class="colab-perm-group" onchange="togglePermisosGrupo('costos', this.checked)"> &#x1F4B0; COSTOS (marcar/desmarcar todo)</label>
+                    </div>
+                    <div id="colab-permisos-grid" style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
+                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="inventario"> &#x1F4E6; Almacén</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="distribuidores"> &#x1F69A; Distribuidores</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="produccion-interna"> &#x1F3ED; Producción Interna</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad"> 👁️ Disponibilidad (completa)</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad-lite"> 🔎 Disponibilidad (básica)</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="salida"> &#x1F4E4; Registrar Salida</label>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label><input type="checkbox" id="colab-group-historial" class="colab-perm-group" onchange="togglePermisosGrupo('historial', this.checked)"> &#x1F559; HISTORIAL (marcar/desmarcar todo)</label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
+                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-produccion"> &#x1F4DC; Historial Producción</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="entradas-almacen"> &#x1F4E5; Entradas Almacén</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="ventas"> &#x1F4CA; Historial de Ventas</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="reporte-compras-distribuidor"> &#x1F4D1; Compras Distribuidor</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="rnc-dgii"> &#x1F9FE; Resumen de facturas</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="autorizaciones"> ✅ Autorizaciones</label>
+                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-decomiso"> &#x1F5C2;&#xFE0F; Historial Decomiso</label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px;">
+                        <label><input type="checkbox" class="colab-perm" value="decomiso"> &#x1F5D1;&#xFE0F; Registrar Decomiso</label>
+                        <label><input type="checkbox" class="colab-perm" value="produccion"> &#x1F4CA; Departamentos A-B-C</label>
+                    </div>
+                </div>
+                <div style="margin-bottom:15px; padding:10px; border:1px dashed #ccc; border-radius:8px;">
+                    <strong style="display:block; margin-bottom:8px; color: var(--secondary);">Asignaciones de Entradas</strong>
+                    <div style="display:grid; grid-template-columns: repeat(3, minmax(170px, 1fr)); gap:8px;">
+                        <label><input type="checkbox" class="colab-entry" value="manual"> Registrar entrada manual</label>
+                        <label><input type="checkbox" class="colab-entry" value="automatica"> Entrada automática masiva</label>
+                        <label><input type="checkbox" class="colab-entry" value="historial"> Ver historial de entradas</label>
+                    </div>
+                </div>
+                <table><thead><tr><th>Nombre</th><th>Dueño</th><th>Estado</th><th>Renglones</th><th>Entradas</th><th>Acción</th></tr></thead><tbody id="lista-colab-tabla"></tbody></table>
+            </div>
+        </div>
+    </div>
+
+<div id="salida" class="content-section">
+    <div id="salida-layout" style="display:grid; grid-template-columns:1fr; gap:14px;">
+        <div class="card" id="salida-selector-card">
+            <h2>🧪 Seleccionar Platos</h2>
+            <div style="margin-bottom:12px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
+                <strong id="mesas-total-label" style="display:block; margin-bottom:8px; color:var(--secondary);">Mesas (40)</strong>
+                <div id="mesas-grid" style="display:grid; grid-template-columns:repeat(8, minmax(72px, 1fr)); gap:6px; max-height:320px; overflow:auto;"></div>
+            </div>
+            <div style="position: relative;">
+                <input type="text" id="busqueda-plato" onkeyup="buscarPlatoVenta()" placeholder="Escriba nombre del plato..." style="width:100%; margin-bottom:10px; padding: 12px;">
+            </div>
+            <div id="contenedor-salidas-busqueda" style="max-height: 400px; overflow-y: auto; border-radius: 8px;">
+                </div>
+        </div>
+
+        <div class="card" id="salida-facturacion-card" style="border-left: 5px solid var(--accent); background: #fff;">
+            <h2 style="color: #333;">🧾 Detalle de Venta</h2>
+            <div style="margin:-6px 0 10px; font-weight:bold; color:var(--secondary);">Mesa activa: <span id="mesa-activa-label" style="color:var(--accent);">Mesa 1</span></div>
+            <div style="display:grid; grid-template-columns: 1fr auto; gap:8px; margin-bottom:10px;">
+                <input type="text" id="mesa-nombre-input" placeholder="Cambiar nombre de la mesa (cliente)">
+                <button class="btn btn-blue" onclick="renombrarMesaActiva()">RENOMBRAR</button>
+            </div>
+            <div style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
+                <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Datos del cliente</div>
+                <input type="hidden" id="venta-cliente-rnc">
+                <input type="hidden" id="venta-cliente-telefono">
+                <input type="hidden" id="venta-cliente-nombre">
+                <div id="venta-cliente-estado" style="display:none;">Cliente sin identificar.</div>
+                <button class="btn btn-blue" onclick="abrirModalRegistrarClienteVenta()">+ AÑADIR CLIENTE</button>
+            </div>
+            <div style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
+                <div style="font-size:12px; color:var(--secondary); margin-bottom:8px;">
+                    Tiempo en uso: <strong id="mesa-tiempo-uso">00:00</strong>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+                    <button class="btn btn-warning" onclick="abrirModalMesaAccion('mover')">MOVILIZAR PLATOS</button>
+                    <button class="btn btn-purple" onclick="abrirModalMesaAccion('unir')">UNIR MESAS</button>
+                    <button class="btn btn-danger" onclick="abrirModalMesaAccion('separar')">SEPARAR MESA</button>
+                </div>
+            </div>
+            <div id="lista-cobro" style="min-height: 250px; margin-bottom: 15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px;">
+                <p id="ticket-vacio" style="color: gray; text-align: center; margin-top: 100px;">🛒 Carrito vacío</p>
+            </div>
+            
+            <div style="background: #f1f2f6; padding: 15px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.3rem; color: #2f3542;">
+                    <span>TOTAL A COBRAR:</span>
+                    <span id="total-cobro">RD$0.00</span>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px;">
+                <button id="btn-registrar-salida" class="btn btn-save" onclick="finalizarVenta()" style="background: #2ed573;">
+                    📤 REGISTRAR SALIDA
+                ></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="entrenamientos" class="content-section">
+  <div class="card">
+    <h2>🎓 Entrenamientos por Equipos</h2>
+    <div style="display:grid; grid-template-columns: 320px 1fr; gap:16px;">
+      <div style="border:1px solid #eee; border-radius:10px; padding:12px; background:#fafafa;">
+        <div style="font-weight:700; margin-bottom:8px;">Añadir Equipo</div>
+        <div style="display:grid; gap:8px;">
+          <input id="ent-equipo-area" type="text" placeholder="Área (Ej: Línea Caliente)">
+          <input id="ent-equipo-nombre" type="text" placeholder="Equipo (Ej: Freidora #1)">
+          <button class="btn btn-save" onclick="agregarEquipoEntrenamiento()">+ AÑADIR EQUIPO</button>
+        </div>
+        <div style="margin-top:12px; font-size:12px; color:#666;">Equipos creados</div>
+        <div id="ent-equipos-lista" style="margin-top:8px; max-height:460px; overflow:auto;"></div>
+      </div>
+      <div style="border:1px solid #eee; border-radius:10px; padding:12px;">
+        <div id="ent-detalle-vacio" style="color:#777;">Seleccione un equipo para comenzar.</div>
+        <div id="ent-detalle-equipo" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+            <strong id="ent-equipo-titulo">Equipo</strong>
+            <button class="btn btn-danger" onclick="eliminarEquipoEntrenamientoActivo()">ELIMINAR EQUIPO</button>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:10px;">
+            <select id="ent-plato-select"></select>
+            <button class="btn btn-blue" onclick="agregarPlatoAEquipoEntrenamiento()">AÑADIR PLATO</button>
+          </div>
+          <div id="ent-platos-equipo" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; margin-bottom:12px;"></div>
+          <div id="ent-procedimiento-box" style="display:none; border:1px dashed #ccc; border-radius:10px; padding:10px; background:#fcfcfc;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong id="ent-plato-titulo">Plato</strong>
+              <button class="btn btn-danger" onclick="eliminarPlatoEntrenamientoActivo()">ELIMINAR PLATO</button>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:8px;">
+              <input id="ent-proc-onzas" type="text" placeholder="Onzas / Cantidad">
+              <input id="ent-proc-medidas" type="text" placeholder="Medidas / Unidades">
+              <input id="ent-proc-tiempo" type="text" placeholder="Tiempo en fuego (Ej: 7 min)">
+            </div>
+            <textarea id="ent-proc-pasos" rows="5" style="width:100%; margin-bottom:8px;" placeholder="Procedimientos paso a paso (todo el proceso para lograr el plato)"></textarea>
+            <textarea id="ent-proc-protocolos" rows="4" style="width:100%; margin-bottom:8px;" placeholder="Protocolos (higiene, manipulación, temperatura, orden, seguridad)"></textarea>
+            <button class="btn btn-save" onclick="guardarProcedimientoEntrenamiento()">GUARDAR PROCEDIMIENTO Y PROTOCOLO</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="procedimientos" class="content-section">
+  <div class="card">
+    <h2>📘 Procedimientos (Solo Vista)</h2>
+    <div style="font-size:12px; color:#666; margin-bottom:10px;">Esta hoja muestra equipos, platos y protocolos creados en Entrenamientos. Aquí no se puede editar.</div>
+    <div id="procedimientos-view"></div>
+  </div>
+</div>
+
+<div id="mesa-accion-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2600; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:min(760px, 96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--accent);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
+            <strong id="mesa-modal-titulo" style="font-size:18px; color:var(--primary);">Gestión de Mesas</strong>
+            <button class="btn btn-danger" onclick="cerrarModalMesaAccion()">X</button>
+        </div>
+        <div style="padding:16px;">
+            <input type="hidden" id="mesa-modal-accion" value="">
+
+            <div id="mesa-modal-seccion-mover" style="display:none;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div class="form-group">
+                        <label>Mesa origen</label>
+                        <select id="mesa-modal-origen" onchange="renderListaPlatosMovilizar()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Mesa destino</label>
+                        <select id="mesa-modal-destino"></select>
+                    </div>
+                </div>
+                <div style="font-size:12px; color:var(--secondary); margin-bottom:8px;">Seleccione los platos y cantidad que desea movilizar.</div>
+                <div id="mesa-modal-platos" style="max-height:300px; overflow:auto; border:1px dashed #ccc; border-radius:8px; padding:8px; background:#fafafa;"></div>
+            </div>
+
+            <div id="mesa-modal-seccion-unir" style="display:none;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div class="form-group">
+                        <label>Mesa A</label>
+                        <select id="mesa-modal-union-a"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Mesa B</label>
+                        <select id="mesa-modal-union-b"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="mesa-modal-seccion-separar" style="display:none;">
+                <div class="form-group">
+                    <label>Mesa a separar</label>
+                    <select id="mesa-modal-separar"></select>
+                </div>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
+            <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalMesaAccion()">CANCELAR</button>
+            <button class="btn btn-save" onclick="confirmarAccionMesaModal()">CONFIRMAR</button>
+        </div>
+    </div>
+</div>
+<div id="modal-registrar-cliente-venta" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2665; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:min(560px, 96vw); background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
+            <strong style="font-size:18px; color:var(--primary);">Registrar Cliente en Venta</strong>
+            <button class="btn btn-danger" onclick="cerrarModalRegistrarClienteVenta()">X</button>
+        </div>
+        <div style="padding:16px; display:grid; grid-template-columns:1fr; gap:10px;">
+            <div>
+                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Nombre / Razón Social</label>
+                <input type="text" id="venta-modal-cliente-nombre" placeholder="Nombre / Razón Social">
+            </div>
+            <div>
+                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Cédula / NRC</label>
+                <input type="text" id="venta-modal-cliente-rnc" placeholder="Cédula / NRC">
+            </div>
+            <div>
+                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Teléfono</label>
+                <input type="text" id="venta-modal-cliente-telefono" placeholder="Teléfono / WhatsApp">
+            </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
+            <button class="btn btn-warning" onclick="seleccionarConsumidorFinalVenta()">CONSUMIDOR FINAL</button>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalRegistrarClienteVenta()">CANCELAR</button>
+                <button class="btn btn-save" onclick="guardarClienteDesdeModalVenta()">GUARDAR CLIENTE</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="modal-pago-usuario-maestro" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2668; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:min(760px, 96vw); background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
+            <strong style="font-size:18px; color:var(--primary);">Datos de pago para nuevo Usuario Maestro</strong>
+            <button class="btn btn-danger" onclick="cerrarModalPagoUsuarioMaestro()">X</button>
+        </div>
+        <div style="padding:16px; display:grid; gap:10px;">
+            <input type="text" id="new_u_client_name" placeholder="Nombre del cliente completo">
+            <select id="new_u_payment_method">
+                <option value="TRANSFERENCIA">Método de Pago: Transferencia</option>
+            </select>
+            <input type="text" id="new_u_card" placeholder="Tarjeta">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <input type="text" id="new_u_card_exp" placeholder="Fecha de vencimiento de tarjeta (MM/AA)">
+                <input type="password" id="new_u_card_cvv" placeholder="CVV">
+            </div>
+            <div>
+                <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">Fecha para próximo cobro</label>
+                <input type="date" id="new_u_next_charge">
+                <div style="font-size:11px; color:#666; margin-top:4px;">Se tomará el día del mes de esta fecha para los cobros recurrentes.</div>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
+            <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalPagoUsuarioMaestro()">CANCELAR</button>
+            <button class="btn btn-save" onclick="guardarPagoUsuarioMaestro()">GUARDAR MÉTODO DE PAGO</button>
+        </div>
+    </div>
+</div>
+<div id="modal-pago-suscripcion" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2650; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:min(880px, 96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:14px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
+            <strong style="font-size:18px; color:var(--primary);">Datos de Transferencia de Suscripción</strong>
+            <button class="btn btn-danger" onclick="cerrarModalPagoSuscripcion()">X</button>
+        </div>
+        <div style="padding:16px; display:grid; grid-template-columns: minmax(280px, 360px) 1fr; gap:16px;">
+            <div>
+                <div style="background:linear-gradient(135deg,#1e3a5f,#2e86de); color:#fff; border-radius:14px; padding:16px; min-height:190px; box-shadow:0 10px 24px rgba(0,0,0,.2);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px;">
+                        <span style="font-size:12px; letter-spacing:1px; opacity:.9;">TARJETA</span>
+                        <strong id="pago-card-marca" style="font-size:12px;">TARJETA</strong>
+                    </div>
+                    <div id="pago-card-numero" style="font-size:22px; letter-spacing:2px; margin-bottom:20px;">**** **** **** ****</div>
+                    <div style="display:flex; justify-content:space-between; gap:10px;">
+                        <div>
+                            <div style="font-size:10px; opacity:.8;">TITULAR</div>
+                            <div id="pago-card-titular" style="font-size:13px; font-weight:bold;">NOMBRE APELLIDO</div>
+                        </div>
+                        <div>
+                            <div style="font-size:10px; opacity:.8;">VENCE</div>
+                            <div id="pago-card-exp" style="font-size:13px; font-weight:bold;">MM/AAAA</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="font-size:12px; color:#666; margin-top:8px;">Tarjeta origen enmascarada. Transferencia mensual al receptor configurado.</div>
+            </div>
+            <div>
+                <input type="hidden" id="pago-cliente-id">
+                <div style="font-size:12px; color:#666; margin-bottom:8px;">Cliente: <strong id="pago-cliente-nombre">-</strong></div>
+                <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:6px;">Mi tarjeta (origen)</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+                    <select id="pago-tarjeta-tipo" onchange="actualizarPreviewTarjetaPago()">
+                        <option value="credito">Tarjeta crédito</option>
+                        <option value="debito">Tarjeta débito</option>
+                    </select>
+                    <input type="text" id="pago-tarjeta-numero" placeholder="Número de tarjeta" oninput="actualizarPreviewTarjetaPago()">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 90px 110px; gap:8px; margin-bottom:8px;">
+                    <input type="text" id="pago-tarjeta-titular" placeholder="Titular de tarjeta" oninput="actualizarPreviewTarjetaPago()">
+                    <input type="text" id="pago-tarjeta-exp-mes" placeholder="MM" maxlength="2" oninput="actualizarPreviewTarjetaPago()">
+                    <input type="text" id="pago-tarjeta-exp-ano" placeholder="AAAA" maxlength="4" oninput="actualizarPreviewTarjetaPago()">
+                </div>
+                <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin:8px 0 6px;">Receptor de transferencia</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+                    <input type="text" id="pago-receptor-banco" placeholder="Banco receptor">
+                    <input type="text" id="pago-receptor-cuenta" placeholder="Cuenta receptor">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+                    <input type="text" id="pago-receptor-nombre" placeholder="Nombre receptor">
+                    <input type="text" id="pago-receptor-apellido" placeholder="Apellido receptor">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+                    <input type="text" id="pago-receptor-cedula" placeholder="Cédula receptor">
+                    <input type="text" id="pago-receptor-telefono" placeholder="Teléfono receptor">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                    <input type="text" id="pago-periodo" value="MENSUAL" readonly>
+                    <input type="date" id="pago-fecha-cobro">
+                </div>
+            </div>
+        </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
+            <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalPagoSuscripcion()">CANCELAR</button>
+            <button class="btn btn-save" onclick="guardarDatosPagoSuscripcionDesdeModal()">GUARDAR TRANSFERENCIA</button>
+        </div>
+    </div>
+</div>
+    <div id="diagnostico" class="content-section">
+      <div class="card">
+        <h2>🧠 Diagnóstico Inteligente</h2>
+
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+          <button class="btn btn-warning" onclick="ejecutarDiagnosticoGlobal()">🔍 Ejecutar Diagnóstico</button>
+          <button class="btn btn-blue" onclick="limpiarDiagnostico()">🧹 Limpiar Alertas</button>
+        </div>
+
+        <div id="panel-errores" style="margin-top:20px;">
+          <div class="diag-muted">Ejecuta el diagnóstico para ver resultados.</div>
+        </div>
+      </div>
+    </div>
+    <div id="decomiso" class="content-section"><div class="card"><h2>🗑️ Registrar Decomiso</h2><select id="tipo-decomiso" onchange="actualizarListaDecomiso()" style="width:100%; margin-bottom:10px;"><option value="plato">Producto Terminado</option><option value="almacen">Ingrediente</option></select><input type="text" id="busqueda-decomiso" onkeyup="actualizarListaDecomiso()" placeholder="Buscar..." style="width:100%; margin-bottom:15px;"><div id="lista-decomiso-items"></div></div></div>
+    <div id="produccion" class="content-section"><div class="card"><h2>📊 Departamentos A-B-C</h2><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;"><button class="btn btn-danger" onclick="filtrarPlatosABC('rojo')">SIN STOCK (0)</button><button class="btn btn-warning" onclick="filtrarPlatosABC('amarillo')">POCO STOCK (1-5)</button><button class="btn btn-save" onclick="filtrarPlatosABC('verde')">STOCK OK (+6)</button></div><div id="resultado-filtro-abc"></div></div></div>
+  </div>
+
+  <script src="assets/js/app.js?v=20260403-no-swipe-cache-1"></script>
+  <script src="assets/js/cloud-bridge.js?v=20260313-2038"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/service-worker.js?v=20260403-no-swipe-cache-1', {
+          updateViaCache: 'none'
+        }).then(function (registration) {
+          registration.update().catch(function () {});
+        }).catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -12,20 +12,19 @@
     ],
     "redirects": [
       {
-        "source": "/",
+        "source": "/app",
         "destination": "/app.html",
-        "type": 302
+        "type": 301
       },
       {
-        "source": "/index.html",
-        "destination": "/app.html",
-        "type": 302
-      }
-    ],
-    "rewrites": [
+        "source": "/acceder",
+        "destination": "/acceder.html",
+        "type": 301
+      },
       {
-        "source": "**",
-        "destination": "/app.html"
+        "source": "/descargar",
+        "destination": "/descargar.html",
+        "type": 301
       }
     ]
   }

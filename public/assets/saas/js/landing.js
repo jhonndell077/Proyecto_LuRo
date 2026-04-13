@@ -10,6 +10,8 @@
     window.matchMedia('(hover: none) and (pointer: coarse)').matches;
   const panels = Array.from(track.querySelectorAll('.panel'));
   const navLinks = Array.from(document.querySelectorAll('nav a[href^="#"]'));
+  const hasSectionNav = navLinks.length > 0;
+  const useCarousel = () => hasSectionNav && !isMobile();
   const sectionIds = panels.map((panel) => panel.id);
   let currentIndex = Math.max(0, sectionIds.indexOf((location.hash || '#inicio').slice(1)));
   let isAnimating = false;
@@ -54,9 +56,9 @@
     const bounded = Math.max(0, Math.min(index, panels.length - 1));
     currentIndex = bounded;
 
-    if (isMobile()) {
+    if (!useCarousel()) {
       const target = panels[currentIndex];
-      if (target && scrollMobile) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (target && scrollMobile && hasSectionNav) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       updateNav();
       return;
     }
@@ -85,18 +87,18 @@
 
   window.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') closeNavMenu();
-    if (isAnimating || isMobile()) return;
+    if (isAnimating || !useCarousel()) return;
     if (ev.key === 'ArrowRight') goTo(currentIndex + 1);
     if (ev.key === 'ArrowLeft') goTo(currentIndex - 1);
   });
 
   track.addEventListener('touchstart', (ev) => {
-    if (isAnimating || isMobile()) return;
+    if (isAnimating || !useCarousel()) return;
     touchStartX = ev.changedTouches[0]?.clientX ?? null;
   }, { passive: true });
 
   track.addEventListener('touchend', (ev) => {
-    if (touchStartX === null || isAnimating || isMobile()) return;
+    if (touchStartX === null || isAnimating || !useCarousel()) return;
     const endX = ev.changedTouches[0]?.clientX ?? touchStartX;
     const deltaX = endX - touchStartX;
     touchStartX = null;
@@ -106,6 +108,7 @@
   }, { passive: true });
 
   window.addEventListener('hashchange', () => {
+    if (!hasSectionNav) return;
     const hashId = (location.hash || '#inicio').slice(1);
     const index = sectionIds.indexOf(hashId);
     if (index >= 0) goTo(index, false);

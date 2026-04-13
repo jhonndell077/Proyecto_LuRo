@@ -138,6 +138,8 @@ async function cambiarMiPassword() {
             pass: newPass,
             role: String(sesionUser.role || 'admin'),
             owner: String(sesionUser.owner || sesionUser.user || '').toLowerCase(),
+            parentOwner: normalizarOwnerPadreAdmin(sesionUser.parentOwner || sesionUser.delegadoPor),
+            canCreateAdmins: puedeUsuarioCrearAdmins(sesionUser),
             activo: true
         });
     }
@@ -155,18 +157,41 @@ async function cambiarMiPassword() {
 /**
  * Crea un nuevo usuario administrador (Maestro).
  */
-function crearUsuario() {
+async function crearUsuario() {
     const nombreInput = document.getElementById('new_u_name');
     const passInput = document.getElementById('new_u_pass');
     const nombre = nombreInput.value.trim().toLowerCase();
     const pass = passInput.value;
     const payData = window.__nuevoUsuarioPagoTemp || null;
+    const creadorSesion = String(window.obtenerOwnerSesionActual?.() || sesionUser?.user || '').trim().toLowerCase();
+    const esSesionSuperMaster = String(sesionUser?.role || '').toLowerCase() === 'super-master' || creadorSesion === MASTER_USER;
+    const nuevoAdminPuedeCrearAdmins = esSesionSuperMaster;
 
+    if (!puedeSesionCrearUsuariosAdministradores()) {
+        return alert("⛔ Esta cuenta no tiene permisos para crear usuarios administradores.");
+    }
     if (!nombre || !pass) return alert("⚠️ Complete usuario y clave.");
     if (!payData) return alert("💳 Debe registrar método de pago antes de añadir el usuario.");
+    if (!creadorSesion) return alert("⚠️ No se pudo detectar el administrador en sesión.");
 
     if (db.usuarios.find(u => u.user === nombre)) {
         return alert("⚠️ El usuario ya existe.");
+    }
+    if (nombre === creadorSesion) {
+        return alert("⚠️ No puede crearse a usted mismo.");
+    }
+
+    if (typeof window.crearOwnerCloud === 'function') {
+        const okCloud = await window.crearOwnerCloud({
+            username: nombre,
+            pass,
+            empresa: '',
+            parentOwner: creadorSesion,
+            canCreateAdmins: nuevoAdminPuedeCrearAdmins
+        }, { silent: true });
+        if (!okCloud) {
+            return alert("❌ No se pudo crear el usuario administrador en la nube.");
+        }
     }
 
     db.usuarios.push({
@@ -175,6 +200,8 @@ function crearUsuario() {
         role: 'admin',
         activo: true,
         owner: nombre,
+        parentOwner: creadorSesion,
+        canCreateAdmins: nuevoAdminPuedeCrearAdmins,
         requiereRegistroInicial: false,
         billing: { ...payData, createdAt: new Date().toISOString() }
     });
@@ -185,7 +212,7 @@ function crearUsuario() {
     passInput.value = "";
     window.__nuevoUsuarioPagoTemp = null;
     actualizarEstadoPagoNuevoUsuario();
-    alert("✅ Usuario maestro creado con éxito.");
+    alert("✅ Usuario administrador creado con éxito.");
 }
 
 function actualizarEstadoPagoNuevoUsuario() {
@@ -480,11 +507,17 @@ function actualizarTablaUsuarios() {
     if (!tabla) return;
     tabla.innerHTML = "";
 
+    const ownerSesion = String(sesionUser?.user || '').trim().toLowerCase();
+    const esSuperMasterSesion = esMasterEnSesion();
     const vistosUsuarios = new Set();
     const usuariosUnicos = (db.usuarios || []).filter(u => {
         if (!u || u.role === 'colaborador') return false;
         const key = String(u.user || '').trim().toLowerCase();
         if (!key || vistosUsuarios.has(key)) return false;
+        if (!esSuperMasterSesion && ownerSesion) {
+            const parentOwner = normalizarOwnerPadreAdmin(u.parentOwner || u.delegadoPor);
+            if (key !== ownerSesion && parentOwner !== ownerSesion) return false;
+        }
         vistosUsuarios.add(key);
         return true;
     });
@@ -492,20 +525,35 @@ function actualizarTablaUsuarios() {
     usuariosUnicos.forEach(u => {
         const row = document.createElement('tr');
         const esSistema = (u.user === 'admin' || u.user === MASTER_USER);
+        const puedeCrearAdminsUsuario = puedeUsuarioCrearAdmins(u);
+        const parentOwner = normalizarOwnerPadreAdmin(u.parentOwner || u.delegadoPor);
+        const perfilUsuario = String(u?.role || '').toLowerCase() === 'super-master'
+            ? 'SUPER MASTER'
+            : (puedeCrearAdminsUsuario ? 'ADMIN PRINCIPAL' : 'ADMIN DELEGADO');
+        const perfilMeta = String(u?.role || '').toLowerCase() === 'super-master'
+            ? 'Acceso total del sistema'
+            : (puedeCrearAdminsUsuario
+                ? 'Puede crear administradores y equipo'
+                : `Solo equipo (${(parentOwner || 'raiz').toUpperCase()})`);
+        const puedeGestionarObjetivo = puedeSesionGestionarAdminObjetivo(u);
         const estadoTxt = u.activo === false ? 'Suspendido' : 'Activo';
         const estadoColor = u.activo === false ? 'var(--danger)' : 'green';
         const cobroTxt = textoCobroUsuario(u);
         const pagoHtml = resumenMetodoPagoUsuario(u);
         row.innerHTML = `
-            <td style="padding:10px 0;"><strong>${u.user.toUpperCase()}</strong></td>
+            <td style="padding:10px 0;">
+                <strong>${u.user.toUpperCase()}</strong>
+                <div style="font-size:11px; color:#2f3542; font-weight:700; margin-top:3px;">${perfilUsuario}</div>
+                <div style="font-size:11px; color:#6b7280;">${perfilMeta}</div>
+            </td>
             <td><span style="color:${estadoColor}">✅ ${estadoTxt}</span></td>
             <td>${textoMembresiaUsuario(u)}</td>
             <td>${pagoHtml}</td>
             <td style="font-size:12px; color: var(--secondary);">${cobroTxt}</td>
             <td>
-                ${!esSistema ? 
+                ${(!esSistema && puedeGestionarObjetivo) ? 
                 `<button class="btn-warning" onclick="toggleAccesoUsuarioMaestro('${u.user}')" style="background:#ffa801; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; margin-right:6px;">${u.activo === false ? 'Reactivar' : 'Suspender'}</button><button class="btn-danger" onclick="eliminarUsuario('${u.user}')" style="background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Eliminar</button>` 
-                : '<em style="color:#999">Sistema</em>'}
+                : '<em style="color:#999">Sin acción</em>'}
             </td>
         `;
         tabla.appendChild(row);
@@ -516,6 +564,7 @@ async function toggleAccesoUsuarioMaestro(username) {
     const u = (db.usuarios || []).find(x => x.user === username && x.role !== 'colaborador');
     if (!u) return;
     if ((u.user || '').toLowerCase() === MASTER_USER) return alert("🔒 El usuario maestro no se puede suspender.");
+    if (!puedeSesionGestionarAdminObjetivo(u)) return alert("⛔ No tiene permisos para gestionar este administrador.");
     const estadoPrevio = u.activo !== false;
     u.activo = u.activo === false ? true : false;
     if (typeof window.sincronizarEstadoUsuarioMaestroNube === 'function') {
@@ -578,6 +627,17 @@ async function eliminarUsuario(username) {
     try {
     if ((username || "").trim().toLowerCase() === MASTER_USER) {
         return alert("🔒 El usuario maestro no puede eliminarse.");
+    }
+    const targetUser = (db.usuarios || []).find(u =>
+        String(u?.user || '').trim().toLowerCase() === String(username || '').trim().toLowerCase() &&
+        String(u?.role || '').toLowerCase() !== 'colaborador'
+    );
+    if (!targetUser) return;
+    if (!puedeSesionGestionarAdminObjetivo(targetUser)) {
+        return alert("⛔ No tiene permisos para eliminar este administrador.");
+    }
+    if (!esMasterEnSesion() && String(targetUser?.user || '').trim().toLowerCase() === String(sesionUser?.user || '').trim().toLowerCase()) {
+        return alert("⛔ No puede eliminar su propia cuenta administradora.");
     }
     if (confirm(`¿Está seguro de eliminar al administrador "${username}"?`)) {
         if (typeof window.eliminarUsuarioMaestroNube === 'function') {
@@ -3330,8 +3390,10 @@ function imprimirTicket() {
         ventanaImpresion.close();
     }, 500);
 }
-  function transferirAFactura(index) {
+  function transferirAFactura(index, cantidadSolicitada, inputCantidadId) {
     const plato = db.platos[index];
+    if (!plato) return;
+    const cantidadAgregar = Math.max(1, parseInt(cantidadSolicitada, 10) || 1);
     const carritoVenta = obtenerCarritoMesaActiva();
     const personaId = String(window.__mesaPersonaSeleccionadaId || '');
     const personaNombre = String(window.__mesaPersonaSeleccionadaNombre || '');
@@ -3344,12 +3406,12 @@ function imprimirTicket() {
     );
     
     if (itemEnCarrito) {
-        itemEnCarrito.cantidad++;
+        itemEnCarrito.cantidad += cantidadAgregar;
     } else {
         carritoVenta.push({
             nombre: plato.nombre,
             precio: plato.precio,
-            cantidad: 1,
+            cantidad: cantidadAgregar,
             originalIndex: index,
             personaId: personaId || '',
             personaNombre: personaNombre || ''
@@ -3366,15 +3428,11 @@ function imprimirTicket() {
     // 2. Actualizamos visualmente el panel de cobro (el ticket)
     actualizarPanelCobro();
 
-    // 3. Limpiamos el buscador para la siguiente venta
-    document.getElementById('busqueda-plato').value = "";
-    document.getElementById('contenedor-salidas-busqueda').innerHTML = "";
-
-    // 4. (Opcional) Si quieres que salte visualmente a la factura, 
-    // podrías usar showPage('facturacion') si tienes esa sección, 
-    // pero como pediste que se vea en el panel, solo actualizamos el panel.
-    const sufijoPersona = personaNombre ? ` para ${personaNombre}` : '';
-    alert(`✅ ${plato.nombre} añadido${sufijoPersona} al detalle de ${mesaActiva}.`);
+    // Mantenemos la búsqueda visible para añadir varios platos seguidos.
+    if (inputCantidadId) {
+        const inputCantidad = document.getElementById(String(inputCantidadId));
+        if (inputCantidad) inputCantidad.value = '1';
+    }
 }
   function ajustarPrecioMasivo(porcentaje) {
     if (bloquearAccionAdministrativaColaborador()) return;
@@ -3403,7 +3461,7 @@ function ajustarPrecioManual() {
     }
 }
     let db = {
-        usuarios: [{user: "Jssantana077", pass: "852347", role: "super-master", activo: true, colab: []}],
+        usuarios: [{user: "Jssantana077", pass: "852347", role: "super-master", activo: true, colab: [], parentOwner: '', canCreateAdmins: true}],
         platos: [], almacen: [], entradas: [], ventas: [], decomisos: [], autorizaciones: [], produccion_stock: [], historial_prod: [],
         distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: []
     };
@@ -3480,7 +3538,9 @@ function asegurarCuentaMaestra() {
             pass: MASTER_PASS,
             role: "super-master",
             owner: MASTER_USER,
-            activo: true
+            activo: true,
+            parentOwner: '',
+            canCreateAdmins: true
         });
     }
 
@@ -3493,7 +3553,22 @@ function asegurarCuentaMaestra() {
                 pass: MASTER_PASS,
                 role: "super-master",
                 owner: MASTER_USER,
-                activo: true
+                activo: true,
+                parentOwner: '',
+                canCreateAdmins: true
+            };
+        }
+        const roleNorm = String(u?.role || '').trim().toLowerCase();
+        if (roleNorm === 'admin') {
+            const parentOwner = normalizarOwnerPadreAdmin(u?.parentOwner || u?.delegadoPor);
+            return {
+                ...u,
+                parentOwner,
+                canCreateAdmins: puedeUsuarioCrearAdmins({
+                    ...u,
+                    role: 'admin',
+                    parentOwner
+                })
             };
         }
         return u;
@@ -3522,7 +3597,20 @@ function normalizarDBSyncGlobal() {
     if (!db.mesasEstado || typeof db.mesasEstado !== 'object') db.mesasEstado = {};
 }
 
-    function guardarDatos() { 
+function baseTieneContenido(dbRef) {
+    if (!dbRef || typeof dbRef !== 'object') return false;
+    const claves = ['platos', 'almacen', 'ventas', 'clientes', 'distribuidores', 'historial_prod', 'entradas'];
+    if (claves.some((k) => Array.isArray(dbRef[k]) && dbRef[k].length > 0)) return true;
+    const extras = ['clientesFidelizacion', 'clientesRNC', 'facturasResumen', 'produccion_stock', 'decomisos', 'autorizaciones', 'catalogoDistribuidores', 'entrenamientos'];
+    return extras.some((k) => Array.isArray(dbRef[k]) && dbRef[k].length > 0);
+}
+
+window.baseTieneContenido = baseTieneContenido;
+
+    function guardarDatos(opts = {}) { 
+        const skipCloudUpload = opts?.skipCloudUpload === true;
+        const keepExistingVersion = opts?.keepExistingVersion === true;
+        const saveSource = String(opts?.source || '').trim().toLowerCase();
         asegurarCuentaMaestra();
         normalizarDBSyncGlobal();
         const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos'];
@@ -3536,12 +3624,14 @@ function normalizarDBSyncGlobal() {
             mesaMeta: (typeof mesaMeta !== 'undefined') ? mesaMeta : {},
             mesaUniones: (typeof mesaUniones !== 'undefined') ? mesaUniones : {}
         };
-        const serializedDb = JSON.stringify(db);
-        if (serializedDb === String(window.__luroLastSavedSnapshot || '')) {
+        const serializedCurrent = JSON.stringify(db);
+        if (serializedCurrent === String(window.__luroLastSavedSnapshot || '')) {
             return;
         }
         const importMeta = window.__cloudApplyingRemote ? (window.__cloudImportMeta || null) : null;
         const now = Date.now();
+        const localMeta = leerMetaDbLocal() || {};
+        const previousVersion = Number(localMeta?.updatedAtClient || window.__luroLastSavedAt || db?.updatedAt || 0);
         const saveMeta = importMeta && Number(importMeta.updatedAtClient || 0) > 0
             ? {
                 updatedAtClient: Number(importMeta.updatedAtClient || now),
@@ -3549,18 +3639,27 @@ function normalizarDBSyncGlobal() {
                 uploadedAtClient: Number(importMeta.updatedAtClient || 0),
                 lastSource: String(importMeta.lastSource || 'cloud').trim() || 'cloud'
             }
-            : {
-                updatedAtClient: now,
-                syncKey: `local-${now}-${Math.random().toString(36).slice(2, 8)}`,
-                lastSource: 'local'
-            };
-        if (!window.__cloudApplyingRemote) {
+            : (() => {
+                const updatedAtClient = keepExistingVersion
+                    ? (previousVersion > 0 ? previousVersion : 0)
+                    : now;
+                const syncSeed = updatedAtClient > 0 ? updatedAtClient : now;
+                return {
+                    updatedAtClient,
+                    syncKey: `local-${syncSeed}-${Math.random().toString(36).slice(2, 8)}`,
+                    lastSource: saveSource || 'local'
+                };
+            })();
+        db.updatedAt = Number(saveMeta.updatedAtClient || 0);
+        const serializedDb = JSON.stringify(db);
+        if (serializedDb === String(window.__luroLastSavedSnapshot || '')) return;
+        if (!window.__cloudApplyingRemote && Number(saveMeta.updatedAtClient || 0) > 0) {
             window.__cloudLocalChangeAt = Number(saveMeta.updatedAtClient || now);
         }
         localStorage.setItem('LURO_CONTROL_DB', serializedDb);
         window.__luroLastSavedSnapshot = serializedDb;
         guardarMetaDbLocal(saveMeta);
-        if (typeof window.autoSubirCloudDebounced === 'function') window.autoSubirCloudDebounced();
+        if (!skipCloudUpload && typeof window.autoSubirCloudDebounced === 'function') window.autoSubirCloudDebounced();
     }
 function cargarDatos() { 
         const rawDb = localStorage.getItem('LURO_CONTROL_DB') || '';
@@ -3652,15 +3751,31 @@ function cargarDatos() {
             db.colaboradores = [];
           }
 
-          db.usuarios = db.usuarios.map(u => ({
-            ...u,
-            user: (u.user || "").trim().toLowerCase(),
-            owner: u.owner ? String(u.owner).trim().toLowerCase() : u.owner,
-            permisos: normalizarPermisos(u.permisos),
-            asignacionesEntradas: normalizarAsignacionesEntradas(u.asignacionesEntradas),
-            role: u.role || "admin",
-            activo: u.activo !== false
-          }));
+          db.usuarios = db.usuarios.map(u => {
+            const roleNorm = String(u?.role || 'admin').trim().toLowerCase();
+            const base = {
+              ...u,
+              user: (u.user || "").trim().toLowerCase(),
+              owner: u.owner ? String(u.owner).trim().toLowerCase() : u.owner,
+              permisos: normalizarPermisos(u.permisos),
+              asignacionesEntradas: normalizarAsignacionesEntradas(u.asignacionesEntradas),
+              role: roleNorm,
+              activo: u.activo !== false
+            };
+            if (roleNorm === 'admin' || roleNorm === 'super-master') {
+              const parentOwner = normalizarOwnerPadreAdmin(u?.parentOwner || u?.delegadoPor);
+              base.parentOwner = parentOwner;
+              base.canCreateAdmins = puedeUsuarioCrearAdmins({
+                ...base,
+                parentOwner,
+                canCreateAdmins: u?.canCreateAdmins
+              });
+            } else {
+              base.parentOwner = '';
+              base.canCreateAdmins = false;
+            }
+            return base;
+          });
 
           // Reparación de dueños:
           // - admins con owner inválido pasan al admin por defecto
@@ -3733,14 +3848,18 @@ function cargarDatos() {
             }));
           }
 
-          guardarDatos();
+          if (typeof window.baseTieneContenido === 'function' && !window.baseTieneContenido(db)) {
+            console.warn('Carga local detectó base sin contenido operativo; se mantendrá en modo seguro hasta sincronizar con nube.');
+          }
+          guardarDatos({ source: 'bootstrap-load', skipCloudUpload: true, keepExistingVersion: true });
         } else {
+          console.warn('No se encontró base local. Se crea estructura mínima sin subir automáticamente a la nube.');
           asegurarCuentaMaestra();
           if(!db.qrClienteLinks || typeof db.qrClienteLinks !== 'object') db.qrClienteLinks = {};
           if(!Array.isArray(db.entrenamientos)) db.entrenamientos = [];
           if(!db.configMembresia || typeof db.configMembresia !== 'object') db.configMembresia = { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 };
           aplicarConfigMembresiaDesdeDB();
-          guardarDatos();
+          guardarDatos({ source: 'bootstrap-empty', skipCloudUpload: true, keepExistingVersion: true });
         }
 
         if (manejarVistaQRClienteDesdeURL()) return;
@@ -3761,6 +3880,7 @@ function sincronizarOwnersNubeALocal(registrosNube = []) {
         if (!user || !pass || user === MASTER_USER || user === USUARIO_ELIMINADO_FORZOSO) return;
         cloudMap.set(user, it || {});
         const idx = db.usuarios.findIndex(u => String(u.user || '').toLowerCase() === user);
+        const parentOwner = normalizarOwnerPadreAdmin(it.parentOwner || it.delegadoPor);
         const base = {
             user,
             pass,
@@ -3770,15 +3890,32 @@ function sincronizarOwnersNubeALocal(registrosNube = []) {
             plan: String(it.plan || 'basico').trim().toLowerCase(),
             estado: String(it.estado || 'activo').trim().toLowerCase(),
             suscripcion: it.suscripcion || null,
+            parentOwner,
+            canCreateAdmins: typeof it?.canCreateAdmins === 'boolean' ? it.canCreateAdmins === true : undefined,
             requiereRegistroInicial: false,
             origenCloud: true
         };
+        const baseNormalizada = {
+            ...base,
+            canCreateAdmins: puedeUsuarioCrearAdmins({
+                ...base,
+                parentOwner
+            })
+        };
         if (idx === -1) {
-            db.usuarios.push(base);
+            db.usuarios.push(baseNormalizada);
             cambios++;
         } else {
             const actual = db.usuarios[idx] || {};
-            const nuevo = { ...actual, ...base };
+            const nuevo = {
+                ...actual,
+                ...baseNormalizada,
+                canCreateAdmins: puedeUsuarioCrearAdmins({
+                    ...actual,
+                    ...baseNormalizada
+                }),
+                parentOwner: normalizarOwnerPadreAdmin(baseNormalizada.parentOwner || actual.parentOwner || actual.delegadoPor)
+            };
             if (JSON.stringify(actual) !== JSON.stringify(nuevo)) {
                 db.usuarios[idx] = nuevo;
                 cambios++;
@@ -3805,6 +3942,13 @@ function sincronizarOwnersNubeALocal(registrosNube = []) {
             return true;
         });
         if (db.usuarios.length !== before) cambios++;
+
+        (db.usuarios || []).forEach((u) => {
+            const role = String(u?.role || '').trim().toLowerCase();
+            if (role !== 'admin' && role !== 'super-master') return;
+            u.parentOwner = normalizarOwnerPadreAdmin(u.parentOwner || u.delegadoPor);
+            u.canCreateAdmins = puedeUsuarioCrearAdmins(u);
+        });
 
         // Jerarquía estricta: colaborador solo activo si su maestro existe y está activo.
         (db.usuarios || []).forEach((u) => {
@@ -3884,6 +4028,41 @@ function obtenerAdminPorDefecto(excluirUser = "") {
 function normalizarAsignacionesEntradas(asignaciones) {
     const base = Array.isArray(asignaciones) ? asignaciones : [];
     return [...new Set(base.filter(Boolean))];
+}
+
+function normalizarOwnerPadreAdmin(ownerPadre) {
+    return String(ownerPadre || '').trim().toLowerCase();
+}
+
+function puedeUsuarioCrearAdmins(userData = {}) {
+    const role = String(userData?.role || '').trim().toLowerCase();
+    const userKey = String(userData?.user || '').trim().toLowerCase();
+    const parentOwner = normalizarOwnerPadreAdmin(userData?.parentOwner || userData?.delegadoPor);
+    if (role === 'super-master' || userKey === MASTER_USER) return true;
+    if (role !== 'admin') return false;
+    if (parentOwner && parentOwner !== MASTER_USER) return false;
+    // Regla jerárquica global:
+    // admin raíz => sí, admin delegado => no.
+    return true;
+}
+
+function puedeSesionCrearUsuariosAdministradores() {
+    if (!sesionUser || esColaboradorSesion) return false;
+    return puedeUsuarioCrearAdmins(sesionUser);
+}
+
+function puedeSesionGestionarAdminObjetivo(usuarioObjetivo = {}) {
+    if (!usuarioObjetivo || String(usuarioObjetivo?.role || '').toLowerCase() === 'colaborador') return false;
+    const objetivoUser = String(usuarioObjetivo?.user || '').trim().toLowerCase();
+    if (!objetivoUser) return false;
+    if (objetivoUser === MASTER_USER) return esMasterEnSesion();
+    if (esMasterEnSesion()) return true;
+    if (!puedeSesionCrearUsuariosAdministradores()) return false;
+    const ownerSesion = String(sesionUser?.user || '').trim().toLowerCase();
+    if (!ownerSesion) return false;
+    if (objetivoUser === ownerSesion) return true;
+    const parentOwner = normalizarOwnerPadreAdmin(usuarioObjetivo?.parentOwner || usuarioObjetivo?.delegadoPor);
+    return !!parentOwner && parentOwner === ownerSesion;
 }
 
 function aplicarEstadoUsuariosVinculados(ownerUser, activoOwner) {
@@ -5106,29 +5285,53 @@ window.importarDBDesdeCloud = function (remoteDb, opts = {}) {
     const remoteMeta = opts?.remoteMeta && typeof opts.remoteMeta === 'object' ? opts.remoteMeta : {};
     if (!remoteDb || typeof remoteDb !== 'object') return false;
     const serializedRemote = JSON.stringify(remoteDb);
+    const localSnapshot = String(window.__luroLastSavedSnapshot || '');
     const now = Date.now();
     const remoteUpdatedAt = Number(remoteMeta.updatedAtClient || 0);
     const remoteSyncKey = String(remoteMeta.syncKey || '').trim();
     const localUpdatedAt = Number(window.__luroLastSavedAt || 0);
+    const localHasContent = typeof window.baseTieneContenido === 'function' ? window.baseTieneContenido(db) : true;
+    const remoteHasContent = typeof window.baseTieneContenido === 'function' ? window.baseTieneContenido(remoteDb) : true;
     if (fromCloudListener && window.__cloudLocalChangeAt && (now - window.__cloudLocalChangeAt) < (window.__cloudRemoteSettleMs || 2200)) {
         return false;
     }
-    if (!force && remoteUpdatedAt > 0 && localUpdatedAt > 0 && remoteUpdatedAt < localUpdatedAt && serializedRemote !== String(window.__luroLastSavedSnapshot || '')) {
-        window.__cloudLastUploadedSnapshot = '';
-        window.__cloudLastUploadedAtClient = 0;
-        if (typeof window.guardarMetaDbLocal === 'function') {
-            window.guardarMetaDbLocal({ uploadedAtClient: 0 });
-        }
+    if (!force && !remoteHasContent && localHasContent && serializedRemote !== localSnapshot) {
+        console.warn('Bloqueado: nube vacía no puede reemplazar base local con contenido.');
         if (typeof window.setSyncStatusPublic === 'function') {
-            window.setSyncStatusPublic('Se conservo la base local porque la copia cloud era mas antigua.', true);
+            window.setSyncStatusPublic('Bloqueado: intento de reemplazar datos locales con base cloud vacía.', false);
         }
         if (typeof window.autoSubirCloudUrgente === 'function') {
             setTimeout(() => window.autoSubirCloudUrgente(), 0);
         }
         return false;
     }
+    if (!force && remoteUpdatedAt > 0 && localUpdatedAt > 0 && remoteUpdatedAt < localUpdatedAt && serializedRemote !== localSnapshot) {
+        if (!localHasContent && remoteHasContent) {
+            console.warn('Prioridad nube: se aplicará base cloud con contenido aunque su timestamp sea menor.');
+        } else {
+            console.warn('Conflicto de versiones: se conserva base local por timestamp más reciente.');
+            window.__cloudLastUploadedSnapshot = '';
+            window.__cloudLastUploadedAtClient = 0;
+            if (typeof window.guardarMetaDbLocal === 'function') {
+                window.guardarMetaDbLocal({ uploadedAtClient: 0 });
+            }
+            if (typeof window.setSyncStatusPublic === 'function') {
+                window.setSyncStatusPublic('Se conservó la base local porque la copia cloud era más antigua.', true);
+            }
+            if (typeof window.autoSubirCloudUrgente === 'function') {
+                setTimeout(() => window.autoSubirCloudUrgente(), 0);
+            }
+            return false;
+        }
+    }
     if (serializedRemote === window.__cloudLastAppliedSnapshot) {
         return false;
+    }
+    if (!force && remoteHasContent && !localHasContent && serializedRemote !== localSnapshot) {
+        console.warn('Prioridad nube: base local vacía detectada, aplicando datos remotos.');
+    }
+    if (!force && remoteUpdatedAt <= 0 && remoteHasContent && localHasContent && serializedRemote !== localSnapshot) {
+        console.warn('Conflicto sin versión remota válida: se aplicará nube por seguridad de sincronización.');
     }
     db = remoteDb;
     asegurarCuentaMaestra();
@@ -5230,9 +5433,20 @@ window.sincronizarTodoLocalAhora = async function (opts = {}) {
         if (!silent) alert("Primero inicie sesión para sincronizar.");
         return false;
     }
-    const ok = await window.subirBaseActualAlCloud({ silent: true, fromAuto: true });
-    if (ok && typeof window.descargarBaseDesdeCloud === 'function') {
-        await window.descargarBaseDesdeCloud({ silent: true, reload: false });
+    let ok = false;
+    if (typeof window.descargarBaseDesdeCloud === 'function') {
+        const downloaded = await window.descargarBaseDesdeCloud({ silent: true, reload: false });
+        const pullReason = String(window.__cloudLastPullResult?.reason || '');
+        if (downloaded || pullReason === 'ignored') {
+            ok = true;
+        } else if (pullReason === 'no-data') {
+            ok = await window.subirBaseActualAlCloud({ silent: true, fromAuto: true });
+            if (ok) {
+                await window.descargarBaseDesdeCloud({ silent: true, reload: false });
+            }
+        }
+    } else {
+        ok = await window.subirBaseActualAlCloud({ silent: true, fromAuto: true });
     }
     if (ok && !silent) alert("Sincronización total completada ?");
     if (!ok && !silent) alert("No se pudo completar la sincronización total.");
@@ -5465,6 +5679,8 @@ async function intentarLogin() {
                     role: roleBackend === 'super-master' ? 'super-master' : 'admin',
                     owner: ownerUser,
                     activo: true,
+                    parentOwner: String(backendSession?.parentOwner || '').trim().toLowerCase(),
+                    canCreateAdmins: backendSession?.canCreateAdmins === true,
                     plan: String(backendSession.plan || 'basico').toLowerCase(),
                     estado: String(backendSession.estado || 'activo').toLowerCase(),
                     suscripcion: backendSession.suscripcion || null
@@ -5476,6 +5692,10 @@ async function intentarLogin() {
             }
         }
         if(found) { 
+            if (String(found?.role || '').toLowerCase() === 'admin' || String(found?.role || '').toLowerCase() === 'super-master') {
+                found.parentOwner = normalizarOwnerPadreAdmin(found.parentOwner || found.delegadoPor);
+                found.canCreateAdmins = puedeUsuarioCrearAdmins(found);
+            }
             if(found.activo === false) return alert(MSG_USUARIO_INACTIVO);
             if ((found.role === 'admin' || found.role === 'super-master') && found.billing?.nextChargeAt) {
                 const venc = new Date(found.billing.nextChargeAt).getTime();
@@ -5581,10 +5801,15 @@ async function intentarLogin() {
             iniciarAutoRefreshBovedaMaster();
             if (typeof window.descargarBaseDesdeCloud === 'function') {
                 const keyRegSesion = String((sesionUser?.owner || sesionUser?.user || found.owner || found.user || '')).trim().toLowerCase();
-                const pSync = (!esColaboradorSesion && tieneRegistroInicialOwner(keyRegSesion) && typeof window.subirBaseActualAlCloud === 'function')
-                    ? Promise.resolve(window.subirBaseActualAlCloud({ silent: true, fromAuto: true }))
-                        .then(() => window.descargarBaseDesdeCloud({ silent: true, reload: false }))
-                    : window.descargarBaseDesdeCloud({ silent: true, reload: false });
+                const puedeSembrarNube = !esColaboradorSesion && tieneRegistroInicialOwner(keyRegSesion) && typeof window.subirBaseActualAlCloud === 'function';
+                const pSync = Promise.resolve(window.descargarBaseDesdeCloud({ silent: true, reload: false }))
+                    .then((downloaded) => {
+                        if (downloaded) return true;
+                        const pullReason = String(window.__cloudLastPullResult?.reason || '');
+                        if (!puedeSembrarNube || pullReason !== 'no-data') return false;
+                        return Promise.resolve(window.subirBaseActualAlCloud({ silent: true, fromAuto: true }))
+                            .then((uploaded) => uploaded ? window.descargarBaseDesdeCloud({ silent: true, reload: false }) : false);
+                    });
                 Promise.resolve(pSync).finally(() => {
                     window.__cloudSyncBootstrapping = false;
                     if (!esColaboradorSesion && typeof window.sincronizarColaboradoresLocalesANube === 'function') {
@@ -6204,7 +6429,8 @@ function agregarAlCarrito(indexPlato) {
 // Renderiza el ticket o detalle de venta
 function actualizarPanelCobro() {
     const contenedor = document.getElementById('lista-cobro');
-    const ticketVacio = document.getElementById('ticket-vacio');
+    if (!contenedor) return;
+    let ticketVacio = document.getElementById('ticket-vacio');
     const contador = document.getElementById('contador-items');
     const carritoVenta = obtenerCarritoMesaActiva();
     const clienteActual = obtenerClienteSalidaActual();
@@ -6214,6 +6440,14 @@ function actualizarPanelCobro() {
     contenedor.innerHTML = "";
     
     if (carritoVenta.length === 0) {
+        if (!(ticketVacio instanceof Node)) {
+            ticketVacio = document.createElement('p');
+            ticketVacio.id = 'ticket-vacio';
+            ticketVacio.style.color = 'gray';
+            ticketVacio.style.textAlign = 'center';
+            ticketVacio.style.marginTop = '100px';
+            ticketVacio.textContent = '🛒 Carrito vacío';
+        }
         contenedor.appendChild(ticketVacio);
         ticketVacio.style.display = 'block';
         document.getElementById('total-cobro').innerText = "RD$0.00";
@@ -6593,10 +6827,10 @@ function editarPlatoDesdeDispo(i) {
             <select class="prod-insumo-unid" onchange="actualizarVistaRestanteProduccionFila(this.parentElement)">
                 <option value="g">g</option><option value="Oz">Oz</option><option value="Lb">Lb</option><option value="mL">mL</option><option value="Unidad">Unid</option>
             </select>
-            <div style="display:flex; flex-direction:column; gap:4px;">
-                <button class="btn btn-danger" onclick="this.closest('.ingrediente-row').remove()">X</button>
+            <div class="prod-row-actions">
+                <button class="btn btn-danger prod-remove-btn" onclick="this.closest('.ingrediente-row').remove()">X</button>
             </div>
-            <div class="prod-restante" style="grid-column:1 / -1; margin-top:2px; padding:8px 10px; border-radius:8px; border:1px solid #dfe6e9; font-size:14px; font-weight:800; color:#666; background:#f1f2f6; text-align:center;">
+            <div class="prod-restante">
                 Restante: --
             </div>
         `;
@@ -6926,8 +7160,23 @@ function toggleDetallesProduccion(idx) {
                 div.className = 'ingrediente-row';
                 let opts = db.almacen.filter(a => String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual)
                                      .map(a => `<option value="${a.nombre}" ${a.nombre === ing.nombre ? 'selected' : ''}>${a.nombre.toUpperCase()}</option>`).join('');
-                div.innerHTML = `<select class="prod-insumo-nom">${opts}</select><input type="number" class="prod-insumo-cant" value="${ing.cantidad}"><select class="prod-insumo-unid"><option value="g" ${ing.unidad==='g'?'selected':''}>g</option><option value="Oz" ${ing.unidad==='Oz'?'selected':''}>Oz</option><option value="Lb" ${ing.unidad==='Lb'?'selected':''}>Lb</option><option value="mL" ${ing.unidad==='mL'?'selected':''}>mL</option></select><button class="btn btn-danger" onclick="this.parentElement.remove()">X</button>`;
+                div.innerHTML = `
+                    <select class="prod-insumo-nom" onchange="actualizarVistaRestanteProduccionFila(this.parentElement)">${opts}</select>
+                    <input type="number" class="prod-insumo-cant" value="${ing.cantidad}" oninput="actualizarVistaRestanteProduccionFila(this.parentElement)">
+                    <select class="prod-insumo-unid" onchange="actualizarVistaRestanteProduccionFila(this.parentElement)">
+                        <option value="g" ${ing.unidad==='g'?'selected':''}>g</option>
+                        <option value="Oz" ${ing.unidad==='Oz'?'selected':''}>Oz</option>
+                        <option value="Lb" ${ing.unidad==='Lb'?'selected':''}>Lb</option>
+                        <option value="mL" ${ing.unidad==='mL'?'selected':''}>mL</option>
+                        <option value="Unidad" ${ing.unidad==='Unidad'?'selected':''}>Unid</option>
+                    </select>
+                    <div class="prod-row-actions">
+                        <button class="btn btn-danger prod-remove-btn" onclick="this.closest('.ingrediente-row').remove()">X</button>
+                    </div>
+                    <div class="prod-restante">Restante: --</div>
+                `;
                 contenedor.appendChild(div);
+                actualizarVistaRestanteProduccionFila(div);
             });
         }
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -7277,7 +7526,8 @@ function toggleDetallesProduccion(idx) {
         const cloudBox = document.getElementById('section-cloud-masters');
         const vaultBox = document.getElementById('section-servidor-master');
         const esMasterGlobal = !!(sesionUser && (sesionUser.user || '').trim().toLowerCase() === MASTER_USER);
-        if (adminBox) adminBox.style.display = (sesionUser && sesionUser.role === 'super-master') ? 'block' : 'none';
+        const puedeCrearAdmins = puedeSesionCrearUsuariosAdministradores();
+        if (adminBox) adminBox.style.display = puedeCrearAdmins ? 'block' : 'none';
         if (cloudBox) cloudBox.style.display = esMasterGlobal ? 'block' : 'none';
         if (vaultBox) vaultBox.style.display = esMasterGlobal ? 'block' : 'none';
         if (esMasterGlobal) iniciarAutoRefreshBovedaMaster();
@@ -8303,26 +8553,108 @@ function renderModuloDistribuidores() {
     actualizarFaltantesDistribuidorTabla();
 }
 
-function buscarPlatoVenta() { 
-  const t = document.getElementById('busqueda-plato').value.toLowerCase(); 
-  const r = document.getElementById('contenedor-salidas-busqueda'); 
-  r.innerHTML = ""; 
-  if(!t) return; 
+function escaparHtmlBusquedaSalida(valor) {
+    return String(valor || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
-  db.platos.filter(p => 
-    p.owner === sesionUser.user && 
-    p.modulo === moduloActual && 
-    p.nombre.toLowerCase().includes(t)
-  ).forEach(p => { 
-    // Buscamos el índice real en la base de datos para pasarlo a la factura
-    const indexReal = db.platos.indexOf(p);
-    
-    r.innerHTML += `
-      <div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <strong>${p.nombre} (Existencia: ${p.stock})</strong>
-        <button class="btn btn-save" onclick="transferirAFactura(${indexReal})">FACTURAR</button>
-      </div>`; 
-  }); 
+function normalizarCantidadBusquedaPlato(inputOrId) {
+    const input = typeof inputOrId === 'string'
+        ? document.getElementById(inputOrId)
+        : inputOrId;
+    if (!(input instanceof HTMLInputElement)) return 1;
+    let valor = parseInt(input.value, 10);
+    if (!Number.isFinite(valor) || valor < 1) valor = 1;
+    input.value = String(valor);
+    return valor;
+}
+
+function obtenerCantidadBusquedaPlato(inputOrId) {
+    return normalizarCantidadBusquedaPlato(inputOrId);
+}
+
+function ajustarCantidadBusquedaPlato(inputOrId, delta) {
+    const input = typeof inputOrId === 'string'
+        ? document.getElementById(inputOrId)
+        : inputOrId;
+    if (!(input instanceof HTMLInputElement)) return;
+    const actual = normalizarCantidadBusquedaPlato(input);
+    const siguiente = Math.max(1, actual + Number(delta || 0));
+    input.value = String(siguiente);
+}
+
+function agregarCantidadBusquedaPlato(index, inputId) {
+    const cantidad = obtenerCantidadBusquedaPlato(inputId);
+    transferirAFactura(index, cantidad, inputId);
+    const input = document.getElementById(String(inputId));
+    if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+    }
+}
+
+function manejarTeclaCantidadBusquedaPlato(event, index, inputId) {
+    if (!event || event.key !== 'Enter') return;
+    event.preventDefault();
+    agregarCantidadBusquedaPlato(index, inputId);
+}
+
+function buscarPlatoVenta() { 
+    const input = document.getElementById('busqueda-plato');
+    const resultados = document.getElementById('contenedor-salidas-busqueda');
+    if (!input || !resultados) return;
+
+    const termino = String(input.value || '').trim().toLowerCase();
+    resultados.innerHTML = '';
+    if (!termino) return;
+
+    const coincidencias = [];
+    db.platos.forEach((plato, index) => {
+        const nombrePlato = String(plato?.nombre || '').toLowerCase();
+        if (
+            plato &&
+            plato.owner === sesionUser.user &&
+            plato.modulo === moduloActual &&
+            nombrePlato.includes(termino)
+        ) {
+            coincidencias.push({ plato, index });
+        }
+    });
+
+    if (!coincidencias.length) {
+        resultados.innerHTML = '<div class="salida-product-empty">No se encontraron platos con ese nombre.</div>';
+        return;
+    }
+
+    resultados.innerHTML = coincidencias.map(({ plato, index }) => {
+        const nombreSeguro = escaparHtmlBusquedaSalida(plato.nombre || '');
+        const precio = Number(plato.precio || 0);
+        const stock = Number(plato.stock || 0);
+        const stockTexto = Number.isFinite(stock)
+            ? stock.toFixed(2).replace(/\.00$/, '')
+            : '0';
+        const inputId = `salida-busqueda-cantidad-${index}`;
+        return `
+            <div class="salida-product-card">
+                <div class="salida-product-copy">
+                    <strong class="salida-product-name">${nombreSeguro}</strong>
+                    <span class="salida-product-meta">RD$${precio.toFixed(2)} · Existencia: <strong>${stockTexto}</strong></span>
+                </div>
+                <div class="salida-product-actions">
+                    <div class="salida-qty-selector">
+                        <button type="button" class="salida-qty-btn" onclick="ajustarCantidadBusquedaPlato('${inputId}', -1)" aria-label="Disminuir cantidad de ${nombreSeguro}">−</button>
+                        <input type="number" id="${inputId}" class="salida-qty-input" value="1" min="1" step="1" oninput="normalizarCantidadBusquedaPlato(this)" onkeydown="manejarTeclaCantidadBusquedaPlato(event, ${index}, '${inputId}')" aria-label="Cantidad de ${nombreSeguro}">
+                        <button type="button" class="salida-qty-btn" onclick="ajustarCantidadBusquedaPlato('${inputId}', 1)" aria-label="Aumentar cantidad de ${nombreSeguro}">+</button>
+                    </div>
+                    <button class="btn btn-save salida-product-add-btn" onclick="agregarCantidadBusquedaPlato(${index}, '${inputId}')">AÑADIR</button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function venderPlato() {
@@ -8832,6 +9164,7 @@ function agregarAlmacen() {
 function renderAlmacen(busqueda = "") { 
     let items = db.almacen.filter(a => a.owner === sesionUser.user && a.modulo === moduloActual);
     const modoBasico = esModoBasicoColaborador();
+    let totalCostoFaltante = 0;
 
     // --- LÓGICA DE ORDENAMIENTO COMPLEJA ---
     items.sort((a, b) => {
@@ -8860,6 +9193,7 @@ function renderAlmacen(busqueda = "") {
         let cantidadFaltante = it.ideal - it.actual; 
         if (cantidadFaltante < 0) cantidadFaltante = 0;
         let costoPorFaltante = cantidadFaltante * it.costoUnitario;
+        totalCostoFaltante += costoPorFaltante;
 
         let statusLabel = cantidadFaltante > 0 
             ? `<span style="color:orange">Falta: ${cantidadFaltante.toFixed(1)}</span>` 
@@ -8888,6 +9222,11 @@ function renderAlmacen(busqueda = "") {
                 <td class="luro-action-cell">${modoBasico ? '<span style="color:#999;">Solo lectura</span>' : `<div class="luro-action-buttons luro-action-buttons--tight"><button class="btn btn-warning" onclick="prepararEdicionAlmacen('${it.nombre}')">✏️ </button><button class="btn btn-danger" onclick="eliminarAlmacen('${it.nombre}')">X</button></div>`}</td>
             </tr>`; 
     }).join('');
+
+    const totalFaltanteEl = document.getElementById('inventory-faltante-total-value');
+    if (totalFaltanteEl) {
+        totalFaltanteEl.textContent = `RD$${Number(totalCostoFaltante || 0).toFixed(2)}`;
+    }
 
     actualizarSelectDistribuidores();
 }
@@ -9402,7 +9741,7 @@ function realizarCierreTotalConCodigo() {
 
 function crearBaseLimpiaSoloMaster() {
     return {
-        usuarios: [{ user: MASTER_USER, pass: MASTER_PASS, role: "super-master", owner: MASTER_USER, activo: true, colab: [] }],
+        usuarios: [{ user: MASTER_USER, pass: MASTER_PASS, role: "super-master", owner: MASTER_USER, activo: true, colab: [], parentOwner: '', canCreateAdmins: true }],
         platos: [],
         almacen: [],
         entradas: [],
@@ -9640,7 +9979,7 @@ return `<div class="comanda-card-box" style="border:2px solid ${bordeColor};bord
 }).join('')||'Sin comandas';
 };
 window.marcarOrdenEntregada=function(){const c=mesaCanonica(mesaActiva);if(!isD(c))return alert('Solo Delivery');if(!db.deliveryMeta[c]?.facturada)return alert('Primero facture la orden');if(!confirm('Marcar orden entregada y cerrar mesa?'))return;carritoPorMesa[c]=[];db.deliveryMeta[c].facturada=false;db.deliveryMeta[c].entregada=true;mesaMeta[c].inicioUso=null;guardarDatos();actualizarPanelCobro();actualizarContadoresMesasSalida();};
-const t0=window.transferirAFactura;window.transferirAFactura=function(i){const c=mesaCanonica(mesaActiva);if(isD(c)&&!db.deliveryMeta[c]){const n=prompt('Delivery - Nombre');if(!n)return;const t=prompt('Delivery - Teléfono');if(!t)return;const d=prompt('Delivery - Dirección');if(!d)return;const r=prompt('Delivery - Referencia')||'';const h=prompt('Delivery - No. Casa')||'';db.deliveryMeta[c]={nombre:n,telefono:t,direccion:d,referencia:r,casa:h,facturada:false,entregada:false};}t0(i);upCom(c);};
+const t0=window.transferirAFactura;window.transferirAFactura=function(){const c=mesaCanonica(mesaActiva);if(isD(c)&&!db.deliveryMeta[c]){const n=prompt('Delivery - Nombre');if(!n)return;const t=prompt('Delivery - Teléfono');if(!t)return;const d=prompt('Delivery - Dirección');if(!d)return;const r=prompt('Delivery - Referencia')||'';const h=prompt('Delivery - No. Casa')||'';db.deliveryMeta[c]={nombre:n,telefono:t,direccion:d,referencia:r,casa:h,facturada:false,entregada:false};}if(typeof t0==='function')t0.apply(this,arguments);upCom(c);};
 const f0=window.finalizarVenta;window.finalizarVenta=async function(){const c=mesaCanonica(mesaActiva);if(isD(c)&&db.deliveryMeta[c]?.facturada)return alert('Ya facturada. Use ORDEN ENTREGADA');const snap=(obtenerCarritoMesaActiva()||[]).map(x=>({...x}));const n=(db.facturasResumen||[]).length;await f0();if(isD(c)&&(db.facturasResumen||[]).length>n){carritoPorMesa[c]=snap;db.deliveryMeta[c]=db.deliveryMeta[c]||{};db.deliveryMeta[c].facturada=true;const last=db.facturasResumen[db.facturasResumen.length-1];if(last)last.tipoFactura='DELIVERY';guardarDatos();actualizarPanelCobro();actualizarContadoresMesasSalida();alert('Delivery facturado: se cierra con ORDEN ENTREGADA');}upCom(c);};
 window.renderMesasSalida=function(){const g=document.getElementById('mesas-grid');if(!g)return;allM().forEach(m=>{if(!carritoPorMesa[m])carritoPorMesa[m]=[];inicializarMetaMesa(m);});g.innerHTML='';allM().forEach(m=>{const b=document.createElement('button');b.className='btn btn-mesa-salida';b.dataset.mesa=m;b.textContent=m;b.style.padding='8px 6px';b.style.fontSize='12px';b.style.border='1px solid #b2bec3';b.onclick=()=>seleccionarMesaSalida(m);g.appendChild(b);});if(!allM().includes(mesaActiva))mesaActiva='Mesa 1';seleccionarMesaSalida(mesaActiva);if(!mesaTimerInterval)mesaTimerInterval=setInterval(()=>{actualizarTiempoMesaActiva();actualizarContadoresMesasSalida();if(document.getElementById('comandas')?.classList.contains('active'))renderComandas();},1000);};
 const a0=window.aplicarEstadoVisualMesa;window.aplicarEstadoVisualMesa=function(btn,ac){a0(btn,ac);const m=btn?.dataset?.mesa||'';if(!isD(m))return;const c=mesaCanonica(m),q=(carritoPorMesa[c]||[]).reduce((s,it)=>s+Number(it.cantidad||0),0);btn.style.background=q>0?'#C7FFC8':DC;};
@@ -9867,7 +10206,6 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
           <strong style="font-size:12px; color:var(--secondary);">Cuentas por persona (Mesa física)</strong>
           <div style="display:flex; gap:6px;">
             <button class="btn btn-danger" style="padding:8px 10px;" onclick="eliminarClientesMesaActual()">ELIMINAR CLIENTES</button>
-            <button class="btn btn-purple" style="padding:8px 10px;" onclick="abrirModalConfigPersonasMesa()">CONFIGURAR PERSONAS</button>
           </div>
         </div>
         <div id="mesa-cuentas-lista" style="display:grid; gap:8px;"></div>
@@ -9994,6 +10332,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
   let pagoCuentaMesaCtx = null;
   let asignarPlatoIndexPendiente = null;
+  let asignarPlatoCantidadPendiente = 1;
+  let asignarPlatoInputPendiente = '';
 
   function refrescarPanelCuentasMesa(){
     const mesa = canonMesaActual();
@@ -10215,7 +10555,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     }
   };
 
-  window.abrirModalAsignarPlatoPersona = function(indexPlato){
+  window.abrirModalAsignarPlatoPersona = function(indexPlato, cantidadSolicitada, inputCantidadId){
     const mesa = canonMesaActual();
     if (isDeliveryMesaName(mesa)) return;
     const cfg = getCuentaMesa(mesa);
@@ -10226,6 +10566,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       return;
     }
     asignarPlatoIndexPendiente = indexPlato;
+    asignarPlatoCantidadPendiente = Math.max(1, parseInt(cantidadSolicitada, 10) || 1);
+    asignarPlatoInputPendiente = String(inputCantidadId || '');
     const lista = document.getElementById('asignar-plato-persona-lista');
     if (!lista) return;
     lista.innerHTML = personas.map(p => `
@@ -10239,6 +10581,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     const m = document.getElementById('modal-asignar-plato-persona');
     if (m) m.style.display = 'none';
     asignarPlatoIndexPendiente = null;
+    asignarPlatoCantidadPendiente = 1;
+    asignarPlatoInputPendiente = '';
   };
 
   window.confirmarAsignarPlatoPersona = function(personaId){
@@ -10248,11 +10592,13 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     const p = personas.find(x => String(x.id) === String(personaId));
     if (!p) return;
     const idx = asignarPlatoIndexPendiente;
+    const cantidadPendiente = Math.max(1, parseInt(asignarPlatoCantidadPendiente, 10) || 1);
+    const inputPendiente = String(asignarPlatoInputPendiente || '');
     cerrarModalAsignarPlatoPersona();
     if (idx === null || idx === undefined) return;
     window.__mesaPersonaSeleccionadaId = p.id || '';
     window.__mesaPersonaSeleccionadaNombre = p.nombre || '';
-    if (typeof prevTransferir === 'function') prevTransferir(idx);
+    if (typeof prevTransferir === 'function') prevTransferir(idx, cantidadPendiente, inputPendiente);
   };
 
   window.abrirModalDatosEnvioDelivery = function(){
@@ -10362,7 +10708,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   };
 
   const prevTransferir = window.transferirAFactura;
-  window.transferirAFactura = function(index){
+  window.transferirAFactura = function(index, cantidadSolicitada, inputCantidadId){
     const mesa = canonMesaActual();
     if (isDeliveryMesaName(mesa) && !tieneDatosEnvio(mesa)) {
       alert('Debe ingresar datos de envío antes de agregar productos.');
@@ -10381,10 +10727,10 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
         abrirModalConfigPersonasMesa();
         return;
       }
-      abrirModalAsignarPlatoPersona(index);
+      abrirModalAsignarPlatoPersona(index, cantidadSolicitada, inputCantidadId);
       return;
     }
-    if (typeof prevTransferir === 'function') prevTransferir(index);
+    if (typeof prevTransferir === 'function') prevTransferir(index, cantidadSolicitada, inputCantidadId);
   };
 
   const prevFinalizarVenta = window.finalizarVenta;
@@ -10756,16 +11102,30 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   }
 
   function sincronizarVistaCobroSalida() {
+    const salidaSection = document.getElementById('salida');
+    const salidaVisible = !!(salidaSection && getComputedStyle(salidaSection).display !== 'none');
+    const salidaActiva = !!(salidaSection && (salidaSection.classList.contains('active') || salidaVisible));
+    const detailOverlay = document.getElementById('salida-facturacion-overlay');
     const detailCard = document.getElementById('salida-facturacion-card');
     const searchInput = document.getElementById('busqueda-plato');
     const results = document.getElementById('contenedor-salidas-busqueda');
     const productsShell = document.getElementById('salida-productos-shell');
     const hint = document.getElementById('salida-productos-hint');
     const hasSelection = tieneMesaCobroSeleccionada();
+    if (!hasSelection) window.__salidaFacturacionMinimizada = false;
+    const isMinimized = window.__salidaFacturacionMinimizada === true;
+    const shouldOpen = hasSelection && salidaActiva;
+
+    if (detailOverlay) {
+      detailOverlay.classList.toggle('is-open', shouldOpen);
+      detailOverlay.classList.toggle('is-minimized', shouldOpen && isMinimized);
+      detailOverlay.classList.toggle('salida-card-hidden', !shouldOpen);
+      detailOverlay.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+    }
 
     if (detailCard) {
-      detailCard.classList.toggle('salida-card-hidden', !hasSelection);
-      detailCard.setAttribute('aria-hidden', hasSelection ? 'false' : 'true');
+      detailCard.classList.toggle('salida-card-hidden', !shouldOpen || isMinimized);
+      detailCard.setAttribute('aria-hidden', shouldOpen && !isMinimized ? 'false' : 'true');
     }
 
     if (productsShell) productsShell.classList.toggle('is-disabled', !hasSelection);
@@ -10782,6 +11142,23 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (!hasSelection && results) results.innerHTML = '';
   }
 
+  window.toggleSalidaFacturacionMinimize = function(forceState) {
+    if (!tieneMesaCobroSeleccionada()) return;
+    if (typeof forceState === 'boolean') {
+      window.__salidaFacturacionMinimizada = forceState;
+    } else {
+      window.__salidaFacturacionMinimizada = !window.__salidaFacturacionMinimizada;
+    }
+    sincronizarVistaCobroSalida();
+  };
+
+  window.cerrarMesaCobroActiva = function() {
+    window.__salidaFacturacionMinimizada = false;
+    window.__salidaMesaSeleccionada = '';
+    sincronizarVistaCobroSalida();
+    refrescarTarjetasSalida();
+  };
+
   function actualizarEtiquetaMesasSalida() {
     const lbl = document.getElementById('mesas-total-label');
     if (!lbl) return;
@@ -10793,9 +11170,15 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (!btn) return;
     const total = obtenerEspaciosCobroSalida().length;
     const remaining = Math.max(0, total - SALIDA_TARJETAS_VISIBLES);
-    const visible = window.__salidaTarjetasExpandidas === true || remaining === 0;
-    btn.style.display = visible ? 'none' : '';
-    btn.textContent = remaining > 0 ? `Mostrar más (${remaining})` : 'Mostrar más';
+    if (remaining === 0) {
+      btn.style.display = 'none';
+      btn.textContent = 'Mostrar más';
+      return;
+    }
+    btn.style.display = '';
+    btn.textContent = window.__salidaTarjetasExpandidas === true
+      ? 'Mostrar menos'
+      : `Mostrar más (${remaining})`;
   }
 
   function construirMetaTarjetaMesa(mesa) {
@@ -10892,8 +11275,35 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   }
 
   window.mostrarMasTarjetasSalida = function() {
-    window.__salidaTarjetasExpandidas = true;
+    if (obtenerEspaciosCobroSalida().length <= SALIDA_TARJETAS_VISIBLES) return;
+    window.__salidaTarjetasExpandidas = window.__salidaTarjetasExpandidas !== true;
     if (typeof window.renderMesasSalida === 'function') window.renderMesasSalida();
+  };
+
+  window.abrirMesaCobroDesdeTarjeta = function(mesa) {
+    const mesaObjetivo = String(mesa || '').trim();
+    if (!mesaObjetivo) return;
+
+    window.__salidaMesaSeleccionada = mesaObjetivo;
+    window.__salidaFacturacionMinimizada = false;
+
+    try {
+      if (typeof window.seleccionarMesaSalida === 'function') {
+        window.seleccionarMesaSalida(mesaObjetivo);
+      } else {
+        mesaActiva = mesaObjetivo;
+        if (typeof actualizarEtiquetaMesaActiva === 'function') actualizarEtiquetaMesaActiva();
+        if (typeof actualizarPanelCobro === 'function') actualizarPanelCobro();
+      }
+    } catch (err) {
+      console.error('Fallo en seleccionarMesaSalida; aplicando apertura directa de respaldo.', err);
+      mesaActiva = mesaObjetivo;
+      if (typeof actualizarEtiquetaMesaActiva === 'function') actualizarEtiquetaMesaActiva();
+      if (typeof actualizarPanelCobro === 'function') actualizarPanelCobro();
+    }
+
+    sincronizarVistaCobroSalida();
+    refrescarTarjetasSalida();
   };
 
   window.renderMesasSalida = function() {
@@ -10923,7 +11333,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       if (window.__salidaTarjetasExpandidas !== true && index >= SALIDA_TARJETAS_VISIBLES) {
         btn.classList.add('salida-mesa-card--hidden');
       }
-      btn.onclick = () => window.seleccionarMesaSalida(mesa);
+      btn.onclick = () => window.abrirMesaCobroDesdeTarjeta(mesa);
       grid.appendChild(btn);
       renderizarTarjetaMesaSalida(btn, mesa === seleccionada);
     });
@@ -10951,13 +11361,10 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   if (typeof prevSeleccionarMesaSalida === 'function') {
     window.seleccionarMesaSalida = function(mesa) {
       window.__salidaMesaSeleccionada = mesa;
+      window.__salidaFacturacionMinimizada = false;
       const result = prevSeleccionarMesaSalida.apply(this, arguments);
       sincronizarVistaCobroSalida();
       refrescarTarjetasSalida();
-      const detailCard = document.getElementById('salida-facturacion-card');
-      if (detailCard && window.matchMedia('(max-width: 900px)').matches) {
-        detailCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
       return result;
     };
   }
@@ -11001,10 +11408,11 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       if (pageId === 'salida') {
         window.__salidaMesaSeleccionada = '';
         window.__salidaTarjetasExpandidas = false;
+        window.__salidaFacturacionMinimizada = false;
       }
       const result = prevShowPageSalida.apply(this, arguments);
+      sincronizarVistaCobroSalida();
       if (pageId === 'salida') {
-        sincronizarVistaCobroSalida();
         refrescarTarjetasSalida();
       }
       return result;
@@ -11014,6 +11422,13 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   document.addEventListener('DOMContentLoaded', () => {
     window.__salidaMesaSeleccionada = '';
     window.__salidaTarjetasExpandidas = false;
+    window.__salidaFacturacionMinimizada = false;
+    const salidaOverlay = document.getElementById('salida-facturacion-overlay');
+    if (salidaOverlay) {
+      salidaOverlay.addEventListener('click', (ev) => {
+        if (ev.target === salidaOverlay) window.cerrarMesaCobroActiva();
+      });
+    }
     sincronizarVistaCobroSalida();
     actualizarEtiquetaMesasSalida();
     actualizarBotonMostrarMasSalida();

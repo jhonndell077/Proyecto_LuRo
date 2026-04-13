@@ -5,7 +5,11 @@
   "main": "index.html",
   "scripts": {
     "start": "firebase serve",
-    "deploy": "firebase deploy"
+    "deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target hosting",
+    "deploy:analyze": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Analyze",
+    "deploy:functions": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target functions",
+    "deploy:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target all",
+    "Deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target hosting"
   },
   "keywords": ["firebase", "hosting", "luro-control"],
   "author": "jhonndell077",

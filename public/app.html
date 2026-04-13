@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0f1419">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20260410-github-bridge-1">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260413-hotfix-1">
 </head>
 <body onload="cargarDatos()">
 
@@ -478,10 +478,14 @@
     🗑️ ELIMINAR TODO EL ALMACÉN
 </button>
 
-        <div style="margin-top: 20px; position: relative;">
-            <input type="text" id="buscarProductoAlmacen" placeholder="🔎 Buscar producto en inventario..." 
-                   onkeyup="resaltarProducto()" 
-                   style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; background-color: #f9f9f9;">
+        <div class="inventory-search-tools">
+            <div class="inventory-search-input-wrap">
+                <input type="text" id="buscarProductoAlmacen" class="inventory-search-input" placeholder="🔎 Buscar producto en inventario..." onkeyup="resaltarProducto()">
+            </div>
+            <div id="inventory-faltante-total" class="inventory-faltante-total" aria-live="polite">
+                <span class="inventory-faltante-total-label">Total Costo p/ Faltante</span>
+                <strong id="inventory-faltante-total-value">RD$0.00</strong>
+            </div>
         </div>
 
         <div style="overflow-x: auto; margin-top: 15px;">
@@ -942,7 +946,8 @@
                     <tbody id="config-registro-backups-body"><tr><td colspan="5" style="text-align:center; color:#777;">Copias bloqueadas.</td></tr></tbody>
                 </table>
             </div>            <div id="section-admin-master" style="display:none; margin-bottom:30px; padding:15px; border:2px solid var(--accent); border-radius:10px;">
-                <h3 style="color: var(--accent);">👑 Usuarios Maestros</h3>
+                <h3 style="color: var(--accent);">👑 Usuarios Administradores</h3>
+                <div style="margin-bottom:10px; font-size:12px; color:var(--secondary);">Los administradores delegados pueden gestionar equipo, pero no crear nuevos administradores.</div>
                 <div class="admin-master-create-row" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:10px;">
                     <input type="text" id="new_u_name" placeholder="Nuevo Admin">
                     <input type="password" id="new_u_pass" placeholder="Clave">
@@ -954,64 +959,74 @@
                 <div id="new_u_payment_status" style="font-size:12px; color:#666; margin-bottom:15px;">Debe registrar método de pago antes de añadir el usuario.</div>
                 <table><thead><tr><th>Usuario</th><th>Estado</th><th>Membresía</th><th>Método de Pago</th><th>Cobro</th><th>Acción</th></tr></thead><tbody id="lista-usuarios-tabla"></tbody></table>
             </div>
-            <div id="section-user-colaboradores" style="padding:15px; border:1px solid #eee; border-radius:10px;">
-                <h3 style="color: var(--purple);">👥 Gestión de Mi Equipo</h3>
-                <div class="team-create-row" style="display:grid; grid-template-columns: 1fr 1fr auto auto; gap:10px; margin-bottom:10px;">
+            <div id="section-user-colaboradores" class="team-panel">
+                <h3 class="team-panel__title">👥 Gestión de Mi Equipo</h3>
+                <div class="team-create-row">
                     <input type="text" id="colab_name" placeholder="Nombre Miembro">
                     <input type="password" id="colab_pass" placeholder="Clave Acceso">
                     <button id="btn-colab-guardar" class="btn btn-purple" onclick="crearColaborador()">AÑADIR</button>
                     <button id="btn-colab-cancelar" class="btn" style="display:none; background:#7f8c8d; color:#fff;" onclick="cancelarEdicionColaborador()">CANCELAR</button>
                 </div>
-                <div style="margin-bottom:10px; font-size:12px; color: var(--secondary);">
+                <div class="team-panel__help">
                     Se pedirá la clave de un <strong>Usuario Maestro</strong> para autorizar la creación del colaborador.
                 </div>
-                <div style="margin-bottom:15px; padding:10px; border:1px dashed #ccc; border-radius:8px;">
-                    <strong style="display:block; margin-bottom:8px; color: var(--secondary);">Renglones que utilizará el colaborador (módulos/casillas)</strong>
-                    <div style="margin-bottom:8px;">
-                        <label><input type="checkbox" id="colab-group-admin" class="colab-perm-group" onchange="togglePermisosGrupo('admin', this.checked)"> &#x1F4CB; ÁREAS GENERALES (marcar/desmarcar todo)</label>
-                    </div>
-                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="agregar"> 🧪 Agregar Plato</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="clientes-puntos"> &#x1F465; Clientes y Puntos</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="entrenamientos"> &#x1F393; Entrenamientos</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="procedimientos"> &#x1F4D8; Procedimientos</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="configuracion"> &#x2699;&#xFE0F; Configuración</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="comandas"> &#x1F9FE; Comandas</label>
-                    </div>
-                    <div style="margin-bottom:8px;">
-                        <label><input type="checkbox" id="colab-group-costos" class="colab-perm-group" onchange="togglePermisosGrupo('costos', this.checked)"> &#x1F4B0; COSTOS (marcar/desmarcar todo)</label>
-                    </div>
-                    <div id="colab-permisos-grid" style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="inventario"> &#x1F4E6; Almacén</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="distribuidores"> &#x1F69A; Distribuidores</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="produccion-interna"> &#x1F3ED; Producción Interna</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad"> 👁️ Disponibilidad (completa)</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad-lite"> 🔎 Disponibilidad (básica)</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="salida"> &#x1F4E4; Registrar Salida</label>
-                    </div>
-                    <div style="margin-bottom:8px;">
-                        <label><input type="checkbox" id="colab-group-historial" class="colab-perm-group" onchange="togglePermisosGrupo('historial', this.checked)"> &#x1F559; HISTORIAL (marcar/desmarcar todo)</label>
-                    </div>
-                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px; margin-bottom:10px;">
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-produccion"> &#x1F4DC; Historial Producción</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="entradas-almacen"> &#x1F4E5; Entradas Almacén</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="ventas"> &#x1F4CA; Historial de Ventas</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="reporte-compras-distribuidor"> &#x1F4D1; Compras Distribuidor</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="rnc-dgii"> &#x1F9FE; Resumen de facturas</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="autorizaciones"> ✅ Autorizaciones</label>
-                        <label><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-decomiso"> &#x1F5C2;&#xFE0F; Historial Decomiso</label>
-                    </div>
-                    <div style="display:grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap:8px;">
-                        <label><input type="checkbox" class="colab-perm" value="decomiso"> &#x1F5D1;&#xFE0F; Registrar Decomiso</label>
-                        <label><input type="checkbox" class="colab-perm" value="produccion"> &#x1F4CA; Departamentos A-B-C</label>
-                    </div>
+                <div class="team-panel__box team-panel__box--permissions">
+                    <strong class="team-panel__box-title">Renglones que utilizará el colaborador (módulos/casillas)</strong>
+                    <p class="team-panel__box-subtitle">Seleccione por bloques para una asignación más rápida y organizada.</p>
+
+                    <section class="team-group-block">
+                        <div class="team-group-toggle">
+                            <label class="team-check-row team-check-row--group"><input type="checkbox" id="colab-group-admin" class="colab-perm-group" onchange="togglePermisosGrupo('admin', this.checked)"><span>&#x1F4CB; ÁREAS GENERALES (marcar/desmarcar todo)</span></label>
+                        </div>
+                        <div class="team-check-grid team-check-grid--two">
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="agregar"><span>🧪 Agregar Plato</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="clientes-puntos"><span>&#x1F465; Clientes y Puntos</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="entrenamientos"><span>&#x1F393; Entrenamientos</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="procedimientos"><span>&#x1F4D8; Procedimientos</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="configuracion"><span>&#x2699;&#xFE0F; Configuración</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="comandas"><span>&#x1F9FE; Comandas</span></label>
+                        </div>
+                    </section>
+
+                    <section class="team-group-block">
+                        <div class="team-group-toggle">
+                            <label class="team-check-row team-check-row--group"><input type="checkbox" id="colab-group-costos" class="colab-perm-group" onchange="togglePermisosGrupo('costos', this.checked)"><span>&#x1F4B0; COSTOS (marcar/desmarcar todo)</span></label>
+                        </div>
+                        <div id="colab-permisos-grid" class="team-check-grid team-check-grid--two">
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="inventario"><span>&#x1F4E6; Almacén</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="distribuidores"><span>&#x1F69A; Distribuidores</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="produccion-interna"><span>&#x1F3ED; Producción Interna</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad"><span>👁️ Disponibilidad (completa)</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad-lite"><span>🔎 Disponibilidad (básica)</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="salida"><span>&#x1F4E4; Registrar Salida</span></label>
+                        </div>
+                    </section>
+
+                    <section class="team-group-block">
+                        <div class="team-group-toggle">
+                            <label class="team-check-row team-check-row--group"><input type="checkbox" id="colab-group-historial" class="colab-perm-group" onchange="togglePermisosGrupo('historial', this.checked)"><span>&#x1F559; HISTORIAL (marcar/desmarcar todo)</span></label>
+                        </div>
+                        <div class="team-check-grid team-check-grid--two">
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-produccion"><span>&#x1F4DC; Historial Producción</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="entradas-almacen"><span>&#x1F4E5; Entradas Almacén</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="ventas"><span>&#x1F4CA; Historial de Ventas</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="reporte-compras-distribuidor"><span>&#x1F4D1; Compras Distribuidor</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="rnc-dgii"><span>&#x1F9FE; Resumen de facturas</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="autorizaciones"><span>✅ Autorizaciones</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-decomiso"><span>&#x1F5C2;&#xFE0F; Historial Decomiso</span></label>
+                        </div>
+                        <div class="team-check-grid team-check-grid--two">
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm" value="decomiso"><span>&#x1F5D1;&#xFE0F; Registrar Decomiso</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm" value="produccion"><span>&#x1F4CA; Departamentos A-B-C</span></label>
+                        </div>
+                    </section>
                 </div>
-                <div style="margin-bottom:15px; padding:10px; border:1px dashed #ccc; border-radius:8px;">
-                    <strong style="display:block; margin-bottom:8px; color: var(--secondary);">Asignaciones de Entradas</strong>
-                    <div style="display:grid; grid-template-columns: repeat(3, minmax(170px, 1fr)); gap:8px;">
-                        <label><input type="checkbox" class="colab-entry" value="manual"> Registrar entrada manual</label>
-                        <label><input type="checkbox" class="colab-entry" value="automatica"> Entrada automática masiva</label>
-                        <label><input type="checkbox" class="colab-entry" value="historial"> Ver historial de entradas</label>
+                <div class="team-panel__box">
+                    <strong class="team-panel__box-title">Asignaciones de Entradas</strong>
+                    <div class="team-check-grid team-check-grid--three">
+                        <label class="team-check-row"><input type="checkbox" class="colab-entry" value="manual"><span>Registrar entrada manual</span></label>
+                        <label class="team-check-row"><input type="checkbox" class="colab-entry" value="automatica"><span>Entrada automática masiva</span></label>
+                        <label class="team-check-row"><input type="checkbox" class="colab-entry" value="historial"><span>Ver historial de entradas</span></label>
                     </div>
                 </div>
                 <table><thead><tr><th>Nombre</th><th>Dueño</th><th>Estado</th><th>Renglones</th><th>Entradas</th><th>Acción</th></tr></thead><tbody id="lista-colab-tabla"></tbody></table>
@@ -1033,30 +1048,48 @@
                 </div>
                 <div id="mesas-grid" class="salida-mesas-grid" style="display:grid; grid-template-columns:repeat(8, minmax(72px, 1fr)); gap:6px; max-height:320px; overflow:auto;"></div>
             </div>
+        </div>
+
+        <div id="salida-facturacion-overlay" class="salida-facturacion-overlay salida-card-hidden" aria-hidden="true">
+            <div class="salida-facturacion-shell">
+                <div class="salida-facturacion-head">
+                    <div class="salida-facturacion-head-copy">
+                        <span class="salida-facturacion-kicker">Centro de cobro</span>
+                        <strong>Detalle de Venta</strong>
+                        <span class="salida-facturacion-status">Mesa activa: <span id="mesa-activa-label" style="color:#8ff5bf;">Mesa 1</span></span>
+                    </div>
+                    <div class="salida-facturacion-head-actions">
+                        <button type="button" class="btn salida-facturacion-icon-btn" onclick="toggleSalidaFacturacionMinimize()" aria-label="Minimizar ventana de cobro">─</button>
+                        <button type="button" class="btn btn-danger salida-facturacion-icon-btn" onclick="cerrarMesaCobroActiva()" aria-label="Cerrar ventana de cobro">X</button>
+                    </div>
+                </div>
+                <div class="card salida-card-hidden" id="salida-facturacion-card" style="border-left: 5px solid var(--accent); background: #fff;">
+            <div class="sale-rename-row" style="display:grid; grid-template-columns: 1fr auto; gap:8px; margin-bottom:10px;">
+                <input type="text" id="mesa-nombre-input" placeholder="Cambiar nombre de la mesa (cliente)">
+                <button class="btn btn-blue" onclick="renombrarMesaActiva()">RENOMBRAR</button>
+            </div>
             <div id="salida-productos-shell" class="salida-productos-shell is-disabled">
                 <div id="salida-productos-hint" class="salida-productos-hint">El detalle de venta se abrirá cuando elijas una tarjeta de cobro.</div>
                 <div style="position: relative;">
                     <input type="text" id="busqueda-plato" onkeyup="buscarPlatoVenta()" placeholder="Seleccione una tarjeta para comenzar a cobrar" style="width:100%; margin-bottom:10px; padding: 12px;" disabled>
                 </div>
-                <div id="contenedor-salidas-busqueda" style="max-height: 400px; overflow-y: auto; border-radius: 8px;">
-                </div>
-                </div>
-        </div>
-
-        <div class="card salida-card-hidden" id="salida-facturacion-card" style="border-left: 5px solid var(--accent); background: #fff;">
-            <h2 style="color: #333;">🧾 Detalle de Venta</h2>
-            <div style="margin:-6px 0 10px; font-weight:bold; color:var(--secondary);">Mesa activa: <span id="mesa-activa-label" style="color:var(--accent);">Mesa 1</span></div>
-            <div class="sale-rename-row" style="display:grid; grid-template-columns: 1fr auto; gap:8px; margin-bottom:10px;">
-                <input type="text" id="mesa-nombre-input" placeholder="Cambiar nombre de la mesa (cliente)">
-                <button class="btn btn-blue" onclick="renombrarMesaActiva()">RENOMBRAR</button>
+                <div id="contenedor-salidas-busqueda" style="max-height: 260px; overflow-y: auto; border-radius: 8px; margin-bottom:10px;"></div>
             </div>
             <div style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
-                <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Datos del cliente</div>
                 <input type="hidden" id="venta-cliente-rnc">
                 <input type="hidden" id="venta-cliente-telefono">
                 <input type="hidden" id="venta-cliente-nombre">
-                <div id="venta-cliente-estado" style="display:none;">Cliente sin identificar.</div>
-                <button class="btn btn-blue" onclick="abrirModalRegistrarClienteVenta()">+ AÑADIR CLIENTE</button>
+                <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; align-items:end;">
+                    <div>
+                        <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Datos del cliente</div>
+                        <div id="venta-cliente-estado" style="display:none; margin-bottom:8px;">Cliente sin identificar.</div>
+                        <button class="btn btn-blue" onclick="abrirModalRegistrarClienteVenta()">+ AÑADIR CLIENTE</button>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Cantidad de Personas</div>
+                        <button class="btn btn-purple" style="padding:8px 10px;" onclick="abrirModalConfigPersonasMesa()">CONFIGURAR PERSONAS</button>
+                    </div>
+                </div>
             </div>
             <div style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
                 <div style="font-size:12px; color:var(--secondary); margin-bottom:8px;">
@@ -1083,6 +1116,8 @@
                 <button id="btn-registrar-salida" class="btn btn-save" onclick="finalizarVenta()" style="background: #2ed573;">
                     📤 REGISTRAR SALIDA
                 </button>
+            </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1434,12 +1469,12 @@
     </div>
   </section>
 
-  <script src="assets/js/app.js?v=20260410-github-bridge-1"></script>
-  <script src="assets/js/cloud-bridge.js?v=20260410-github-bridge-1"></script>
+  <script src="assets/js/app.js?v=20260413-hotfix-1"></script>
+  <script src="assets/js/cloud-bridge.js?v=20260413-hotfix-1"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/service-worker.js?v=20260410-github-bridge-1', {
+        navigator.serviceWorker.register('/service-worker.js?v=20260413-hotfix-1', {
           updateViaCache: 'none'
         }).then(function (registration) {
           registration.update().catch(function () {});

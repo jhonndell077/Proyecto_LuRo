@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Responsive Check</title>
+  <link rel="stylesheet" href="../public/assets/css/styles.css">
+</head>
+<body>
+  <div id="distribuidores" class="content-section" style="display:block;">
+    <div class="card">
+      <table class="luro-table luro-table--distribuidores" data-mobile-labels-ready="1">
+        <thead>
+          <tr>
+            <th>Distribuidor</th>
+            <th>Estado</th>
+            <th>Contacto</th>
+            <th>Teléfono</th>
+            <th>Email</th>
+            <th>Alerta Producto</th>
+            <th>Productos</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-distribuidores">
+          <tr id="dist-tr-dist_1772355923120_2013">
+            <td data-label="Distribuidor"><span style="font-weight:700;">Pricesmart</span></td>
+            <td data-label="Estado"><span style="color:var(--success);font-weight:bold;">Activo</span></td>
+            <td data-label="Contacto">-</td>
+            <td data-label="Teléfono">8293666947</td>
+            <td data-label="Email">-</td>
+            <td data-label="Alerta Producto"><span style="color:#2ecc71; font-weight:700;">Sin alertas</span></td>
+            <td data-label="Productos"><button class="btn btn-blue dist-productos-btn">1 producto(s)</button></td>
+            <td data-label="Acción" class="luro-action-cell">
+              <div class="luro-action-buttons luro-action-buttons--tight">
+                <button type="button" class="btn btn-warning" title="Editar distribuidor" aria-label="Editar distribuidor">✏️</button>
+                <button type="button" class="btn btn-danger" title="Eliminar distribuidor" aria-label="Eliminar distribuidor">🗑️</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="produccion-interna" class="content-section" style="display:block;">
+    <div class="card">
+      <table class="luro-table luro-table--produccion">
+        <thead><tr><th>Producto</th><th>Existencia Disponible</th><th>Costo Unit. (RD$)</th><th>Acciones</th></tr></thead>
+        <tbody id="tabla-stock-produccion">
+          <tr id="prod-tr-0">
+            <td data-label="Producto">COSTILLA BBQ ⚠️</td>
+            <td data-label="Existencia Disponible">292.00 Unidad</td>
+            <td data-label="Costo Unit. (RD$)">RD$80.00</td>
+            <td data-label="Acciones" class="luro-action-cell">
+              <div class="luro-action-buttons luro-action-buttons--tight">
+                <button class="btn btn-warning">✏️</button>
+                <button class="btn btn-danger">X</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="disponibilidad" class="content-section" style="display:block;">
+    <div class="card">
+      <table class="luro-table luro-table--disponibilidad">
+        <thead><tr><th>Plato / Receta</th><th>Precio</th><th>Existencia</th><th>Nueva Existencia</th><th>Acciones</th></tr></thead>
+        <tbody id="tabla-disponibilidad-full">
+          <tr id="plato-tr-0">
+            <td data-label="Plato / Receta">Costilla infinita ⚠️</td>
+            <td data-label="Precio">RD$950</td>
+            <td data-label="Existencia">183</td>
+            <td data-label="Nueva Existencia"><input type="number" value="1" style="width:70px"></td>
+            <td data-label="Acciones" class="luro-action-cell">
+              <div class="luro-action-buttons">
+                <button class="btn btn-save">OK</button>
+                <button class="btn btn-warning">✏️</button>
+                <button class="btn btn-danger">X</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="inventario" class="content-section" style="display:block;">
+    <div class="card">
+      <table class="luro-table luro-table--inventory">
+        <thead><tr><th>Producto (Existencia Ideal)</th><th>Disponible</th><th>Costo Unit. (RD$)</th><th>Faltante</th><th>Costo p/ Faltante</th><th>Acciones</th></tr></thead>
+        <tbody id="tabla-inventario">
+          <tr id="almacen-tr-bbq">
+            <td data-label="Producto (Existencia Ideal)"><strong>BBQ</strong> <small>(1)</small></td>
+            <td data-label="Disponible">2.00 Lb</td>
+            <td data-label="Costo Unit. (RD$)">RD$300.00</td>
+            <td data-label="Faltante">OK</td>
+            <td data-label="Costo p/ Faltante">RD$0.00</td>
+            <td data-label="Acciones" class="luro-action-cell">
+              <div class="luro-action-buttons luro-action-buttons--tight">
+                <button class="btn btn-warning">✏️</button>
+                <button class="btn btn-danger">X</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="report" style="padding:16px; font:12px/1.4 monospace;"></div>
+
+  <script>
+    document.body.classList.toggle('mobile-web-like', window.innerWidth <= 900);
+    const report = document.getElementById('report');
+
+    function rectData(el) {
+      const r = el.getBoundingClientRect();
+      return {
+        left: Math.round(r.left),
+        right: Math.round(r.right),
+        width: Math.round(r.width),
+        top: Math.round(r.top),
+        bottom: Math.round(r.bottom)
+      };
+    }
+
+    function pushLine(label, data) {
+      const pre = document.createElement('pre');
+      pre.textContent = label + ': ' + JSON.stringify(data);
+      report.appendChild(pre);
+    }
+
+    window.addEventListener('load', () => {
+      const table = document.querySelector('.luro-table--distribuidores');
+      const row = document.querySelector('#tabla-distribuidores tr');
+      const actionsCell = document.querySelector('#tabla-distribuidores .luro-action-cell');
+      const actions = document.querySelector('#tabla-distribuidores .luro-action-buttons');
+      const buttons = Array.from(document.querySelectorAll('#tabla-distribuidores .luro-action-buttons .btn'));
+      const prodTable = document.querySelector('.luro-table--produccion');
+      const prodButtons = Array.from(document.querySelectorAll('#tabla-stock-produccion .luro-action-buttons .btn'));
+      const dispoTable = document.querySelector('.luro-table--disponibilidad');
+      const invTable = document.querySelector('.luro-table--inventory');
+      const prodActions = document.querySelector('#tabla-stock-produccion .luro-action-buttons');
+      const dispoActions = document.querySelector('#tabla-disponibilidad-full .luro-action-buttons');
+      const invActions = document.querySelector('#tabla-inventario .luro-action-buttons');
+
+      pushLine('viewport', { width: window.innerWidth, mobileClass: document.body.classList.contains('mobile-web-like') });
+      pushLine('table', { clientWidth: table.clientWidth, scrollWidth: table.scrollWidth, display: getComputedStyle(table).display });
+      pushLine('row', rectData(row));
+      pushLine('actionsCell', rectData(actionsCell));
+      pushLine('actions', { ...rectData(actions), display: getComputedStyle(actions).display, wrap: getComputedStyle(actions).flexWrap });
+      pushLine('buttons', buttons.map((btn) => ({ text: btn.textContent.trim(), ...rectData(btn) })));
+      pushLine('buttonsVisible', buttons.every((btn) => {
+        const r = btn.getBoundingClientRect();
+        return r.left >= 0 && r.right <= window.innerWidth;
+      }));
+      pushLine('prodTable', { clientWidth: prodTable.clientWidth, scrollWidth: prodTable.scrollWidth, display: getComputedStyle(prodTable).display });
+      pushLine('dispoTable', { clientWidth: dispoTable.clientWidth, scrollWidth: dispoTable.scrollWidth, display: getComputedStyle(dispoTable).display });
+      pushLine('invTable', { clientWidth: invTable.clientWidth, scrollWidth: invTable.scrollWidth, display: getComputedStyle(invTable).display });
+      pushLine('prodActions', { width: Math.round(prodActions.getBoundingClientRect().width), wrap: getComputedStyle(prodActions).flexWrap });
+      pushLine('dispoActions', { width: Math.round(dispoActions.getBoundingClientRect().width), wrap: getComputedStyle(dispoActions).flexWrap });
+      pushLine('invActions', { width: Math.round(invActions.getBoundingClientRect().width), wrap: getComputedStyle(invActions).flexWrap });
+      pushLine('prodButtons', prodButtons.map((btn) => ({ text: btn.textContent.trim(), width: Math.round(btn.getBoundingClientRect().width), display: getComputedStyle(btn).display })));
+    });
+  </script>
+</body>
+</html>

@@ -290,6 +290,8 @@
             role: result.role,
             owner: result.owner,
             username: result.username,
+            canCreateAdmins: result?.canCreateAdmins === true,
+            parentOwner: String(result?.parentOwner || '').trim().toLowerCase(),
             permisos: Array.isArray(result.permisos) ? result.permisos : [],
             asignacionesEntradas: Array.isArray(result.asignacionesEntradas) ? result.asignacionesEntradas : []
           };
@@ -352,38 +354,66 @@
         }
       };
 
-      window.crearOwner = async function () {
-        const username = String(document.getElementById('cloud-owner-username')?.value || '').trim().toLowerCase();
-        const pass = String(document.getElementById('cloud-owner-pass')?.value || '').trim();
-        const empresa = String(document.getElementById('cloud-owner-empresa')?.value || '').trim();
+      window.crearOwnerCloud = async function (payload = {}, opts = {}) {
+        const username = String(payload?.username || '').trim().toLowerCase();
+        const pass = String(payload?.pass || '').trim();
+        const empresa = String(payload?.empresa || '').trim();
+        const silent = opts?.silent === true;
         if (!username || !pass) {
-          alert('Complete usuario y contraseña.');
+          if (!silent) alert('Complete usuario y contraseña.');
           return false;
         }
+        const data = {
+          username,
+          pass,
+          empresa
+        };
+        if (typeof payload?.canCreateAdmins === 'boolean') data.canCreateAdmins = payload.canCreateAdmins === true;
+        if (payload?.parentOwner) data.parentOwner = String(payload.parentOwner || '').trim().toLowerCase();
         try {
-          await postCallableWithSession('createMasterUser', { username, pass, empresa }, { timeoutMs: 8000 });
-          window.setStatusPublic(`Usuario maestro ${username} guardado en cloud.`);
+          await postCallableWithSession('createMasterUser', data, { timeoutMs: 8000 });
+          if (!silent) window.setStatusPublic(`Usuario maestro ${username} guardado en cloud.`);
           await window.refrescarListaOwnersCloud({ silent: true });
           return true;
         } catch (e) {
           const m = String(e?.message || e || 'Error interno');
-          window.setStatusPublic(`No se pudo guardar en Firebase: ${m}`, false);
-          alert(`No se pudo guardar en Firebase.\n${m}`);
+          if (!silent) {
+            window.setStatusPublic(`No se pudo guardar en Firebase: ${m}`, false);
+            alert(`No se pudo guardar en Firebase.\n${m}`);
+          }
           return false;
         }
       };
 
+      window.crearOwner = async function () {
+        const username = String(document.getElementById('cloud-owner-username')?.value || '').trim().toLowerCase();
+        const pass = String(document.getElementById('cloud-owner-pass')?.value || '').trim();
+        const empresa = String(document.getElementById('cloud-owner-empresa')?.value || '').trim();
+        return window.crearOwnerCloud({ username, pass, empresa }, { silent: false });
+      };
+
       window.subirBaseActualAlCloud = async function (opts = {}) {
         const silent = opts?.silent === true;
+        const allowEmptyUpload = opts?.allowEmptyUpload === true;
         try {
           const payloadDb = (typeof window.exportarDBParaCloud === 'function')
             ? window.exportarDBParaCloud()
             : getDbRef();
           if (!payloadDb || typeof payloadDb !== 'object') throw new Error('Base local inválida.');
+          const tieneContenido = typeof window.baseTieneContenido === 'function'
+            ? window.baseTieneContenido(payloadDb)
+            : true;
+          if (!allowEmptyUpload && !tieneContenido) {
+            console.warn('Bloqueado: intento de subir base vacía');
+            if (typeof window.setSyncStatusPublic === 'function') {
+              window.setSyncStatusPublic('Bloqueado: intento de subir base vacía.', false);
+            }
+            return false;
+          }
           const localMeta = typeof window.obtenerMetaDbLocal === 'function'
             ? (window.obtenerMetaDbLocal() || {})
             : {};
-          const updatedAtClient = Number(localMeta?.updatedAtClient || window.__luroLastSavedAt || Date.now());
+          const updatedAtClient = Number(localMeta?.updatedAtClient || payloadDb?.updatedAt || window.__luroLastSavedAt || Date.now());
           const syncKey = String(localMeta?.syncKey || window.__luroLastSyncKey || `${updatedAtClient}-${Math.random().toString(36).slice(2, 8)}`).trim();
           const payloadSnapshot = JSON.stringify(payloadDb);
           if (payloadSnapshot && payloadSnapshot === String(window.__cloudLastUploadedSnapshot || '')) {
@@ -424,12 +454,18 @@
         const reload = opts?.reload !== false;
         const fromCloudListener = opts?.fromCloudListener === true;
         const force = opts?.force === true;
-        if (cloudDbPullInFlight) return false;
+        if (cloudDbPullInFlight) {
+          window.__cloudLastPullResult = { ok: false, reason: 'in-flight', at: Date.now() };
+          return false;
+        }
         cloudDbPullInFlight = true;
+        window.__cloudLastPullResult = { ok: false, reason: 'pending', at: Date.now() };
         try {
           const result = await postCallableWithSession('getOwnerData', {}, { timeoutMs: 9000 });
           if (!result?.ok || !result?.db) {
+            console.warn('Cloud reportó base vacía o inexistente para esta cuenta.');
             window.setSyncStatusPublic('Cloud sin datos para esta cuenta.', false);
+            window.__cloudLastPullResult = { ok: false, reason: 'no-data', at: Date.now() };
             return false;
           }
           const remoteMeta = {
@@ -440,15 +476,31 @@
           if (typeof window.importarDBDesdeCloud === 'function') {
             imported = window.importarDBDesdeCloud(result.db, { fromCloudListener, force, remoteMeta });
           }
-          if (imported === false) return false;
+          if (imported === false) {
+            window.__cloudLastPullResult = {
+              ok: false,
+              reason: 'ignored',
+              at: Date.now(),
+              remoteMeta
+            };
+            return false;
+          }
           window.setSyncStatusPublic('Base descargada desde cloud.');
+          window.__cloudLastPullResult = {
+            ok: true,
+            reason: 'applied',
+            at: Date.now(),
+            remoteMeta
+          };
           if (reload && !fromCloudListener && typeof window.refrescarUITrasSyncCloud === 'function') {
             window.refrescarUITrasSyncCloud();
           }
           return true;
         } catch (e) {
           const m = String(e?.message || e || 'Error interno');
+          console.warn('Error al descargar base desde cloud:', m);
           window.setSyncStatusPublic(`Error al descargar: ${m}`, false);
+          window.__cloudLastPullResult = { ok: false, reason: 'error', at: Date.now(), message: m };
           if (!silent) alert(`No se pudo descargar del Cloud: ${m}`);
           return false;
         } finally {
@@ -664,7 +716,9 @@
           pass: String(f.pass || ''),
           role: target === 'jssantana077' ? 'super-master' : 'admin',
           owner: target,
-          activo: f.activo !== false
+          activo: f.activo !== false,
+          canCreateAdmins: f?.canCreateAdmins === true,
+          parentOwner: String(f?.parentOwner || '').trim().toLowerCase()
         };
       };
 
@@ -706,8 +760,12 @@
         try {
           window.setStatusPublic('Conexión restablecida. Sincronizando...');
           startCloudPresenceHeartbeat();
-          await window.subirBaseActualAlCloud({ silent: true });
-          await window.descargarBaseDesdeCloud({ silent: true, reload: false });
+          const downloaded = await window.descargarBaseDesdeCloud({ silent: true, reload: false });
+          const pullReason = String(window.__cloudLastPullResult?.reason || '');
+          if (!downloaded && pullReason === 'no-data' && typeof window.subirBaseActualAlCloud === 'function') {
+            await window.subirBaseActualAlCloud({ silent: true });
+            await window.descargarBaseDesdeCloud({ silent: true, reload: false });
+          }
           await window.refrescarListaOwnersCloud({ silent: true });
           await window.refrescarColaboradoresCloud({ silent: true });
           window.setStatusPublic('Sincronización cloud restablecida.');

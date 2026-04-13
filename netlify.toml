@@ -1,0 +1,17 @@
+[build]
+  publish = "public"
+
+[[redirects]]
+  from = "/app"
+  to = "/app.html"
+  status = 301
+
+[[redirects]]
+  from = "/acceder"
+  to = "/acceder.html"
+  status = 301
+
+[[redirects]]
+  from = "/descargar"
+  to = "/descargar.html"
+  status = 301

@@ -1,12 +1,12 @@
-const SW_VERSION = 'luro-pwa-github-bridge-20260410-1';
+const SW_VERSION = 'luro-pwa-hotfix-20260413-1';
 const CORE_ASSETS = [
   '/',
   '/index.html',
   '/app.html',
   '/manifest.webmanifest',
-  '/assets/css/styles.css?v=20260410-github-bridge-1',
-  '/assets/js/app.js?v=20260410-github-bridge-1',
-  '/assets/js/cloud-bridge.js?v=20260410-github-bridge-1',
+  '/assets/css/styles.css?v=20260413-hotfix-1',
+  '/assets/js/app.js?v=20260413-hotfix-1',
+  '/assets/js/cloud-bridge.js?v=20260413-hotfix-1',
   '/assets/brand/logo-luro.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
