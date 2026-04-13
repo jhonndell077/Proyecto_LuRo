@@ -4911,3 +4911,215 @@ body.salida-overlay-open {
     width: 100%;
   }
 }
+
+/* Ajustes finales responsive: Asistencia + Ventana de cobro */
+#asistencia .card {
+  overflow: visible;
+}
+
+#asistencia .asistencia-colaboradores-panel,
+#asistencia .asistencia-tablero-panel,
+#asistencia #asistencia-autorizaciones-card {
+  min-width: 0;
+}
+
+#asistencia .asistencia-tablero-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#asistencia .asistencia-tablero-table {
+  min-width: 640px;
+}
+
+@media (max-width: 900px) {
+  #asistencia .asistencia-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #asistencia .asistencia-colab-lista {
+    max-height: none;
+  }
+
+  #asistencia .asistencia-mark-btn {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 760px) {
+  #asistencia .asistencia-tablero-table,
+  #asistencia table {
+    width: 100%;
+    min-width: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0;
+  }
+
+  #asistencia .asistencia-tablero-table thead,
+  #asistencia table thead {
+    display: none !important;
+  }
+
+  #asistencia .asistencia-tablero-table tbody,
+  #asistencia .asistencia-tablero-table tr,
+  #asistencia .asistencia-tablero-table td,
+  #asistencia table tbody,
+  #asistencia table tr,
+  #asistencia table td {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  #asistencia .asistencia-tablero-table tr,
+  #asistencia table tr {
+    border: 1px solid #dfe6e9 !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+    margin-bottom: 10px !important;
+    padding: 6px 8px !important;
+    box-shadow: 0 6px 14px rgba(12, 22, 28, 0.06) !important;
+  }
+
+  #asistencia .asistencia-tablero-table td,
+  #asistencia table td {
+    border: 0 !important;
+    border-bottom: 1px dashed #ecf0f3 !important;
+    position: relative !important;
+    padding: 8px 8px 8px 46% !important;
+    text-align: left !important;
+    white-space: normal !important;
+    word-break: break-word;
+    min-height: 34px !important;
+  }
+
+  #asistencia .asistencia-tablero-table td:last-child,
+  #asistencia table td:last-child {
+    border-bottom: 0 !important;
+  }
+
+  #asistencia .asistencia-tablero-table td::before,
+  #asistencia table td::before {
+    content: attr(data-label) !important;
+    position: absolute !important;
+    left: 8px !important;
+    top: 8px !important;
+    width: 40% !important;
+    color: #57606f !important;
+    font-weight: 700 !important;
+    font-size: 10.5px !important;
+    text-transform: uppercase !important;
+    letter-spacing: .03em;
+    display: block !important;
+  }
+
+  #asistencia .asistencia-tablero-table td[data-label="MARCAR ENTRADA"],
+  #asistencia .asistencia-tablero-table td[data-label="MARCAR SALIDA"] {
+    padding-left: 40% !important;
+  }
+
+  #asistencia .asistencia-tablero-table td[data-label="MARCAR ENTRADA"] .asistencia-mark-btn,
+  #asistencia .asistencia-tablero-table td[data-label="MARCAR SALIDA"] .asistencia-mark-btn {
+    width: min(180px, 100%);
+    min-height: 34px;
+  }
+
+  #asistencia #asistencia-filtro-colaborador,
+  #asistencia input[type="date"] {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .salida-facturacion-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+  }
+
+  .salida-facturacion-shell {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+  }
+
+  .salida-facturacion-head {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    padding: 12px !important;
+  }
+
+  .salida-facturacion-head-copy {
+    min-width: 0;
+  }
+
+  .salida-facturacion-head strong {
+    font-size: 16px !important;
+  }
+
+  .salida-facturacion-status {
+    font-size: 11px !important;
+  }
+
+  .salida-facturacion-head-actions {
+    flex: 0 0 auto;
+  }
+
+  .salida-facturacion-overlay #salida-facturacion-card {
+    height: calc(100dvh - 82px) !important;
+    max-height: calc(100dvh - 82px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    border-radius: 0 !important;
+  }
+
+  #salida-facturacion-card .sale-rename-row,
+  #salida-facturacion-card .sale-client-grid,
+  #salida-facturacion-card .sale-table-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  #salida-facturacion-card .sale-client-panel .btn,
+  #salida-facturacion-card .sale-actions-panel .btn,
+  #salida-facturacion-card .sale-submit-row .btn {
+    width: 100%;
+  }
+
+  #salida-facturacion-card .sale-total-panel > div {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #salida-facturacion-card .sale-total-panel span {
+    font-size: 16px !important;
+  }
+
+  #salida #lista-cobro {
+    min-height: 140px !important;
+    max-height: 34vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #mesa-cuentas-wrap .sale-cuentas-head {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  #mesa-cuentas-wrap .sale-cuentas-actions,
+  #mesa-cuentas-wrap .sale-cuentas-actions .btn,
+  #mesa-cuentas-wrap #btn-cobrar-todos-mesa {
+    width: 100%;
+  }
+
+  #salida-facturacion-card .sale-submit-row {
+    margin-top: 12px !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
+  }
+}

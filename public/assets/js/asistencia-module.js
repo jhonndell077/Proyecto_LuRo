@@ -364,26 +364,41 @@
     if (!config || config.requerirClave === false) return { ok: true, logged: false };
 
     const colabNombre = String((colaboradorCfg && (colaboradorCfg.nombre || colaboradorCfg.user)) || 'colaborador').trim().toLowerCase();
-    const input = prompt(`Ingrese clave para ${String(tipoAccion || '').toUpperCase()} (${colabNombre}). Usa clave del colaborador (5 digitos) o clave maestra.`);
+    const input = prompt(`Ingrese la clave del colaborador para ${String(tipoAccion || '').toUpperCase()} (${colabNombre}).`);
     if (input === null) return { ok: false, logged: false, cancelled: true };
 
     const clave = String(input || '').trim();
-    const master = String(config.masterPassword || (sesionUser && sesionUser.pass) || '').trim();
-    const byMaster = !!master && clave === master;
-    const byColab = /^\d{5}$/.test(clave) && clave === String((colaboradorCfg && colaboradorCfg.clave) || '').trim();
-    const ok = byMaster || byColab;
+    const passColab = String((colaboradorCfg && colaboradorCfg.pass) || '').trim();
+    const claveColab = String((colaboradorCfg && colaboradorCfg.clave) || '').trim();
+    const byPass = !!passColab && clave === passColab;
+    const byClaveAsistencia = !!claveColab && clave === claveColab;
+    const ok = byPass || byClaveAsistencia;
+
+    if (!passColab && !claveColab) {
+      logAutorizacion({
+        colaboradorUser: colaboradorCfg && colaboradorCfg.user,
+        colaboradorNombre: colabNombre,
+        tipoAccion,
+        claveUsada: clave,
+        via: 'sin-clave-configurada',
+        autorizado: false,
+        motivo: 'colaborador-sin-clave'
+      });
+      alert('Este colaborador no tiene clave configurada en asistencia.');
+      return { ok: false, logged: true };
+    }
 
     logAutorizacion({
       colaboradorUser: colaboradorCfg && colaboradorCfg.user,
       colaboradorNombre: colabNombre,
       tipoAccion,
       claveUsada: clave,
-      via: byMaster ? 'maestra' : 'colaborador',
+      via: byPass ? 'colaborador-pass' : (byClaveAsistencia ? 'colaborador-asistencia' : 'colaborador'),
       autorizado: ok,
       motivo: ok ? 'autorizacion-ok' : 'clave-invalida'
     });
 
-    if (!ok) alert('Clave incorrecta. Accion bloqueada.');
+    if (!ok) alert('Clave del colaborador incorrecta. Acción bloqueada.');
     return { ok, logged: true };
   }
 
@@ -520,12 +535,12 @@
       const classSalida = registro && registro.salidaAt ? 'asistencia-mark-btn asistencia-mark-ok' : 'asistencia-mark-btn';
       const fechaVisible = fecha ? fecha.split('-').reverse().join('/') : '---';
       return `<tr>
-        <td><strong>${fechaVisible}</strong></td>
-        <td><button type="button" class="${classEntrada}" onclick="registrarAsistenciaDesdeTablero('entrada','${fecha}')" ${puedeEntrada ? '' : 'disabled'}>${registro && registro.entradaAt ? '✓' : '•'}</button></td>
-        <td>${entrada}</td>
-        <td><button type="button" class="${classSalida}" onclick="registrarAsistenciaDesdeTablero('salida','${fecha}')" ${puedeSalida ? '' : 'disabled'}>${registro && registro.salidaAt ? '✓' : '•'}</button></td>
-        <td>${salida}</td>
-        <td class="${registro && registro.salidaAt ? 'asistencia-total-ok' : ''}">${total}</td>
+        <td data-label="FECHA"><strong>${fechaVisible}</strong></td>
+        <td data-label="MARCAR ENTRADA"><button type="button" class="${classEntrada}" onclick="registrarAsistenciaDesdeTablero('entrada','${fecha}')" ${puedeEntrada ? '' : 'disabled'}>${registro && registro.entradaAt ? '&#10003;' : '&bull;'}</button></td>
+        <td data-label="ENTRADA">${entrada}</td>
+        <td data-label="MARCAR SALIDA"><button type="button" class="${classSalida}" onclick="registrarAsistenciaDesdeTablero('salida','${fecha}')" ${puedeSalida ? '' : 'disabled'}>${registro && registro.salidaAt ? '&#10003;' : '&bull;'}</button></td>
+        <td data-label="SALIDA">${salida}</td>
+        <td data-label="TOTAL" class="${registro && registro.salidaAt ? 'asistencia-total-ok' : ''}">${total}</td>
       </tr>`;
     }).join('');
   }
@@ -719,13 +734,13 @@
       const estado = estadoRegistroTexto(r);
       const color = estado === 'CERRADO' ? '#1f8f4c' : (estado === 'ABIERTO' ? '#a66a00' : '#c0392b');
       return `<tr>
-        <td>${fecha || '---'}</td>
-        <td><strong>${String((r && (r.colaborador || r.colaboradorNombre || r.colaboradorUser)) || '---').toUpperCase()}</strong></td>
-        <td>${entrada}</td>
-        <td>${salida}</td>
-        <td>${totalHorasTexto(r)}</td>
-        <td style="color:${color}; font-weight:700;">${estado}</td>
-        <td>${String((r && r.operador) || '---')}</td>
+        <td data-label="Fecha">${fecha || '---'}</td>
+        <td data-label="Colaborador"><strong>${String((r && (r.colaborador || r.colaboradorNombre || r.colaboradorUser)) || '---').toUpperCase()}</strong></td>
+        <td data-label="Entrada">${entrada}</td>
+        <td data-label="Salida">${salida}</td>
+        <td data-label="Total horas">${totalHorasTexto(r)}</td>
+        <td data-label="Estado" style="color:${color}; font-weight:700;">${estado}</td>
+        <td data-label="Operador">${String((r && r.operador) || '---')}</td>
       </tr>`;
     }).join('') || '<tr><td colspan="7" style="text-align:center; color:gray;">Sin registros validos.</td></tr>';
   };
@@ -749,13 +764,13 @@
       const color = ok ? '#1f8f4c' : '#c0392b';
       const clave = showKeys ? (String((r && r.claveUsada) || '').trim() || '---') : maskClave((r && r.claveUsada) || '');
       return `<tr>
-        <td>${String((r && r.fecha) || fechaTexto((r && r.timestamp) || '') || '---')}</td>
-        <td>${String((r && r.hora) || horaTexto((r && r.timestamp) || '', true) || '---')}</td>
-        <td><strong>${String((r && (r.colaboradorNombre || r.colaboradorUser)) || '---').toUpperCase()}</strong></td>
-        <td>${String((r && r.tipoAccion) || '---').toUpperCase()}</td>
-        <td>${clave}</td>
-        <td style="color:${color}; font-weight:700;">${ok ? 'AUTORIZADO' : 'DENEGADO'}</td>
-        <td>${String((r && r.operador) || '---')}</td>
+        <td data-label="Fecha">${String((r && r.fecha) || fechaTexto((r && r.timestamp) || '') || '---')}</td>
+        <td data-label="Hora">${String((r && r.hora) || horaTexto((r && r.timestamp) || '', true) || '---')}</td>
+        <td data-label="Colaborador"><strong>${String((r && (r.colaboradorNombre || r.colaboradorUser)) || '---').toUpperCase()}</strong></td>
+        <td data-label="Accion">${String((r && r.tipoAccion) || '---').toUpperCase()}</td>
+        <td data-label="Clave usada">${clave}</td>
+        <td data-label="Resultado" style="color:${color}; font-weight:700;">${ok ? 'AUTORIZADO' : 'DENEGADO'}</td>
+        <td data-label="Operador">${String((r && r.operador) || '---')}</td>
       </tr>`;
     }).join('') || '<tr><td colspan="7" style="text-align:center; color:gray;">Sin autorizaciones.</td></tr>';
   };

@@ -1237,11 +1237,11 @@
                 </div>
                 <div id="contenedor-salidas-busqueda" style="max-height: 260px; overflow-y: auto; border-radius: 8px; margin-bottom:10px;"></div>
             </div>
-            <div style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
+            <div class="sale-client-panel" style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
                 <input type="hidden" id="venta-cliente-rnc">
                 <input type="hidden" id="venta-cliente-telefono">
                 <input type="hidden" id="venta-cliente-nombre">
-                <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; align-items:end;">
+                <div class="sale-client-grid" style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; align-items:end;">
                     <div>
                         <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Datos del cliente</div>
                         <div id="venta-cliente-estado" style="display:none; margin-bottom:8px;">Cliente sin identificar.</div>
@@ -1253,7 +1253,7 @@
                     </div>
                 </div>
             </div>
-            <div style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
+            <div class="sale-actions-panel" style="margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
                 <div style="font-size:12px; color:var(--secondary); margin-bottom:8px;">
                     Tiempo en uso: <strong id="mesa-tiempo-uso">00:00</strong>
                 </div>
@@ -1263,11 +1263,11 @@
                     <button class="btn btn-danger" onclick="abrirModalMesaAccion('separar')">SEPARAR MESA</button>
                 </div>
             </div>
-            <div id="lista-cobro" style="min-height: 250px; margin-bottom: 15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px;">
+            <div id="lista-cobro" class="sale-ticket-panel" style="min-height: 250px; margin-bottom: 15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px;">
                 <p id="ticket-vacio" style="color: gray; text-align: center; margin-top: 100px;">🛒 Carrito vacío</p>
             </div>
             
-            <div style="background: #f1f2f6; padding: 15px; border-radius: 8px;">
+            <div class="sale-total-panel" style="background: #f1f2f6; padding: 15px; border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.3rem; color: #2f3542;">
                     <span>TOTAL A COBRAR:</span>
                     <span id="total-cobro">RD$0.00</span>

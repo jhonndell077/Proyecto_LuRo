@@ -10212,11 +10212,12 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       const acciones = panel.querySelector('button[onclick="finalizarVenta()"]')?.parentElement || panel;
       const box = document.createElement('div');
       box.id = 'mesa-cuentas-wrap';
+      box.className = 'sale-cuentas-panel';
       box.style.cssText = 'margin:10px 0; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;';
       box.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+        <div class="sale-cuentas-head" style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
           <strong style="font-size:12px; color:var(--secondary);">Cuentas por persona (Mesa física)</strong>
-          <div style="display:flex; gap:6px;">
+          <div class="sale-cuentas-actions" style="display:flex; gap:6px;">
             <button class="btn btn-danger" style="padding:8px 10px;" onclick="eliminarClientesMesaActual()">ELIMINAR CLIENTES</button>
           </div>
         </div>
