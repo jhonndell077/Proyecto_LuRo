@@ -89,18 +89,76 @@
     return Number(window.__asistenciaClavesVisiblesHasta || 0) > Date.now();
   }
 
-  function colaboradoresAsistencia(owner = getOwnerActivo()) {
+  function normalizarUsuarioColaborador(value = '') {
+    const clean = String(value || '').trim().toLowerCase();
+    if (!clean) return '';
+    return clean
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9._-]/g, '');
+  }
+
+  function normalizarNombreColaborador(value = '', fallback = '') {
+    const txt = String(value || '').trim().toLowerCase();
+    if (txt) return txt;
+    return String(fallback || '').trim().toLowerCase();
+  }
+
+  function colaboradoresSistemaAsistencia(owner = getOwnerActivo()) {
     const ownerKey = String(owner || '').trim().toLowerCase();
     if (!ownerKey) return [];
     return getDbArray('usuarios')
       .filter(u => String((u && u.role) || '').trim().toLowerCase() === 'colaborador' && String((u && u.owner) || '').trim().toLowerCase() === ownerKey)
-      .map(u => ({
-        user: String((u && u.user) || '').trim().toLowerCase(),
-        nombre: String((u && u.user) || '').trim().toLowerCase(),
-        activo: !!(u && u.activo !== false)
-      }))
-      .filter(u => !!u.user)
+      .map(u => {
+        const user = normalizarUsuarioColaborador((u && u.user) || '');
+        if (!user) return null;
+        return {
+          user,
+          nombre: normalizarNombreColaborador((u && u.user) || '', user),
+          activo: !!(u && u.activo !== false),
+          pass: String((u && u.pass) || '').trim(),
+          source: 'sistema',
+          esIndependiente: false
+        };
+      })
+      .filter(Boolean)
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  function normalizarManualColaborador(raw = {}) {
+    const obj = raw && typeof raw === 'object' ? raw : {};
+    let user = normalizarUsuarioColaborador(obj.user || '');
+    const nombre = normalizarNombreColaborador(obj.nombre || '', user || 'colaborador');
+    if (!user && nombre) user = normalizarUsuarioColaborador(nombre);
+    if (!user) return null;
+    return {
+      user,
+      nombre,
+      pass: String(obj.pass || '').trim(),
+      activo: obj.activo !== false,
+      updatedAt: String(obj.updatedAt || '').trim() || new Date().toISOString(),
+      source: 'manual',
+      esIndependiente: true
+    };
+  }
+
+  function manualColaboradoresAsistencia(config) {
+    const list = Array.isArray(config && config.manualColaboradores) ? config.manualColaboradores : [];
+    const map = new Map();
+    list.forEach(item => {
+      const n = normalizarManualColaborador(item);
+      if (!n) return;
+      map.set(n.user, n);
+    });
+    return [...map.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  function catalogoColaboradoresRegistrados(owner = getOwnerActivo()) {
+    return colaboradoresSistemaAsistencia(owner).map(c => ({
+      user: String(c.user || '').trim().toLowerCase(),
+      nombre: String(c.nombre || c.user || '').trim().toLowerCase(),
+      pass: String(c.pass || '').trim(),
+      activo: c.activo !== false
+    }));
   }
 
   function getAsistenciaConfig(opts = {}) {
@@ -121,6 +179,7 @@
         requerirClave: true,
         masterPassword: String((sesionUser && sesionUser.pass) || '').trim(),
         horaLimiteSalida: 4,
+        manualColaboradores: [],
         colaboradores: [],
         updatedAt: new Date().toISOString()
       };
@@ -135,6 +194,8 @@
     config.requerirClave = config.requerirClave !== false;
     config.horaLimiteSalida = horaLimiteNormalizada(config.horaLimiteSalida);
     config.masterPassword = String(config.masterPassword || '').trim();
+    if (!Array.isArray(config.manualColaboradores)) config.manualColaboradores = [];
+    config.manualColaboradores = manualColaboradoresAsistencia(config);
     if (!Array.isArray(config.colaboradores)) config.colaboradores = [];
 
     return config;
@@ -145,23 +206,50 @@
 
     const regenerate = opts.forzarRegenerar === true;
     const prevMap = new Map((Array.isArray(config.colaboradores) ? config.colaboradores : []).map(c => [String((c && c.user) || '').trim().toLowerCase(), c]));
+    const manualList = manualColaboradoresAsistencia(config);
+    config.manualColaboradores = manualList;
     const nowIso = new Date().toISOString();
 
-    const next = colaboradoresAsistencia(config.owner).map(c => {
-      const user = String(c.user || '').trim().toLowerCase();
-      const prev = prevMap.get(user) || {};
-      let clave = String(prev.clave || '').trim();
-      if (regenerate || !/^\d{5}$/.test(clave)) {
-        clave = generarClave(`${config.owner}|${config.modulo}|${user}`);
-      }
-      return {
-        user,
-        nombre: String(c.nombre || user).trim().toLowerCase(),
-        activo: c.activo !== false,
-        clave,
-        updatedAt: prev.updatedAt || nowIso
-      };
+    const sources = new Map();
+    colaboradoresSistemaAsistencia(config.owner).forEach(c => {
+      sources.set(c.user, { ...c });
     });
+    manualList.forEach(c => {
+      const prevSource = sources.get(c.user) || null;
+      if (prevSource) {
+        sources.set(c.user, {
+          ...prevSource,
+          nombre: c.nombre || prevSource.nombre,
+          activo: c.activo !== false,
+          pass: c.pass || prevSource.pass || '',
+          source: 'mixto',
+          esIndependiente: false
+        });
+        return;
+      }
+      sources.set(c.user, { ...c, source: 'manual', esIndependiente: true });
+    });
+
+    const next = [...sources.values()]
+      .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')))
+      .map(c => {
+        const user = String(c.user || '').trim().toLowerCase();
+        const prev = prevMap.get(user) || {};
+        let clave = String(prev.clave || '').trim();
+        if (regenerate || !/^\d{5}$/.test(clave)) {
+          clave = generarClave(`${config.owner}|${config.modulo}|${user}`);
+        }
+        return {
+          user,
+          nombre: String(c.nombre || user).trim().toLowerCase(),
+          activo: c.activo !== false,
+          pass: String(c.pass || prev.pass || '').trim(),
+          source: String(c.source || prev.source || '').trim() || 'manual',
+          esIndependiente: c.esIndependiente === true,
+          clave,
+          updatedAt: String(prev.updatedAt || c.updatedAt || nowIso)
+        };
+      });
 
     const changed = JSON.stringify(config.colaboradores || []) !== JSON.stringify(next);
     if (changed) {
@@ -390,9 +478,10 @@
         .filter(r => String((r && r.colaboradorUser) || '').trim().toLowerCase() === user && puedeVerRegistro(r))
         .sort((a, b) => timeMs((b && b.updatedAt) || (b && b.entradaAt)) - timeMs((a && a.updatedAt) || (a && a.entradaAt)))[0];
       const estado = ultima ? estadoRegistroTexto(ultima) : 'SIN REGISTROS';
+      const tipo = c && c.esIndependiente ? 'INDEPENDIENTE' : 'VINCULADO';
       return `<button type="button" class="asistencia-colab-btn${active}" onclick="seleccionarColaboradorAsistencia('${user.replace(/'/g, "\\'")}')">
         ${String(c.nombre || user).toUpperCase()}
-        <span class="asistencia-colab-meta">Estado: ${estado}</span>
+        <span class="asistencia-colab-meta">Estado: ${estado} · ${tipo}</span>
       </button>`;
     }).join('');
   }
@@ -455,14 +544,158 @@
     return window.registrarAsistencia(tipo, { colaboradorUser: user, fechaAsistencia: String(fechaAsistencia || '').trim() });
   };
 
-  window.abrirGestionColaboradoresAsistencia = function abrirGestionColaboradoresAsistencia() {
-    if (typeof showPage === 'function') {
-      showPage('configuracion');
-      setTimeout(() => {
-        document.getElementById('section-user-colaboradores')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 120);
-    }
+  window.cerrarModalAsistenciaColaborador = function cerrarModalAsistenciaColaborador() {
+    const modal = document.getElementById('modal-asistencia-colaborador');
+    if (!modal) return;
+    modal.style.display = 'none';
   };
+
+  window.autocompletarAsistenciaColaboradorDesdeSelect = function autocompletarAsistenciaColaboradorDesdeSelect() {
+    const select = document.getElementById('asistencia-colab-existente');
+    const inNombre = document.getElementById('asistencia-colab-nombre');
+    const inPass = document.getElementById('asistencia-colab-pass');
+    const inActivo = document.getElementById('asistencia-colab-activo');
+    if (!select || !inNombre || !inPass || !inActivo) return;
+
+    const user = String(select.value || '').trim().toLowerCase();
+    if (!user) {
+      inNombre.value = '';
+      inPass.value = '';
+      inActivo.checked = true;
+      return;
+    }
+
+    const list = Array.isArray(window.__asistenciaCatalogoColaboradores) ? window.__asistenciaCatalogoColaboradores : [];
+    const found = list.find(c => String((c && c.user) || '').trim().toLowerCase() === user) || null;
+    if (!found) return;
+
+    inNombre.value = String(found.nombre || user).trim().toLowerCase();
+    inPass.value = String(found.pass || '').trim();
+    inActivo.checked = found.activo !== false;
+  };
+
+  window.abrirGestionColaboradoresAsistencia = function abrirGestionColaboradoresAsistencia() {
+    if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) {
+      return alert('Solo un administrador puede añadir colaboradores a asistencia.');
+    }
+
+    const modal = document.getElementById('modal-asistencia-colaborador');
+    if (!modal) return;
+
+    const select = document.getElementById('asistencia-colab-existente');
+    const inNombre = document.getElementById('asistencia-colab-nombre');
+    const inPass = document.getElementById('asistencia-colab-pass');
+    const inActivo = document.getElementById('asistencia-colab-activo');
+
+    const list = catalogoColaboradoresRegistrados(getOwnerActivo());
+    window.__asistenciaCatalogoColaboradores = list;
+
+    if (select) {
+      const options = ['<option value="">Manual / sin rol</option>']
+        .concat(list.map(c => {
+          const user = String(c.user || '').replace(/"/g, '&quot;');
+          const estado = c.activo !== false ? 'Activo' : 'Bloqueado';
+          return `<option value="${user}">${String(c.nombre || c.user).toUpperCase()} · ${estado}</option>`;
+        }));
+      select.innerHTML = options.join('');
+      select.value = '';
+    }
+
+    if (inNombre) inNombre.value = '';
+    if (inPass) inPass.value = '';
+    if (inActivo) inActivo.checked = true;
+
+    modal.style.display = 'flex';
+    setTimeout(() => { inNombre?.focus(); }, 20);
+  };
+
+  window.guardarColaboradorAsistenciaIndependiente = function guardarColaboradorAsistenciaIndependiente() {
+    if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) {
+      return alert('Solo un administrador puede guardar colaboradores de asistencia.');
+    }
+
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    if (!config) return alert('No se pudo cargar la configuración de asistencia.');
+
+    const select = document.getElementById('asistencia-colab-existente');
+    const inNombre = document.getElementById('asistencia-colab-nombre');
+    const inPass = document.getElementById('asistencia-colab-pass');
+    const inActivo = document.getElementById('asistencia-colab-activo');
+
+    const fromSelect = String((select && select.value) || '').trim().toLowerCase();
+    const nombreRaw = String((inNombre && inNombre.value) || '').trim();
+    const passRaw = String((inPass && inPass.value) || '').trim();
+    const activo = !!(inActivo && inActivo.checked);
+
+    const nombre = normalizarNombreColaborador(nombreRaw, fromSelect || 'colaborador');
+    let user = normalizarUsuarioColaborador(fromSelect || nombre);
+    if (!user) user = `colaborador-${Date.now()}`;
+
+    if (!nombre) return alert('Ingresa el nombre del colaborador.');
+    if (!passRaw) return alert('Ingresa la contraseña del colaborador.');
+
+    if (!Array.isArray(config.manualColaboradores)) config.manualColaboradores = [];
+    const nowIso = new Date().toISOString();
+    const idx = config.manualColaboradores.findIndex(c => String((c && c.user) || '').trim().toLowerCase() === user);
+    const payload = {
+      user,
+      nombre,
+      pass: passRaw,
+      activo,
+      updatedAt: nowIso
+    };
+
+    if (idx >= 0) {
+      config.manualColaboradores[idx] = {
+        ...(config.manualColaboradores[idx] || {}),
+        ...payload
+      };
+    } else {
+      config.manualColaboradores.push(payload);
+    }
+
+    syncConfigColaboradores(config);
+    config.updatedAt = nowIso;
+
+    if (typeof guardarDatos === 'function') guardarDatos();
+
+    window.cerrarModalAsistenciaColaborador();
+    window.__asistenciaColabSeleccionado = user;
+    window.renderAsistenciaModulo();
+    if (typeof window.renderConfigAsistencia === 'function') window.renderConfigAsistencia();
+    alert(`Colaborador ${nombre.toUpperCase()} agregado a asistencia.`);
+  };
+
+  window.eliminarColaboradorAsistenciaIndependiente = function eliminarColaboradorAsistenciaIndependiente(colaboradorUser) {
+    if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) return;
+    const user = String(colaboradorUser || '').trim().toLowerCase();
+    if (!user) return;
+
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    if (!config || !Array.isArray(config.manualColaboradores)) return;
+
+    const before = config.manualColaboradores.length;
+    config.manualColaboradores = config.manualColaboradores.filter(c => String((c && c.user) || '').trim().toLowerCase() !== user);
+    if (config.manualColaboradores.length === before) return;
+
+    syncConfigColaboradores(config);
+    config.updatedAt = new Date().toISOString();
+    if (typeof guardarDatos === 'function') guardarDatos();
+
+    if (String(window.__asistenciaColabSeleccionado || '').trim().toLowerCase() === user) {
+      window.__asistenciaColabSeleccionado = '';
+    }
+
+    window.renderAsistenciaModulo();
+    if (typeof window.renderConfigAsistencia === 'function') window.renderConfigAsistencia();
+    alert('Colaborador de asistencia removido.');
+  };
+
+  window.addEventListener('click', (ev) => {
+    const modal = document.getElementById('modal-asistencia-colaborador');
+    if (!modal || modal.style.display === 'none') return;
+    if (ev.target === modal) window.cerrarModalAsistenciaColaborador();
+  });
   window.renderAsistenciaRegistros = function renderAsistenciaRegistros() {
     const tbody = document.getElementById('tabla-asistencia-registros');
     if (!tbody) return;
@@ -681,12 +914,18 @@
         const color = c && c.activo !== false ? '#1f8f4c' : '#a66a00';
         const clave = showKeys ? (String((c && c.clave) || '').trim() || '---') : maskClave((c && c.clave) || '');
         const updated = c && c.updatedAt ? new Date(c.updatedAt).toLocaleString() : '---';
+        const source = String((c && c.source) || '').trim().toLowerCase();
+        const etiquetaFuente = source === 'manual' ? 'Independiente' : (source === 'mixto' ? 'Vinculado + Independiente' : 'Vinculado');
+        const puedeRemover = source === 'manual' || source === 'mixto';
+        const removeBtn = puedeRemover
+          ? `<button class="btn btn-danger" style="padding:6px 8px;" onclick="eliminarColaboradorAsistenciaIndependiente('${user.replace(/'/g, "\\'")}')">REMOVER</button>`
+          : '';
         return `<tr>
-          <td><strong>${String((c && (c.nombre || user)) || '---').toUpperCase()}</strong></td>
+          <td><strong>${String((c && (c.nombre || user)) || '---').toUpperCase()}</strong><div style="font-size:11px; color:#777; margin-top:2px;">${etiquetaFuente}</div></td>
           <td style="color:${color}; font-weight:700;">${estado}</td>
           <td>${clave}</td>
           <td>${updated}</td>
-          <td><button class="btn btn-purple" style="padding:6px 8px;" onclick="regenerarClaveAsistenciaColaborador('${user.replace(/'/g, "\\'")}')">REGENERAR</button></td>
+          <td style="display:flex; gap:6px; flex-wrap:wrap;"><button class="btn btn-purple" style="padding:6px 8px;" onclick="regenerarClaveAsistenciaColaborador('${user.replace(/'/g, "\\'")}')">REGENERAR</button>${removeBtn}</td>
         </tr>`;
       }).join('') || '<tr><td colspan="5" style="text-align:center; color:#777;">Sin colaboradores vinculados.</td></tr>';
     }
