@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/saas/css/landing.css?v=20260414-landing-ecosistema-1">
+  <link rel="stylesheet" href="assets/saas/css/landing.css?v=20260414-landing-ecosistema-2">
 </head>
 <body>
   <div class="bg-orb bg-orb-a" aria-hidden="true"></div>
@@ -312,5 +312,36 @@
       <a href="https://www.instagram.com/lurocontrol?igsh=eWFza3NzN3RoODl2" target="_blank" rel="noopener">Instagram</a>
     </div>
   </footer>
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var swVersion = '20260414-cachefix-2';
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
+          updateViaCache: 'none'
+        }).then(function (registration) {
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+          registration.addEventListener('updatefound', function () {
+            var newWorker = registration.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', function () {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+          registration.update().catch(function () {});
+        }).catch(function () {});
+      });
+
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (window.__swRefreshed) return;
+        window.__swRefreshed = true;
+        window.location.reload();
+      });
+    })();
+  </script>
 </body>
 </html>

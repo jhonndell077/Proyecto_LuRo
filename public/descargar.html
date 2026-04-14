@@ -34,15 +34,35 @@
     </ul>
   </div>
   <script>
-    if ('serviceWorker' in navigator) {
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var swVersion = '20260414-cachefix-2';
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/service-worker.js?v=20260406-comandos-editor-1', {
+        navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'
         }).then(function (registration) {
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+          registration.addEventListener('updatefound', function () {
+            var newWorker = registration.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', function () {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
           registration.update().catch(function () {});
         }).catch(function () {});
       });
-    }
+
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (window.__swRefreshed) return;
+        window.__swRefreshed = true;
+        window.location.reload();
+      });
+    })();
 
     (function () {
       var deferredPrompt = null;
