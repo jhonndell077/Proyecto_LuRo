@@ -1,5 +1,7 @@
 (() => {
   const ASISTENCIA_CLAVES_VISIBLES_MS = 5 * 60 * 1000;
+  const ASISTENCIA_CICLO_DIAS = 12;
+  const ASISTENCIA_CICLO_TIMER_MS = 60 * 1000;
 
   function getDbArray(key) {
     if (!db || typeof db !== 'object') return [];
@@ -42,6 +44,52 @@
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   }
 
+  function normalizarYmd(value) {
+    const txt = String(value || '').trim();
+    if (!txt) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(txt)) return txt;
+    const parsed = safeDate(txt);
+    if (parsed) return ymdLocal(parsed);
+    return '';
+  }
+
+  function diasEntreYmd(inicioYmd, finYmd) {
+    const ini = safeDate(`${String(inicioYmd || '').trim()}T12:00:00`);
+    const fin = safeDate(`${String(finYmd || '').trim()}T12:00:00`);
+    if (!ini || !fin) return NaN;
+    return Math.round((fin.getTime() - ini.getTime()) / (24 * 60 * 60 * 1000));
+  }
+
+  function ymdAddDays(ymd, days) {
+    const base = safeDate(`${String(ymd || '').trim()}T12:00:00`);
+    if (!base) return '';
+    const copy = new Date(base.getTime());
+    copy.setDate(copy.getDate() + toNumber(days, 0));
+    return ymdLocal(copy);
+  }
+
+  function ymdToDisplay(ymd) {
+    const txt = String(ymd || '').trim();
+    if (!txt) return '---';
+    const p = txt.split('-');
+    if (p.length !== 3) return txt;
+    return `${p[2]}/${p[1]}/${p[0]}`;
+  }
+
+  function minutosTotalesDesdeRegistro(record) {
+    const ini = timeMs(record && record.entradaAt);
+    const fin = timeMs(record && record.salidaAt);
+    if (!(ini > 0 && fin > 0 && fin >= ini)) return 0;
+    return Math.round((fin - ini) / 60000);
+  }
+
+  function minutosAHorasTexto(minsValue) {
+    const mins = Math.max(0, Math.round(toNumber(minsValue, 0)));
+    const hh = Math.floor(mins / 60);
+    const mm = mins % 60;
+    return `${hh}:${String(mm).padStart(2, '0')}`;
+  }
+
   function fechaTexto(value) {
     const d = safeDate(value);
     if (!d) return '---';
@@ -53,6 +101,90 @@
     if (!d) return '---';
     const base = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
     return withSeconds ? `${base}:${pad2(d.getSeconds())}` : base;
+  }
+
+  function horaMinutoRedondeada(value) {
+    const d = safeDate(value);
+    if (!d) return '';
+    const copy = new Date(d.getTime() + 30000);
+    return `${pad2(copy.getHours())}:${pad2(copy.getMinutes())}`;
+  }
+
+  function hora24DesdeTexto(value = '') {
+    const txt = String(value || '').trim();
+    if (!txt) return '';
+    const d = safeDate(txt);
+    if (d) return horaTexto(d, true);
+
+    const m12 = txt.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])$/);
+    if (m12) {
+      let hh = toNumber(m12[1], 0);
+      const mm = pad2(m12[2]);
+      const ss = pad2(m12[3] || '00');
+      const ap = String(m12[4] || '').toUpperCase();
+      if (ap === 'PM' && hh < 12) hh += 12;
+      if (ap === 'AM' && hh === 12) hh = 0;
+      return `${pad2(hh)}:${mm}:${ss}`;
+    }
+
+    const m24 = txt.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (m24) {
+      return `${pad2(m24[1])}:${pad2(m24[2])}:${pad2(m24[3] || '00')}`;
+    }
+    return txt;
+  }
+
+  function hora24SoloMinutos(value = '') {
+    const txt = String(value || '').trim();
+    if (!txt) return '';
+
+    const rounded = horaMinutoRedondeada(txt);
+    if (rounded) return rounded;
+
+    const m12 = txt.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])$/);
+    if (m12) {
+      let hh = toNumber(m12[1], 0);
+      let mm = toNumber(m12[2], 0);
+      const ss = toNumber(m12[3] || '00', 0);
+      const ap = String(m12[4] || '').toUpperCase();
+      if (ap === 'PM' && hh < 12) hh += 12;
+      if (ap === 'AM' && hh === 12) hh = 0;
+      if (ss >= 30) mm += 1;
+      if (mm >= 60) {
+        hh += Math.floor(mm / 60);
+        mm = mm % 60;
+      }
+      hh = hh % 24;
+      return `${pad2(hh)}:${pad2(mm)}`;
+    }
+
+    const m24 = txt.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (m24) {
+      let hh = toNumber(m24[1], 0);
+      let mm = toNumber(m24[2], 0);
+      const ss = toNumber(m24[3] || '00', 0);
+      if (ss >= 30) mm += 1;
+      if (mm >= 60) {
+        hh += Math.floor(mm / 60);
+        mm = mm % 60;
+      }
+      hh = ((hh % 24) + 24) % 24;
+      return `${pad2(hh)}:${pad2(mm)}`;
+    }
+
+    const hms = hora24DesdeTexto(txt);
+    const m = hms.match(/^(\d{2}):(\d{2})(?::\d{2})?$/);
+    if (m) return `${m[1]}:${m[2]}`;
+    return '';
+  }
+
+  function horaRegistroTexto(record, atField, horaField) {
+    if (record && record[atField]) {
+      const roundedAt = horaMinutoRedondeada(record[atField]);
+      if (roundedAt) return roundedAt;
+    }
+    const fromHora = hora24SoloMinutos(record && record[horaField]);
+    return fromHora || '---';
   }
 
   function timeMs(value) {
@@ -81,8 +213,8 @@
   function maskClave(value) {
     const txt = String(value || '').trim();
     if (!txt) return '---';
-    if (txt.length <= 2) return '••';
-    return `${'•'.repeat(Math.max(1, txt.length - 2))}${txt.slice(-2)}`;
+    if (txt.length <= 2) return '**';
+    return `${'*'.repeat(Math.max(1, txt.length - 2))}${txt.slice(-2)}`;
   }
 
   function clavesDesbloqueadas() {
@@ -179,6 +311,8 @@
         requerirClave: true,
         masterPassword: String((sesionUser && sesionUser.pass) || '').trim(),
         horaLimiteSalida: 4,
+        cicloInicio: '',
+        cicloFin: '',
         manualColaboradores: [],
         colaboradores: [],
         updatedAt: new Date().toISOString()
@@ -194,9 +328,12 @@
     config.requerirClave = config.requerirClave !== false;
     config.horaLimiteSalida = horaLimiteNormalizada(config.horaLimiteSalida);
     config.masterPassword = String(config.masterPassword || '').trim();
+    config.cicloInicio = normalizarYmd(config.cicloInicio);
+    config.cicloFin = normalizarYmd(config.cicloFin);
     if (!Array.isArray(config.manualColaboradores)) config.manualColaboradores = [];
     config.manualColaboradores = manualColaboradoresAsistencia(config);
     if (!Array.isArray(config.colaboradores)) config.colaboradores = [];
+    sincronizarVentanaCicloAsistencia(config);
 
     return config;
   }
@@ -269,14 +406,91 @@
     return ymdLocal(copy);
   }
 
+  function fechaNominaActual() {
+    return ymdLocal(new Date());
+  }
+
+  function sincronizarVentanaCicloAsistencia(config, opts = {}) {
+    if (!config || typeof config !== 'object') return false;
+    const forceAdvance = opts.forceAdvance === true;
+    const jornadaActual = fechaNominaActual();
+    if (!jornadaActual) return false;
+
+    let changed = false;
+    let inicio = normalizarYmd(config.cicloInicio);
+    let fin = normalizarYmd(config.cicloFin);
+
+    if (!inicio || !fin) {
+      fin = ymdAddDays(jornadaActual, -1);
+      inicio = ymdAddDays(fin, -(ASISTENCIA_CICLO_DIAS - 1));
+      changed = true;
+    }
+
+    if (!inicio || !fin) return false;
+
+    const span = diasEntreYmd(inicio, fin);
+    if (!Number.isFinite(span) || span < 0) {
+      inicio = ymdAddDays(fin, -(ASISTENCIA_CICLO_DIAS - 1));
+      changed = true;
+    } else if (span !== (ASISTENCIA_CICLO_DIAS - 1)) {
+      fin = ymdAddDays(inicio, ASISTENCIA_CICLO_DIAS - 1);
+      changed = true;
+    }
+
+    const legacyInicio = ymdAddDays(jornadaActual, -(ASISTENCIA_CICLO_DIAS - 1));
+    const legacySpan = diasEntreYmd(inicio, fin);
+    const esLegacyDeslizante = !forceAdvance &&
+      inicio === legacyInicio &&
+      fin === jornadaActual &&
+      legacySpan === (ASISTENCIA_CICLO_DIAS - 1);
+
+    if (esLegacyDeslizante) {
+      inicio = ymdAddDays(inicio, ASISTENCIA_CICLO_DIAS - 1);
+      fin = ymdAddDays(fin, ASISTENCIA_CICLO_DIAS - 1);
+      changed = true;
+    }
+
+    if (!fin) return false;
+
+    if (forceAdvance) {
+      inicio = ymdAddDays(inicio, ASISTENCIA_CICLO_DIAS);
+      fin = ymdAddDays(fin, ASISTENCIA_CICLO_DIAS);
+      changed = true;
+    } else {
+      let guard = 0;
+      while (jornadaActual > fin && guard < 120) {
+        inicio = ymdAddDays(inicio, ASISTENCIA_CICLO_DIAS);
+        fin = ymdAddDays(fin, ASISTENCIA_CICLO_DIAS);
+        changed = true;
+        guard++;
+      }
+      guard = 0;
+      while (jornadaActual < inicio && guard < 120) {
+        inicio = ymdAddDays(inicio, -ASISTENCIA_CICLO_DIAS);
+        fin = ymdAddDays(fin, -ASISTENCIA_CICLO_DIAS);
+        changed = true;
+        guard++;
+      }
+    }
+
+    if (String(config.cicloInicio || '').trim() !== inicio) changed = true;
+    if (String(config.cicloFin || '').trim() !== fin) changed = true;
+    config.cicloInicio = inicio;
+    config.cicloFin = fin;
+    if (changed) config.updatedAt = new Date().toISOString();
+    return changed;
+  }
+
   function estadoConfigTexto(config) {
     if (!config) return 'Asistencia sin configuracion';
     const estado = config.activo ? 'ACTIVO' : 'INACTIVO';
     const auth = config.requerirClave ? 'ON' : 'OFF';
     const colabs = (config.colaboradores || []).filter(c => c && c.activo !== false).length;
-    return `Modulo ${estado} · Autorizacion ${auth} · Corte ${horaLimiteNormalizada(config.horaLimiteSalida)}:00 · Colaboradores ${colabs}`;
+    const inicio = String(config.cicloInicio || '').trim();
+    const fin = String(config.cicloFin || '').trim();
+    const cicloTxt = inicio && fin ? ` - Ciclo ${ymdToDisplay(fin)} a ${ymdToDisplay(inicio)}` : '';
+    return `Modulo ${estado} - Autorizacion ${auth} - Corte ${horaLimiteNormalizada(config.horaLimiteSalida)}:00 - Colaboradores ${colabs}${cicloTxt}`;
   }
-
   function setRegistroEstado(msg, color = '#57606f') {
     const el = document.getElementById('asistencia-registro-estado');
     if (!el) return;
@@ -398,7 +612,7 @@
       motivo: ok ? 'autorizacion-ok' : 'clave-invalida'
     });
 
-    if (!ok) alert('Clave del colaborador incorrecta. Acción bloqueada.');
+    if (!ok) alert('Clave del colaborador incorrecta. Accion bloqueada.');
     return { ok, logged: true };
   }
 
@@ -424,17 +638,16 @@
     return cols;
   }
 
-  function construirFechasTablero(config, days = 12) {
+  function construirFechasTablero(config) {
+    if (!config) return [];
+    sincronizarVentanaCicloAsistencia(config);
+    const inicio = String(config.cicloInicio || '').trim();
+    if (!inicio) return [];
     const fechas = [];
-    const base = safeDate(new Date()) || new Date();
-    const jornada = fechaOperativaAsistencia(base, config);
-    const jornadaDate = safeDate(`${jornada}T12:00:00`) || base;
-    for (let i = 0; i < days; i++) {
-      const d = new Date(jornadaDate.getTime());
-      d.setDate(jornadaDate.getDate() - i);
-      fechas.push(ymdLocal(d));
+    for (let i = ASISTENCIA_CICLO_DIAS - 1; i >= 0; i--) {
+      fechas.push(ymdAddDays(inicio, i));
     }
-    return fechas;
+    return fechas.filter(Boolean);
   }
 
   function aplicarRestriccionesVisuales() {
@@ -458,7 +671,7 @@
     const cfgStatus = document.getElementById('config-asistencia-status');
     if (cfgStatus && config) {
       const hasMaster = !!String(config.masterPassword || '').trim();
-      cfgStatus.textContent = `${estadoConfigTexto(config)} · Clave maestra ${hasMaster ? 'configurada' : 'pendiente'}.`;
+      cfgStatus.textContent = `${estadoConfigTexto(config)} - Clave maestra ${hasMaster ? 'configurada' : 'pendiente'}.`;
       cfgStatus.style.color = config.activo ? '#1f8f4c' : '#a66a00';
     }
   }
@@ -496,7 +709,7 @@
       const tipo = c && c.esIndependiente ? 'INDEPENDIENTE' : 'VINCULADO';
       return `<button type="button" class="asistencia-colab-btn${active}" onclick="seleccionarColaboradorAsistencia('${user.replace(/'/g, "\\'")}')">
         ${String(c.nombre || user).toUpperCase()}
-        <span class="asistencia-colab-meta">Estado: ${estado} · ${tipo}</span>
+        <span class="asistencia-colab-meta">Estado: ${estado} - ${tipo}</span>
       </button>`;
     }).join('');
   }
@@ -506,13 +719,17 @@
     const head = document.getElementById('asistencia-tablero-header');
     const fechaLabel = document.getElementById('asistencia-fecha-operativa');
     if (!tbody || !config) return;
+    sincronizarVentanaCicloAsistencia(config);
 
     const selected = String(window.__asistenciaColabSeleccionado || '').trim().toLowerCase();
     const colaborador = colaboradoresActivosVisibles(config).find(c => String(c.user || '').trim().toLowerCase() === selected) || null;
-    const jornada = fechaOperativaAsistencia(new Date(), config);
+    const jornada = fechaNominaActual();
+    const cicloInicio = String(config.cicloInicio || '').trim();
+    const cicloFin = String(config.cicloFin || '').trim();
 
     if (fechaLabel) {
-      fechaLabel.textContent = `Jornada operativa: ${jornada || '---'} · corte ${horaLimiteNormalizada(config.horaLimiteSalida)}:00`;
+      const ciclo = cicloInicio && cicloFin ? `${ymdToDisplay(cicloFin)} a ${ymdToDisplay(cicloInicio)}` : '---';
+      fechaLabel.textContent = `Jornada operativa: ${ymdToDisplay(jornada)} - Ciclo: ${ciclo} - corte ${horaLimiteNormalizada(config.horaLimiteSalida)}:00`;
     }
 
     if (!colaborador) {
@@ -523,11 +740,11 @@
 
     if (head) head.textContent = `Colaborador: ${String(colaborador.nombre || colaborador.user).toUpperCase()}`;
 
-    const fechas = construirFechasTablero(config, 12);
+    const fechas = construirFechasTablero(config);
     tbody.innerHTML = fechas.map(fecha => {
       const registro = getRegistroPorFecha(colaborador.user, fecha);
-      const entrada = registro && registro.entradaAt ? horaTexto(registro.entradaAt, true) : '---';
-      const salida = registro && registro.salidaAt ? horaTexto(registro.salidaAt, true) : '---';
+      const entrada = horaRegistroTexto(registro, 'entradaAt', 'entradaHora');
+      const salida = horaRegistroTexto(registro, 'salidaAt', 'salidaHora');
       const total = registro ? totalHorasTexto(registro) : '---';
       const puedeEntrada = config.activo && fecha === jornada && !(registro && registro.entradaAt);
       const puedeSalida = config.activo && fecha === jornada && !!(registro && registro.entradaAt) && !(registro && registro.salidaAt);
@@ -591,7 +808,7 @@
 
   window.abrirGestionColaboradoresAsistencia = function abrirGestionColaboradoresAsistencia() {
     if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) {
-      return alert('Solo un administrador puede añadir colaboradores a asistencia.');
+      return alert('Solo un administrador puede anadir colaboradores a asistencia.');
     }
 
     const modal = document.getElementById('modal-asistencia-colaborador');
@@ -610,7 +827,7 @@
         .concat(list.map(c => {
           const user = String(c.user || '').replace(/"/g, '&quot;');
           const estado = c.activo !== false ? 'Activo' : 'Bloqueado';
-          return `<option value="${user}">${String(c.nombre || c.user).toUpperCase()} · ${estado}</option>`;
+          return `<option value="${user}">${String(c.nombre || c.user).toUpperCase()} - ${estado}</option>`;
         }));
       select.innerHTML = options.join('');
       select.value = '';
@@ -630,7 +847,7 @@
     }
 
     const config = getAsistenciaConfig({ createIfMissing: true });
-    if (!config) return alert('No se pudo cargar la configuración de asistencia.');
+    if (!config) return alert('No se pudo cargar la configuracion de asistencia.');
 
     const select = document.getElementById('asistencia-colab-existente');
     const inNombre = document.getElementById('asistencia-colab-nombre');
@@ -647,7 +864,7 @@
     if (!user) user = `colaborador-${Date.now()}`;
 
     if (!nombre) return alert('Ingresa el nombre del colaborador.');
-    if (!passRaw) return alert('Ingresa la contraseña del colaborador.');
+    if (!passRaw) return alert('Ingresa la contrasena del colaborador.');
 
     if (!Array.isArray(config.manualColaboradores)) config.manualColaboradores = [];
     const nowIso = new Date().toISOString();
@@ -708,41 +925,162 @@
 
   window.addEventListener('click', (ev) => {
     const modal = document.getElementById('modal-asistencia-colaborador');
-    if (!modal || modal.style.display === 'none') return;
-    if (ev.target === modal) window.cerrarModalAsistenciaColaborador();
+    if (modal && modal.style.display !== 'none' && ev.target === modal) {
+      window.cerrarModalAsistenciaColaborador();
+    }
+    const panel = document.getElementById('asistencia-reporte-panel');
+    if (panel && panel.classList.contains('is-open') && ev.target === panel) {
+      window.toggleAsistenciaReporte(false);
+    }
   });
   window.renderAsistenciaRegistros = function renderAsistenciaRegistros() {
-    const tbody = document.getElementById('tabla-asistencia-registros');
-    if (!tbody) return;
+    const box = document.getElementById('asistencia-reporte-consolidado-lista');
+    if (!box) return;
 
     const q = String((document.getElementById('asistencia-filtro-colaborador') && document.getElementById('asistencia-filtro-colaborador').value) || '').trim().toLowerCase();
 
-    const rows = registrosAsistenciaVisibles()
-      .filter(r => {
-        const fechaRef = String((r && (r.fechaAsistencia || r.fecha || r.entradaAt)) || '').trim();
-        if (typeof fechaDentroRango === 'function' && !fechaDentroRango(fechaRef, 'filtro-asistencia-desde', 'filtro-asistencia-hasta')) return false;
-        if (!q) return true;
-        const nombre = String((r && (r.colaborador || r.colaboradorNombre || r.colaboradorUser)) || '').trim().toLowerCase();
-        return nombre.includes(q);
-      })
-      .sort((a, b) => timeMs((b && b.entradaAt) || (b && b.createdAt) || (b && b.fechaAsistencia)) - timeMs((a && a.entradaAt) || (a && a.createdAt) || (a && a.fechaAsistencia)));
+    const resumen = new Map();
+    registrosAsistenciaVisibles().forEach(r => {
+      const user = String((r && r.colaboradorUser) || '').trim().toLowerCase();
+      const nombre = String((r && (r.colaboradorNombre || r.colaborador || r.colaboradorUser)) || '').trim().toLowerCase();
+      const key = user || nombre;
+      if (!key) return;
+      if (!resumen.has(key)) {
+        resumen.set(key, {
+          user: key,
+          nombre: nombre || key,
+          totalMins: 0,
+          registros: 0,
+          ultima: ''
+        });
+      }
+      const row = resumen.get(key);
+      row.totalMins += minutosTotalesDesdeRegistro(r);
+      row.registros += 1;
+      const ref = String((r && (r.updatedAt || r.salidaAt || r.entradaAt || r.createdAt)) || '').trim();
+      if (ref && timeMs(ref) > timeMs(row.ultima)) row.ultima = ref;
+    });
 
-    tbody.innerHTML = rows.map(r => {
-      const fecha = String((r && r.fechaAsistencia) || '').trim() || ymdLocal((r && r.entradaAt) || (r && r.timestamp) || '');
-      const entrada = r && r.entradaAt ? horaTexto(r.entradaAt, true) : '---';
-      const salida = r && r.salidaAt ? horaTexto(r.salidaAt, true) : '---';
-      const estado = estadoRegistroTexto(r);
-      const color = estado === 'CERRADO' ? '#1f8f4c' : (estado === 'ABIERTO' ? '#a66a00' : '#c0392b');
+    let list = [...resumen.values()];
+    if (q) {
+      list = list.filter(r => String(r.nombre || '').includes(q) || String(r.user || '').includes(q));
+    }
+    list.sort((a, b) => timeMs(b.ultima) - timeMs(a.ultima));
+
+    box.innerHTML = list.map(item => {
+      const nombre = String(item.nombre || item.user || '---').toUpperCase();
+      const user = String(item.user || '').replace(/'/g, "\\'");
+      return `<button type="button" class="asistencia-reporte-colab-btn" onclick="abrirReporteConsolidadoAsistencia('${user}')">
+        <strong>${nombre}</strong>
+        <span>${item.registros} registro(s) - Total ${minutosAHorasTexto(item.totalMins)}</span>
+      </button>`;
+    }).join('') || '<div style="font-size:12px; color:#777;">Sin colaboradores con registros.</div>';
+  };
+
+  function registrosPorColaborador(colaboradorUser) {
+    const user = String(colaboradorUser || '').trim().toLowerCase();
+    if (!user) return [];
+    return registrosAsistenciaVisibles()
+      .filter(r => String((r && r.colaboradorUser) || '').trim().toLowerCase() === user)
+      .sort((a, b) => timeMs((b && b.entradaAt) || (b && b.createdAt)) - timeMs((a && a.entradaAt) || (a && a.createdAt)));
+  }
+
+  function formatMonthKey(value) {
+    const txt = String(value || '').trim();
+    if (/^\d{4}-\d{2}$/.test(txt)) return txt;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(txt)) return txt.slice(0, 7);
+    const d = safeDate(value);
+    if (!d) return '';
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+  }
+
+  function mesLabel(monthKey) {
+    const m = String(monthKey || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(m)) return m || 'Mes';
+    const d = safeDate(`${m}-01T12:00:00`);
+    if (!d) return m;
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+  }
+
+  window.toggleAsistenciaReporte = function toggleAsistenciaReporte(abrir = true) {
+    const panel = document.getElementById('asistencia-reporte-panel');
+    if (!panel) return;
+    const shouldOpen = abrir !== false;
+    panel.classList.toggle('is-open', shouldOpen);
+    panel.classList.remove('is-minimized');
+    panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+  };
+
+  window.toggleAsistenciaReporteMinimize = function toggleAsistenciaReporteMinimize() {
+    const panel = document.getElementById('asistencia-reporte-panel');
+    if (!panel || !panel.classList.contains('is-open')) return;
+    panel.classList.toggle('is-minimized');
+  };
+
+  window.abrirReporteConsolidadoAsistencia = function abrirReporteConsolidadoAsistencia(colaboradorUser) {
+    const user = String(colaboradorUser || '').trim().toLowerCase();
+    if (!user) return;
+    const rows = registrosPorColaborador(user);
+    if (!rows.length) return alert('Este colaborador no tiene registros de asistencia.');
+
+    window.__asistenciaReporteColaborador = user;
+    const nombre = String((rows[0] && (rows[0].colaboradorNombre || rows[0].colaborador || rows[0].colaboradorUser)) || user).trim().toUpperCase();
+    const title = document.getElementById('asistencia-reporte-titulo');
+    const subtitle = document.getElementById('asistencia-reporte-subtitulo');
+    if (title) title.textContent = `Reporte de ${nombre}`;
+    if (subtitle) subtitle.textContent = 'Seleccione un mes para ver detalle diario y total.';
+
+    const select = document.getElementById('asistencia-reporte-mes');
+    if (select) {
+      const monthSet = new Set(rows.map(r => formatMonthKey((r && (r.fechaAsistencia || r.entradaAt || r.createdAt)) || '')).filter(Boolean));
+      monthSet.add(formatMonthKey(new Date()));
+      const months = [...monthSet].sort((a, b) => b.localeCompare(a));
+      select.innerHTML = months.map(m => `<option value="${m}">${mesLabel(m)}</option>`).join('');
+      select.value = months[0] || '';
+    }
+
+    window.toggleAsistenciaReporte(true);
+    window.renderAsistenciaReporteDetalle();
+  };
+
+  window.renderAsistenciaReporteDetalle = function renderAsistenciaReporteDetalle() {
+    const body = document.getElementById('asistencia-reporte-detalle-body');
+    const totalMesEl = document.getElementById('asistencia-reporte-total-mes');
+    const totalAcumEl = document.getElementById('asistencia-reporte-total-acum');
+    const select = document.getElementById('asistencia-reporte-mes');
+    if (!body || !select) return;
+
+    const user = String(window.__asistenciaReporteColaborador || '').trim().toLowerCase();
+    if (!user) {
+      body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#777;">Seleccione un colaborador.</td></tr>';
+      if (totalMesEl) totalMesEl.textContent = '0:00';
+      if (totalAcumEl) totalAcumEl.textContent = '0:00';
+      return;
+    }
+
+    const month = String(select.value || '').trim();
+    const rows = registrosPorColaborador(user);
+    const filtered = rows
+      .filter(r => formatMonthKey((r && (r.fechaAsistencia || r.entradaAt || r.createdAt)) || '') === month)
+      .sort((a, b) => timeMs((a && (a.entradaAt || a.createdAt || a.fechaAsistencia)) || 0) - timeMs((b && (b.entradaAt || b.createdAt || b.fechaAsistencia)) || 0));
+
+    const totalMes = filtered.reduce((acc, r) => acc + minutosTotalesDesdeRegistro(r), 0);
+    const totalAcum = rows.reduce((acc, r) => acc + minutosTotalesDesdeRegistro(r), 0);
+    if (totalMesEl) totalMesEl.textContent = minutosAHorasTexto(totalMes);
+    if (totalAcumEl) totalAcumEl.textContent = minutosAHorasTexto(totalAcum);
+
+    body.innerHTML = filtered.map(r => {
+      const fecha = ymdToDisplay(String((r && r.fechaAsistencia) || ymdLocal((r && (r.entradaAt || r.createdAt)) || '') || '').trim());
+      const entrada = horaRegistroTexto(r, 'entradaAt', 'entradaHora');
+      const salida = horaRegistroTexto(r, 'salidaAt', 'salidaHora');
+      const total = totalHorasTexto(r);
       return `<tr>
-        <td data-label="Fecha">${fecha || '---'}</td>
-        <td data-label="Colaborador"><strong>${String((r && (r.colaborador || r.colaboradorNombre || r.colaboradorUser)) || '---').toUpperCase()}</strong></td>
-        <td data-label="Entrada">${entrada}</td>
-        <td data-label="Salida">${salida}</td>
-        <td data-label="Total horas">${totalHorasTexto(r)}</td>
-        <td data-label="Estado" style="color:${color}; font-weight:700;">${estado}</td>
-        <td data-label="Operador">${String((r && r.operador) || '---')}</td>
+        <td>${fecha}</td>
+        <td>${entrada}</td>
+        <td>${salida}</td>
+        <td>${total}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="7" style="text-align:center; color:gray;">Sin registros validos.</td></tr>';
+    }).join('') || '<tr><td colspan="4" style="text-align:center; color:#777;">Sin registros para el mes seleccionado.</td></tr>';
   };
 
   window.renderAsistenciaAutorizaciones = function renderAsistenciaAutorizaciones() {
@@ -780,13 +1118,18 @@
     if (!config) return;
 
     const changed = syncConfigColaboradores(config);
-    if (changed && typeof guardarDatos === 'function') guardarDatos();
+    const cicloChanged = sincronizarVentanaCicloAsistencia(config);
+    const mustSave = changed || cicloChanged;
+    if (mustSave && typeof guardarDatos === 'function') guardarDatos();
 
     renderEstado(config);
     renderListaColaboradoresAsistencia(config);
     renderTableroColaboradorAsistencia(config);
     window.renderAsistenciaRegistros();
     window.renderAsistenciaAutorizaciones();
+    if (document.getElementById('asistencia-reporte-panel')?.classList.contains('is-open')) {
+      window.renderAsistenciaReporteDetalle();
+    }
     aplicarRestriccionesVisuales();
 
     if (!config.activo) {
@@ -971,7 +1314,7 @@
     if (!colab) return alert('El colaborador seleccionado no esta habilitado en asistencia.');
 
     const now = new Date();
-    const jornadaActual = fechaOperativaAsistencia(now, config);
+    const jornadaActual = fechaNominaActual();
     const jornadaObjetivo = String(options.fechaAsistencia || jornadaActual).trim();
 
     if (jornadaObjetivo !== jornadaActual) {
@@ -1015,7 +1358,7 @@
         colaborador: String(colab.nombre || selectedUser).trim().toLowerCase(),
         colaboradorNombre: String(colab.nombre || selectedUser).trim().toLowerCase(),
         entradaAt: nowIso,
-        entradaHora: horaTexto(nowIso, true),
+        entradaHora: hora24SoloMinutos(nowIso),
         salidaAt: '',
         salidaHora: '',
         estado: 'abierto',
@@ -1040,7 +1383,7 @@
     if (abierto.salidaAt) return alert('Este registro ya tiene salida confirmada.');
 
     abierto.salidaAt = nowIso;
-    abierto.salidaHora = horaTexto(nowIso, true);
+    abierto.salidaHora = hora24SoloMinutos(nowIso);
     abierto.estado = 'cerrado';
     abierto.locked = true;
     abierto.updatedAt = nowIso;
@@ -1104,7 +1447,10 @@
 
     const owner = getOwnerActivo();
     const modulo = getModuloActivo();
-    const jornadaActual = fechaOperativaAsistencia(new Date(), config);
+    const jornadaActual = fechaNominaActual();
+    const inicioAntes = String(config.cicloInicio || '').trim();
+    const finAntes = String(config.cicloFin || '').trim();
+    const cicloChanged = sincronizarVentanaCicloAsistencia(config);
 
     let cambios = 0;
 
@@ -1123,19 +1469,41 @@
       cambios++;
     });
 
-    if (!cambios) {
-      alert('No se detectaron jornadas anteriores abiertas para actualizar.');
+    if (cambios || cicloChanged) {
+      if (typeof guardarDatos === 'function') guardarDatos();
+      window.renderAsistenciaModulo();
+      const inicioNuevo = String(config.cicloInicio || '').trim();
+      const finNuevo = String(config.cicloFin || '').trim();
+      const cicloTxt = (inicioNuevo && finNuevo) ? ` ${ymdToDisplay(finNuevo)} a ${ymdToDisplay(inicioNuevo)}.` : '';
+      alert(`Ciclo de asistencia sincronizado.${cicloTxt} Registros ajustados: ${cambios}.`);
       return;
     }
 
-    if (typeof guardarDatos === 'function') guardarDatos();
-    window.renderAsistenciaModulo();
-    alert(`Ciclo de asistencia actualizado. Registros ajustados: ${cambios}.`);
+    if (inicioAntes && finAntes) {
+      alert(`El ciclo ya esta al dia (${ymdToDisplay(finAntes)} a ${ymdToDisplay(inicioAntes)}).`);
+      return;
+    }
+
+    alert('No se detectaron cambios para actualizar el ciclo.');
   };
 
   document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('section-asistencia-config') && typeof window.renderConfigAsistencia === 'function') {
       window.renderConfigAsistencia();
     }
+
+    if (!window.__asistenciaCicloTimerId) {
+      window.__asistenciaCicloTimerId = setInterval(() => {
+        const config = getAsistenciaConfig({ createIfMissing: true });
+        if (!config) return;
+        const changed = sincronizarVentanaCicloAsistencia(config);
+        if (!changed) return;
+        if (typeof guardarDatos === 'function') guardarDatos();
+        if (document.getElementById('asistencia')?.classList.contains('active')) {
+          window.renderAsistenciaModulo();
+        }
+      }, ASISTENCIA_CICLO_TIMER_MS);
+    }
   });
 })();
+

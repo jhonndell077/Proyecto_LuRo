@@ -766,7 +766,6 @@
           <div class="asistencia-colaboradores-panel" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
               <div style="font-size:12px; font-weight:bold; color:var(--secondary);">Colaboradores activos</div>
-              <button class="btn btn-blue" style="padding:8px 10px;" onclick="renderAsistenciaModulo()">ACTUALIZAR</button>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
               <button id="btn-asistencia-add-colab" class="btn btn-purple" style="padding:8px 10px;" onclick="abrirGestionColaboradoresAsistencia()">+ AÑADIR COLABORADOR</button>
@@ -814,24 +813,9 @@
             <strong>📋 Reporte consolidado por colaborador</strong>
             <input type="text" id="asistencia-filtro-colaborador" onkeyup="renderAsistenciaRegistros()" placeholder="Buscar colaborador..." style="max-width:280px;">
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-            <input type="date" id="filtro-asistencia-desde" onchange="renderAsistenciaRegistros()">
-            <input type="date" id="filtro-asistencia-hasta" onchange="renderAsistenciaRegistros()">
+          <div id="asistencia-reporte-consolidado-lista" class="asistencia-reporte-consolidado-lista">
+            <div style="font-size:12px; color:#777;">Sin colaboradores con registros.</div>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Colaborador</th>
-                <th>Entrada</th>
-                <th>Salida</th>
-                <th>Total horas</th>
-                <th>Estado</th>
-                <th>Operador</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-asistencia-registros"></tbody>
-          </table>
         </div>
 
         <div id="asistencia-autorizaciones-card" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
@@ -890,6 +874,46 @@
         </div>
       </div>
     </div>
+    <section id="asistencia-reporte-panel" class="asistencia-reporte-panel" aria-hidden="true">
+      <div class="asistencia-reporte-shell">
+        <div class="asistencia-reporte-head">
+          <div class="asistencia-reporte-head-copy">
+            <span class="asistencia-reporte-kicker">Centro de reportes</span>
+            <strong id="asistencia-reporte-titulo">Reporte de Colaborador</strong>
+            <span id="asistencia-reporte-subtitulo" class="asistencia-reporte-status">Seleccione un mes para visualizar entradas, salidas y total.</span>
+          </div>
+          <div class="asistencia-reporte-head-actions">
+            <button type="button" class="btn asistencia-reporte-icon-btn" onclick="toggleAsistenciaReporteMinimize()" aria-label="Minimizar reporte">─</button>
+            <button type="button" class="btn btn-danger asistencia-reporte-icon-btn" onclick="toggleAsistenciaReporte(false)" aria-label="Cerrar reporte">X</button>
+          </div>
+        </div>
+        <div class="asistencia-reporte-body">
+          <div class="asistencia-reporte-tools">
+            <label for="asistencia-reporte-mes">Mes</label>
+            <select id="asistencia-reporte-mes" onchange="renderAsistenciaReporteDetalle()"></select>
+          </div>
+          <div class="asistencia-reporte-totales">
+            <div><span>Total mes</span><strong id="asistencia-reporte-total-mes">0:00</strong></div>
+            <div><span>Total acumulado</span><strong id="asistencia-reporte-total-acum">0:00</strong></div>
+          </div>
+          <div class="asistencia-reporte-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Hora de Entrada</th>
+                  <th>Hora de Salida</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="asistencia-reporte-detalle-body">
+                <tr><td colspan="4" style="text-align:center; color:#777;">Seleccione un colaborador.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <div id="autorizaciones" class="content-section">
         <div class="card">
@@ -1632,7 +1656,7 @@
   </section>
 
   <script src="assets/js/app.js?v=20260413-asistencia-dev-2"></script>
-  <script src="assets/js/asistencia-module.js?v=20260413-asistencia-dev-2"></script>
+  <script src="assets/js/asistencia-module.js?v=20260414-asistencia-ciclo-fix-2"></script>
   <script src="assets/js/cloud-bridge.js?v=20260413-hotfix-1"></script>
   <script>
     if ('serviceWorker' in navigator) {

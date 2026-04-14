@@ -3,176 +3,314 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LuRo Control SaaS | Gestión Gastronómica</title>
-  <meta name="description" content="Plataforma SaaS para restaurantes y negocios gastronómicos.">
-  <link rel="stylesheet" href="assets/saas/css/landing.css?v=20260318-1140">
+  <title>LuRo Control | Sistema SaaS Integral para Restaurantes</title>
+  <meta name="description" content="LuRo Control centraliza almacén, producción, ventas, personal, seguridad y analítica en un solo sistema SaaS para operar restaurantes con control total.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/saas/css/landing.css?v=20260414-landing-ecosistema-1">
 </head>
 <body>
-  <header class="topbar">
-    <div class="container nav">
-      <strong class="site-brand" aria-label="LuRo Control SaaS">
-        <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo luro-logo-toned">
-      </strong>
-      <a class="btn-link topbar-login" href="acceder.html">Iniciar sesión</a>
+  <div class="bg-orb bg-orb-a" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-b" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a href="#hero" class="brand" aria-label="LuRo Control">
+        <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control">
+        <span>LuRo Control</span>
+      </a>
+      <nav class="top-nav" aria-label="Navegación principal">
+        <a href="#modulos-destacados">Módulos Clave</a>
+        <a href="#ecosistema">Ecosistema</a>
+        <a href="#automatizacion">Automatización</a>
+        <a href="#beneficios">Beneficios</a>
+      </nav>
+      <a class="btn btn-outline" href="acceder.html">Iniciar Sesión</a>
     </div>
   </header>
 
-  <main class="carousel-shell">
-    <div class="carousel-track" id="carouselTrack">
-      <section id="inicio" class="panel hero">
-        <div class="container hero-grid">
-          <div>
-            <a class="hero-logo-button" aria-label="Instagram LuRo Control" href="https://www.instagram.com/lurocontrol?igsh=eWFza3NzN3RoODl2" target="_blank" rel="noopener">
-              <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo hero-logo luro-logo-toned">
-            </a>
-            <div class="code-brand" aria-label="LuRo Control">
-              <span class="code-brand-dots"><i></i><i></i><i></i></span>
-              <span class="code-brand-text">&lt;LuRo Control /&gt;</span>
-            </div>
-            <h1 class="hero-code-title">Control total de tu negocio gastronómico en la nube</h1>
-            <p class="hero-code-sub">LuRo Control ahora como plataforma web SaaS multiempresa: inventario, producción, ventas, clientes, reportes y más, en tiempo real.</p>
-            <a class="btn motion-btn" href="acceder.html">Acceder al sistema</a>
+  <main>
+    <section id="hero" class="section hero-section">
+      <div class="container hero-grid">
+        <div class="hero-copy reveal">
+          <p class="eyebrow">PLATAFORMA SAAS PARA OPERACIÓN GASTRONÓMICA</p>
+          <h1>El cerebro operativo de tu negocio:<br>todo entra, se transforma y se vende con control total.</h1>
+          <p class="hero-text">LuRo Control integra inventario, producción, ventas, clientes, personal, autorizaciones, reportes y automatización en una sola plataforma profesional.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="acceder.html">Activar LuRo Control</a>
+            <a class="btn btn-ghost" href="#cta-final">Solicitar demo</a>
           </div>
-          <div class="card">
-            <h3>Incluye</h3>
-            <ul class="include-list">
-              <li>Registro de negocio y acceso SaaS</li>
-              <li>Usuarios maestros y colaboradores</li>
-              <li>Control Total Master / Bóveda del sistema</li>
-              <li>Planes y suscripciones con PayPal</li>
-              <li>Inventario, costos y decomisos</li>
-              <li>Producción interna y semielaborados</li>
-              <li>Disponibilidad básica y completa</li>
-              <li>Registrar salida, ventas y cierre de mesa</li>
-              <li>Facturación y resumen de facturas</li>
-              <li>Entradas de almacén y compras a distribuidores</li>
-              <li>Clientes, puntos, membresías y QR</li>
-              <li>Comandas, procedimientos y entrenamientos</li>
-              <li>Autorizaciones, permisos y estados de usuario</li>
-              <li>Historial de producción y de ventas</li>
-              <li>Sincronización cloud con Firebase/Firestore</li>
-              <li>Soporte móvil, tablet y escritorio</li>
-            </ul>
+          <div class="hero-micro">
+            <span>Multi-dispositivo</span>
+            <span>Tiempo real</span>
+            <span>Escalable</span>
           </div>
         </div>
-      </section>
 
-      <section id="funciones" class="panel section">
-        <div class="container">
-          <h2>Funciones</h2>
-          <div class="grid3">
-            <article class="card reveal"><h3>Inventario inteligente</h3><p>Control de almacén, entradas, costos, decomisos, trazabilidad y disponibilidad en tiempo real.</p></article>
-            <article class="card reveal"><h3>Caja y facturación</h3><p>Registrar salidas, tickets, facturas, historial de ventas, cierre de mesas y resumen administrativo.</p></article>
-            <article class="card reveal"><h3>Producción operativa</h3><p>Producción interna, semielaborados, recetas, consumo de insumos y control por departamentos A-B-C.</p></article>
-            <article class="card reveal"><h3>Clientes y fidelización</h3><p>Gestión de clientes, puntos, membresías, QR, canje y seguimiento de comportamiento de compra.</p></article>
-            <article class="card reveal"><h3>Distribuidores y compras</h3><p>Catálogo de distribuidores, compras, entradas por proveedor y control de abastecimiento.</p></article>
-            <article class="card reveal"><h3>Equipo y permisos</h3><p>Usuarios maestros, colaboradores, renglones por módulo, entradas asignadas y control de acceso por rol.</p></article>
-            <article class="card reveal"><h3>Entrenamientos y procedimientos</h3><p>Capacitación interna, procedimientos operativos y estandarización de tareas por área.</p></article>
-            <article class="card reveal"><h3>Sincronización cloud</h3><p>Datos en Firebase, actualización entre dispositivos y respaldo de información en la nube.</p></article>
-            <article class="card reveal"><h3>Configuración avanzada</h3><p>Cierres totales, limpieza de base de datos, seguridad por contraseña y gestión centralizada.</p></article>
-          </div>
-        </div>
-      </section>
-
-      <section id="modulos" class="panel section">
-        <div class="container">
-          <h2>Módulos del sistema</h2>
-          <div class="card reveal checklist">
-            <p>Todos los módulos del sistema están incluidos y activos:</p>
+        <aside class="hero-side reveal">
+          <article class="hero-stat-card">
+            <h2>Flujo central LuRo</h2>
             <ul>
-              <li><span class="module-item" data-tip="Panel principal con vista general del sistema y acceso rápido a módulos.">✅ Inicio</span></li>
-              <li><span class="module-item" data-tip="Creación y edición de platos con costos, receta y vínculo de ingredientes.">✅ Agregar Plato</span></li>
-              <li><span class="module-item" data-tip="Control de costos por plato, insumo, producción y variaciones operativas.">✅ Costos</span></li>
-              <li><span class="module-item" data-tip="Gestión de inventario, existencias, ajustes, consumos y reposición de insumos.">✅ Almacén de Suministros</span></li>
-              <li><span class="module-item" data-tip="Registro y administración de proveedores para compras y abastecimiento.">✅ Distribuidores</span></li>
-              <li><span class="module-item" data-tip="Producción de semielaborados y control de lotes con consumo de materia prima.">✅ Producción Interna</span></li>
-              <li><span class="module-item" data-tip="Control de disponibilidad por plato, con vista básica y completa de composición.">✅ Disponibilidad (básica y completa)</span></li>
-              <li><span class="module-item" data-tip="Cierre de mesas, generación de ventas, cobro y salida de productos.">✅ Registrar Salida / Ventas</span></li>
-              <li><span class="module-item" data-tip="Ingreso de mercancía al almacén por compra, ajuste o carga manual.">✅ Entradas de Almacén</span></li>
-              <li><span class="module-item" data-tip="Bitácora de producción con fechas, cantidades y responsables.">✅ Historial de Producción</span></li>
-              <li><span class="module-item" data-tip="Historial detallado de ventas realizadas por fecha, módulo y usuario.">✅ Historial de Ventas</span></li>
-              <li><span class="module-item" data-tip="Registro de pérdidas/decomisos con motivo, cantidad y trazabilidad.">✅ Historial Decomiso</span></li>
-              <li><span class="module-item" data-tip="Consolidado de facturas emitidas con resumen y consulta rápida.">✅ Resumen de Facturas</span></li>
-              <li><span class="module-item" data-tip="Administración de clientes, puntos acumulados y beneficios por fidelidad.">✅ Clientes y Puntos</span></li>
-              <li><span class="module-item" data-tip="Gestión de comandas activas e historial para operación de cocina/caja.">✅ Comandas</span></li>
-              <li><span class="module-item" data-tip="Biblioteca de procedimientos operativos para estandarizar tareas.">✅ Procedimientos</span></li>
-              <li><span class="module-item" data-tip="Módulo de entrenamiento para formación del equipo en procesos internos.">✅ Entrenamientos</span></li>
-              <li><span class="module-item" data-tip="Permisos por usuario y control de accesos por casilla/módulo.">✅ Autorizaciones y control de equipo</span></li>
-              <li><span class="module-item" data-tip="Clasificación operativa por departamentos A-B-C para priorizar gestión.">✅ Departamentos A-B-C</span></li>
-              <li><span class="module-item" data-tip="Ajustes globales del sistema, seguridad, limpieza y mantenimiento.">✅ Configuración general</span></li>
+              <li><strong>📦 Todo entra</strong> → Almacén</li>
+              <li><strong>🏭 Todo se transforma</strong> → Producción</li>
+              <li><strong>🧾 Todo se vende</strong> → Ventas</li>
             </ul>
-          </div>
-        </div>
-      </section>
+          </article>
+          <article class="hero-stat-card soft">
+            <p class="kpi">+30</p>
+            <p>Módulos y controles conectados en un ecosistema unificado.</p>
+          </article>
+        </aside>
+      </div>
+    </section>
 
-      <section id="beneficios" class="panel section">
-        <div class="container">
-          <h2>Beneficios</h2>
-          <div class="grid3">
-            <article class="card reveal"><h3>Multiempresa</h3><p>Cada negocio opera con datos aislados y seguros.</p></article>
-            <article class="card reveal"><h3>Tiempo real</h3><p>Cocina, caja e inventario sincronizados entre dispositivos.</p></article>
-            <article class="card reveal"><h3>Escalable</h3><p>Preparado para crecimiento de usuarios, sucursales y módulos.</p></article>
-            <article class="card reveal"><h3>Control total operativo</h3><p>Visión completa de costos, producción, inventario y ventas en un solo sistema.</p></article>
-            <article class="card reveal"><h3>Reducción de pérdidas</h3><p>Control de decomisos, existencias y consumos para disminuir desperdicios.</p></article>
-            <article class="card reveal"><h3>Facturación y trazabilidad</h3><p>Historiales claros por módulo para auditoría y toma de decisiones.</p></article>
-            <article class="card reveal"><h3>Gestión de personal</h3><p>Permisos por colaborador y control granular de renglones permitidos.</p></article>
-            <article class="card reveal"><h3>Acceso desde cualquier dispositivo</h3><p>Compatible con PC, tablet y móvil sin perder funcionalidad.</p></article>
-            <article class="card reveal"><h3>Seguridad de datos</h3><p>Autenticación, control de estado de usuarios y sincronización cloud segura.</p></article>
-          </div>
+    <section class="section">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">PROBLEMA</p>
+          <h2>Cuando cada área trabaja separada, el negocio pierde dinero y velocidad.</h2>
         </div>
-      </section>
+        <div class="grid three">
+          <article class="card reveal">
+            <h3>Descontrol operativo</h3>
+            <p>Inventario, caja y producción sin conexión generan errores diarios y decisiones tardías.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Pérdidas silenciosas</h3>
+            <p>Sin trazabilidad real aumentan faltantes, decomisos y costos ocultos que afectan márgenes.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Falta de organización</h3>
+            <p>Equipos sin procesos estandarizados ni permisos claros ralentizan la operación completa.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-      <section id="planes" class="panel section">
-        <div class="container">
-          <h2>Planes de suscripción</h2>
-          <div class="grid3">
-            <article class="card reveal">
-              <h3>Básico</h3>
-              <p>USD$20.00 / mes</p>
-              <p>Incluye: Inventario, Gestión de Platos, Ventas/Comandas, Clientes, Reportes básicos, Configuración básica, Salidas de inventario. 1 sucursal.</p>
-              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/20.00">Pagar Plan Básico</a>
-              <div class="paypal-button-slot" data-plan="basico" data-amount="20.00"></div>
-            </article>
-            <article class="card reveal">
-              <h3>Profesional</h3>
-              <p>USD$99.99 / mes</p>
-              <p>Todos los módulos del sistema: Inventario, Gestión de Platos, Ventas/Comandas, Clientes, Reportes avanzados, Configuración completa, Producción, Control de costos, Control de desperdicios, Usuarios y permisos, Dashboard en tiempo real, Proveedores, Auditoría, Notificaciones, Control de caja, Bóveda del sistema. Hasta 2 sucursales.</p>
-              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/99.99">Pagar Plan Profesional</a>
-              <div class="paypal-button-slot" data-plan="profesional" data-amount="99.99"></div>
-            </article>
-            <article class="card reveal">
-              <h3>Empresarial</h3>
-              <p>USD$349.99 / mes</p>
-              <p>Mismos módulos que Profesional (todo incluido). Hasta 10 sucursales.</p>
-              <a class="btn motion-btn paypal-fallback-link" target="_blank" rel="noopener" href="https://paypal.me/Jhonn0723/349.99">Pagar Plan Empresarial</a>
-              <div class="paypal-button-slot" data-plan="empresarial" data-amount="349.99"></div>
-            </article>
-          </div>
-          <a class="btn motion-btn" href="acceder.html">Crear cuenta</a>
+    <section class="section alt">
+      <div class="container solution-grid">
+        <div class="reveal">
+          <p class="eyebrow">SOLUCIÓN</p>
+          <h2>LuRo Control: el cerebro del negocio</h2>
+          <p>Coordina áreas críticas, automatiza alertas y unifica decisiones en un único panel de gestión profesional.</p>
         </div>
-      </section>
+        <div class="flow-board reveal">
+          <div class="flow-item">📦 Entrada de insumos</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-item">🏭 Producción interna</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-item">📤 Salida y facturación</div>
+        </div>
+      </div>
+    </section>
 
-      <section id="contacto" class="panel section">
-        <div class="container">
-          <h2>Contacto</h2>
-          <p>Correo: <a href="mailto:Lurocontrol@gmail.com">Lurocontrol@gmail.com</a></p>
-          <p>Soporte técnico: <a href="tel:+18297749000">8297749000</a></p>
-          <p>Instagram: <a href="https://www.instagram.com/lurocontrol?igsh=eWFza3NzN3RoODl2" target="_blank" rel="noopener">@lurocontrol</a></p>
+    <section class="section" id="modulos-principales">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">LOS 3 PILARES QUE ALIMENTAN TODO</p>
+          <h2>Sin esta base no existe control real.</h2>
         </div>
-        <footer class="footer">
-          <div class="container">© 2026 LuRo Control SaaS</div>
-        </footer>
-      </section>
-    </div>
+        <div class="grid three">
+          <article class="card pillar reveal">
+            <h3>📦 Almacén</h3>
+            <p>Registra entradas, controla existencias, detecta faltantes y sustenta cada proceso aguas abajo.</p>
+          </article>
+          <article class="card pillar reveal">
+            <h3>🏭 Producción Interna</h3>
+            <p>Transforma insumos en productos operativos con trazabilidad de consumo y rendimiento.</p>
+          </article>
+          <article class="card pillar reveal">
+            <h3>📤 Registrar Salida</h3>
+            <p>Convierte la operación en ventas reales, facturación y cierre de ciclo económico.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="modulos-destacados">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">MÓDULOS DESTACADOS</p>
+          <h2>El núcleo estratégico que más impacto genera en LuRo Control.</h2>
+        </div>
+        <div class="grid featured-grid">
+          <article class="card featured reveal">
+            <h3>📦 Almacén</h3>
+            <p>Control avanzado de insumos, movimientos y disponibilidad para evitar quiebres operativos.</p>
+          </article>
+          <article class="card featured reveal">
+            <h3>🚚 Distribuidores</h3>
+            <p>Centraliza proveedores, compras y trazabilidad de abastecimiento por fuente real.</p>
+          </article>
+          <article class="card featured reveal">
+            <h3>🏭 Producción Interna</h3>
+            <p>Gestiona lotes, transforma materias primas y preserva estándar de calidad por proceso.</p>
+          </article>
+          <article class="card featured reveal">
+            <h3>🧪 Agregar Plato</h3>
+            <p>Diseña oferta comercial con costos y componentes conectados al inventario.</p>
+          </article>
+          <article class="card featured reveal">
+            <h3>🧠 Asistente LuRo</h3>
+            <p>Centro inteligente para ejecutar comandos, consultar estado del sistema y acelerar decisiones.</p>
+          </article>
+          <article class="card featured reveal">
+            <h3>👤 Gestión de Usuarios</h3>
+            <p>Administra perfiles, roles y accesos con estructura segura para operación multiusuario.</p>
+          </article>
+          <article class="card featured reveal">
+            <h3>🗑️ Registrar Decomiso</h3>
+            <p>Controla pérdidas con motivo, evidencia y trazabilidad para proteger rentabilidad.</p>
+          </article>
+          <article class="card featured reveal">
+            <h3>👥 Clientes y Puntos</h3>
+            <p>Fidelización activa con historial de consumo, puntos y recompensas integradas.</p>
+          </article>
+          <article class="card featured reveal">
+            <h3>📤 Registrar Salida</h3>
+            <p>Mesa, cobro y facturación conectados para cerrar ventas sin fricción ni errores.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="ecosistema">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">ECOSISTEMA COMPLETO</p>
+          <h2>Todos los módulos de LuRo Control, agrupados por impacto operativo.</h2>
+        </div>
+
+        <div class="ecosystem-grid">
+          <article class="card group reveal">
+            <h3>Operación</h3>
+            <ul>
+              <li>🏠 Inicio</li>
+              <li>🧪 Agregar Plato</li>
+              <li>📦 Almacén</li>
+              <li>🏭 Producción Interna</li>
+              <li>👁️ Disponibilidad</li>
+              <li>📤 Registrar Salida</li>
+              <li>📥 Entradas Almacén</li>
+              <li>🧾 Comandas</li>
+              <li>🚚 Distribuidores</li>
+            </ul>
+          </article>
+
+          <article class="card group reveal">
+            <h3>Control</h3>
+            <ul>
+              <li>💰 COSTOS</li>
+              <li>🗑️ Registrar Decomiso</li>
+              <li>📑 Historial Decomiso</li>
+              <li>📘 Procedimientos</li>
+              <li>⚙️ Configuración</li>
+              <li>✅ Autorizaciones</li>
+              <li>☁️ Usuarios Maestros en la Nube</li>
+              <li>👤 Gestión de Usuarios</li>
+            </ul>
+          </article>
+
+          <article class="card group reveal">
+            <h3>Análisis</h3>
+            <ul>
+              <li>🕙 Historial</li>
+              <li>📜 Historial Producción</li>
+              <li>📊 Historial de Ventas</li>
+              <li>📑 Reporte Compras Distribuidor</li>
+              <li>🧾 Resumen de facturas</li>
+              <li>📊 Departamentos A-B-C</li>
+              <li>🧠 Diagnóstico Inteligente</li>
+            </ul>
+          </article>
+
+          <article class="card group reveal">
+            <h3>Personal y crecimiento</h3>
+            <ul>
+              <li>👥 Clientes y Puntos</li>
+              <li>🎓 Entrenamientos</li>
+              <li>🧠 Asistente LuRo</li>
+              <li>Sistema de asistencia por colaborador</li>
+              <li>Control de acceso con clave</li>
+              <li>Gestión de colaboradores internos y manuales</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="automatizacion">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">AUTOMATIZACIÓN</p>
+          <h2>LuRo trabaja de forma automática para evitar cuellos de botella.</h2>
+        </div>
+        <div class="automation-list">
+          <article class="card reveal"><h3>Alertas operativas</h3><p>Faltantes, abastecimiento, gastos, ventas y producción quedan registrados para seguimiento inmediato.</p></article>
+          <article class="card reveal"><h3>Sincronización de datos</h3><p>Información en la nube entre dispositivos para evitar duplicidad o desorden de versiones.</p></article>
+          <article class="card reveal"><h3>Flujos de decisión</h3><p>Consolidación de historial y diagnóstico para actuar rápido con datos confiables.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="colaboradores">
+      <div class="container collaborator-shell">
+        <div class="section-head reveal">
+          <p class="eyebrow">CONTROL DE COLABORADORES</p>
+          <h2>Personal gestionado con seguridad, asistencia y autorizaciones.</h2>
+        </div>
+        <div class="grid three">
+          <article class="card reveal">
+            <h3>Asistencia por colaborador</h3>
+            <p>Registro de entrada/salida, control por ciclo y consolidado por persona para nómina.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Claves y permisos</h3>
+            <p>Validación por clave de usuario, contraseña maestra y bloqueo de acciones sensibles.</p>
+          </article>
+          <article class="card reveal">
+            <h3>Autorizaciones auditables</h3>
+            <p>Historial de autorizaciones y operación con trazabilidad por fecha, hora y operador.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="beneficios">
+      <div class="container">
+        <div class="section-head reveal">
+          <p class="eyebrow">BENEFICIOS</p>
+          <h2>Resultados reales para operación, control financiero y crecimiento.</h2>
+        </div>
+        <div class="grid four">
+          <article class="card reveal"><h3>Control total</h3><p>Visibilidad integral de todo el negocio desde una sola plataforma.</p></article>
+          <article class="card reveal"><h3>Optimización del tiempo</h3><p>Menos tareas manuales y más ejecución con procesos centralizados.</p></article>
+          <article class="card reveal"><h3>Reducción de errores</h3><p>Flujos estandarizados, validaciones y trazabilidad de punta a punta.</p></article>
+          <article class="card reveal"><h3>Más ganancias</h3><p>Mejor control de costos, menos pérdidas y decisiones basadas en datos.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta" id="cta-final">
+      <div class="container cta-box reveal">
+        <p class="eyebrow">ACTIVA EL SISTEMA</p>
+        <h2>Controla tu negocio completo desde un solo lugar con LuRo Control.</h2>
+        <p>Solicita una demo y comienza a operar con estructura SaaS profesional.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="acceder.html">Solicitar Demo</a>
+          <a class="btn btn-outline" href="acceder.html">Iniciar Ahora</a>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <script src="assets/saas/js/landing.js?v=20260412-1200"></script>
-  <script src="assets/saas/js/paypal-buttons.js?v=20260305-2305"></script>
+  <footer class="site-footer">
+    <div class="container footer-shell">
+      <span>© 2026 LuRo Control</span>
+      <a href="mailto:Lurocontrol@gmail.com">Lurocontrol@gmail.com</a>
+      <a href="https://www.instagram.com/lurocontrol?igsh=eWFza3NzN3RoODl2" target="_blank" rel="noopener">Instagram</a>
+    </div>
+  </footer>
 </body>
 </html>
-
-
-
-
-
-
