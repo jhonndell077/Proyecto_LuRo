@@ -377,6 +377,24 @@ body {
   color: rgba(255, 255, 255, 0.9);
 }
 
+.cta-box .eyebrow {
+  background: linear-gradient(120deg, #18c07a, #0e9960);
+  color: #f1fff7;
+}
+
+.cta-box .hero-actions .btn {
+  background: linear-gradient(120deg, #18c07a, #0e9960);
+  color: #f1fff7;
+  border: 1px solid #1ed487;
+  box-shadow: 0 12px 24px rgba(18, 154, 96, 0.34);
+}
+
+.cta-box .hero-actions .btn:hover {
+  background: linear-gradient(120deg, #16af70, #0c8957);
+  color: #f1fff7;
+  border-color: #23dd91;
+}
+
 .site-footer {
   border-top: 1px solid rgba(216, 225, 238, 0.9);
   padding: 20px 0 28px;

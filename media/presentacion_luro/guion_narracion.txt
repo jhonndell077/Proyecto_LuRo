@@ -1,0 +1,37 @@
+GUION DE NARRACION - PRESENTACION MODULOS LURO CONTROL
+
+1. LuRo Control
+Bienvenido a LuRo Control. En este video conoceras los modulos mas importantes del sistema y como trabajan juntos para operar un negocio con orden, control y rentabilidad.
+
+2. 🏠 Inicio
+El modulo Inicio funciona como centro de control. Desde aqui se visualiza el estado general del negocio y se accede rapidamente a cada area operativa.
+
+3. 📦 Almacen
+Almacen es la base del flujo LuRo. Aqui se controla inventario, entradas y faltantes, asegurando que la operacion tenga datos confiables para producir y vender.
+
+4. 🚚 Distribuidores
+Con Distribuidores, LuRo centraliza proveedores, compras y abastecimiento. Esto mejora negociacion, seguimiento y trazabilidad de cada adquisicion.
+
+5. 🏭 Produccion Interna
+Produccion Interna permite transformar insumos en productos operativos con control real. Cada lote queda conectado al consumo, al costo y a la disponibilidad.
+
+6. 👁️ Disponibilidad
+El modulo Disponibilidad confirma, en tiempo real, que platos pueden venderse. Asi se evita ofrecer productos sin stock y se mejora la experiencia del cliente.
+
+7. 📤 Registrar Salida
+Registrar Salida convierte operacion en ingresos. Gestiona cobro, facturacion y cierre de ventas, actualizando inventario y dejando trazabilidad completa.
+
+8. 🕒 Asistencia
+Asistencia controla personal con seguridad. Registra entradas y salidas, solicita clave del colaborador y consolida reportes para seguimiento administrativo.
+
+9. 📜 COMANDOS
+El modulo Comandos simplifica tareas operativas repetitivas. Permite ejecutar acciones clave con rapidez y mantiene consistencia en la gestion.
+
+10. 🧠 Asistente LuRo
+Asistente LuRo actua como copiloto inteligente. Ayuda a consultar informacion, navegar modulos y ejecutar acciones con mayor velocidad y claridad.
+
+11. 🧪 Agregar Plato
+Agregar Plato permite construir la oferta comercial con base operativa. Cada plato queda alineado a costos, inventario y disponibilidad en tiempo real.
+
+12. LuRo Control
+LuRo Control integra todos estos modulos en un ecosistema unico. Si quieres, en el siguiente paso podemos crear una version personalizada de este video con tu marca, contacto y llamada final de ventas.
