@@ -1286,23 +1286,55 @@
     if (!config || !Array.isArray(config.sucursales)) return false;
     const actual = obtenerSucursalActivaAsistencia(config);
     if (!actual) return false;
-    if (config.sucursales.length <= 1) {
-      alert('Debe existir al menos una sucursal de asistencia.');
-      return false;
-    }
-    const nombre = String(actual.nombre || actual.id).toUpperCase();
-    if (!confirm(`Eliminar la sucursal ${nombre}?\n\nSe eliminarán sus colaboradores y registros de asistencia de esa sucursal.`)) return false;
 
+    const nombre = String(actual.nombre || actual.id).toUpperCase();
     const targetId = String(actual.id || '').trim().toLowerCase();
-    config.sucursales = config.sucursales.filter(s => String((s && s.id) || '').trim().toLowerCase() !== targetId);
-    if (!config.sucursales.length) {
-      config.sucursales = [normalizarSucursalAsistencia({}, 0)];
+    const soloUnaSucursal = config.sucursales.length <= 1;
+    const confirmMsg = soloUnaSucursal
+      ? `Solo existe una sucursal (${nombre}).\n\nSe restablecera a SUCURSAL PRINCIPAL y se limpiaran colaboradores y registros de asistencia vinculados.\n\nDeseas continuar?`
+      : `Eliminar la sucursal ${nombre}?\n\nSe eliminaran sus colaboradores y registros de asistencia de esa sucursal.`;
+    if (!confirm(confirmMsg)) return false;
+
+    const usuariosAfectados = new Set();
+    getDbArray('usuarios').forEach((u) => {
+      if (!u || String((u && u.role) || '').trim().toLowerCase() !== 'colaborador') return;
+      if (String((u && u.owner) || '').trim().toLowerCase() !== String(config.owner || '').trim().toLowerCase()) return;
+      const sid = normalizarIdSucursalAsistencia((u && (u.sucursalAsistenciaId || u.asistenciaSucursalId)) || '');
+      if (sid !== targetId) return;
+      const user = normalizarUsuarioColaborador((u && u.user) || '');
+      if (user) usuariosAfectados.add(user);
+    });
+
+    if (soloUnaSucursal) {
+      const base = normalizarSucursalAsistencia({
+        id: generarIdSucursalAsistencia('sucursal-principal'),
+        nombre: 'sucursal principal',
+        manualColaboradores: [],
+        sistemaColaboradoresExcluidos: [],
+        colaboradores: []
+      }, 0);
+      config.sucursales = [base];
+      config.defaultSucursalId = base.id;
+      window.__asistenciaSucursalSeleccionada = base.id;
+    } else {
+      config.sucursales = config.sucursales.filter(s => String((s && s.id) || '').trim().toLowerCase() !== targetId);
+      if (!config.sucursales.length) {
+        config.sucursales = [normalizarSucursalAsistencia({}, 0)];
+      }
+      if (!config.sucursales.some(s => s.id === config.defaultSucursalId)) {
+        config.defaultSucursalId = config.sucursales[0].id;
+      }
+      window.__asistenciaSucursalSeleccionada = config.sucursales[0].id;
     }
-    if (!config.sucursales.some(s => s.id === config.defaultSucursalId)) {
-      config.defaultSucursalId = config.sucursales[0].id;
+
+    const sucursalFallbackId = String((config.sucursales[0] && config.sucursales[0].id) || '').trim().toLowerCase();
+    const fallbackSucursal = (config.sucursales || []).find(s => String((s && s.id) || '').trim().toLowerCase() === sucursalFallbackId) || null;
+    if (fallbackSucursal && usuariosAfectados.size) {
+      fallbackSucursal.sistemaColaboradoresExcluidos = normalizarUsuariosAsistencia([
+        ...(Array.isArray(fallbackSucursal.sistemaColaboradoresExcluidos) ? fallbackSucursal.sistemaColaboradoresExcluidos : []),
+        ...usuariosAfectados
+      ]);
     }
-    const sucursalFallbackId = config.sucursales[0].id;
-    window.__asistenciaSucursalSeleccionada = sucursalFallbackId;
 
     // Reasigna referencias de usuarios vinculados a la sucursal eliminada para evitar IDs colgados.
     getDbArray('usuarios').forEach((u) => {
@@ -2626,4 +2658,5 @@
     }
   });
 })();
+
 
