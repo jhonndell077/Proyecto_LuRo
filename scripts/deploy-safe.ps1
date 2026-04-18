@@ -359,7 +359,7 @@ switch ($Target) {
     & firebase deploy --only functions
   }
   'all' {
-    & firebase deploy --only functions,hosting
+    & firebase deploy --only "functions,hosting"
   }
   default {
     & firebase deploy --only hosting
