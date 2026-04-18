@@ -2,6 +2,13 @@
   const ASISTENCIA_CLAVES_VISIBLES_MS = 5 * 60 * 1000;
   const ASISTENCIA_CICLO_DIAS = 12;
   const ASISTENCIA_CICLO_TIMER_MS = 60 * 1000;
+  const ASISTENCIA_ROLES = Object.freeze({
+    GERENTE: 'gerente',
+    SUBGERENTE: 'subgerente',
+    CAJERA: 'cajer@',
+    COCINERO: 'cocinero',
+    OTROS: 'otros'
+  });
 
   function getDbArray(key) {
     if (!db || typeof db !== 'object') return [];
@@ -235,6 +242,90 @@
     return String(fallback || '').trim().toLowerCase();
   }
 
+  function normalizarRolAsistencia(value = '', fallback = ASISTENCIA_ROLES.OTROS) {
+    const txt = String(value || '').trim().toLowerCase();
+    if (!txt) return fallback;
+    if (txt === 'gerente') return ASISTENCIA_ROLES.GERENTE;
+    if (txt === 'subgerente') return ASISTENCIA_ROLES.SUBGERENTE;
+    if (txt === 'cajera' || txt === 'cajer@' || txt === 'cajero') return ASISTENCIA_ROLES.CAJERA;
+    if (txt === 'cocinero' || txt === 'cocinera') return ASISTENCIA_ROLES.COCINERO;
+    return ASISTENCIA_ROLES.OTROS;
+  }
+
+  function etiquetaRolAsistencia(rol = '') {
+    const key = normalizarRolAsistencia(rol);
+    if (key === ASISTENCIA_ROLES.GERENTE) return 'GERENTE';
+    if (key === ASISTENCIA_ROLES.SUBGERENTE) return 'SUBGERENTE';
+    if (key === ASISTENCIA_ROLES.CAJERA) return 'CAJER@';
+    if (key === ASISTENCIA_ROLES.COCINERO) return 'COCINERO';
+    return 'OTROS';
+  }
+
+  function esRolGerenteAsistencia(rol = '') {
+    return normalizarRolAsistencia(rol) === ASISTENCIA_ROLES.GERENTE;
+  }
+
+  function normalizarIdSucursalAsistencia(value = '') {
+    const clean = String(value || '').trim().toLowerCase();
+    if (!clean) return '';
+    return clean
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9._-]/g, '');
+  }
+
+  function normalizarNombreSucursalAsistencia(value = '', fallback = 'sucursal principal') {
+    const txt = String(value || '').trim().toLowerCase();
+    if (txt) return txt;
+    return String(fallback || 'sucursal principal').trim().toLowerCase();
+  }
+
+  function generarIdSucursalAsistencia(seed = '') {
+    const base = normalizarIdSucursalAsistencia(seed);
+    if (base) return `suc-${base}`;
+    return `suc-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  }
+
+  function accesoAsistenciaActual() {
+    const access = window.__asistenciaAccesoActual;
+    if (!access || typeof access !== 'object') return null;
+    const owner = String(access.owner || '').trim().toLowerCase();
+    const modulo = String(access.modulo || '').trim().toUpperCase();
+    if (!owner || !modulo) return null;
+    if (owner !== getOwnerActivo() || modulo !== getModuloActivo()) return null;
+    const sucursalId = normalizarIdSucursalAsistencia(access.sucursalId || '');
+    if (!sucursalId) return null;
+    return {
+      owner,
+      modulo,
+      user: normalizarUsuarioColaborador(access.user || ''),
+      nombre: normalizarNombreColaborador(access.nombre || access.user || '', access.user || ''),
+      rol: normalizarRolAsistencia(access.rol, ASISTENCIA_ROLES.OTROS),
+      sucursalId,
+      scopeAll: access.scopeAll === true,
+      source: String(access.source || '').trim().toLowerCase() || 'asistencia'
+    };
+  }
+
+  function puedeGestionarColaboradoresPorRolAsistencia() {
+    const access = accesoAsistenciaActual();
+    if (!access) return false;
+    return esRolGerenteAsistencia(access.rol);
+  }
+
+  function puedeGestionarSucursalesAsistencia() {
+    const access = accesoAsistenciaActual();
+    if (!access) return false;
+    return access.scopeAll === true || esRolGerenteAsistencia(access.rol);
+  }
+
+  function puedeOperarSucursalAsistencia(sucursalId = '') {
+    const access = accesoAsistenciaActual();
+    if (!access) return false;
+    const targetId = normalizarIdSucursalAsistencia(sucursalId);
+    if (!targetId) return false;
+    return access.scopeAll === true || esRolGerenteAsistencia(access.rol) || access.sucursalId === targetId;
+  }
+
   function colaboradoresSistemaAsistencia(owner = getOwnerActivo()) {
     const ownerKey = String(owner || '').trim().toLowerCase();
     if (!ownerKey) return [];
@@ -248,6 +339,8 @@
           nombre: normalizarNombreColaborador((u && u.user) || '', user),
           activo: !!(u && u.activo !== false),
           pass: String((u && u.pass) || '').trim(),
+          rol: normalizarRolAsistencia((u && (u.rolAsistencia || u.asistenciaRole)) || '', ASISTENCIA_ROLES.OTROS),
+          sucursalId: normalizarIdSucursalAsistencia((u && (u.sucursalAsistenciaId || u.asistenciaSucursalId)) || ''),
           source: 'sistema',
           esIndependiente: false
         };
@@ -267,6 +360,7 @@
       nombre,
       pass: String(obj.pass || '').trim(),
       activo: obj.activo !== false,
+      rol: normalizarRolAsistencia(obj.rol || obj.rolAsistencia || '', ASISTENCIA_ROLES.OTROS),
       updatedAt: String(obj.updatedAt || '').trim() || new Date().toISOString(),
       source: 'manual',
       esIndependiente: true
@@ -284,12 +378,133 @@
     return [...map.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
+  function normalizarUsuariosAsistencia(values = []) {
+    const list = Array.isArray(values) ? values : [];
+    const map = new Map();
+    list.forEach(value => {
+      const user = normalizarUsuarioColaborador(value);
+      if (!user) return;
+      map.set(user, user);
+    });
+    return [...map.values()].sort((a, b) => a.localeCompare(b));
+  }
+
+  function normalizarSucursalAsistencia(raw = {}, index = 0) {
+    const obj = raw && typeof raw === 'object' ? raw : {};
+    const fallbackNombre = index === 0 ? 'sucursal principal' : `sucursal ${index + 1}`;
+    const nombre = normalizarNombreSucursalAsistencia(obj.nombre, fallbackNombre);
+    const id = normalizarIdSucursalAsistencia(obj.id || '') || generarIdSucursalAsistencia(nombre);
+    return {
+      id,
+      nombre,
+      activo: obj.activo !== false,
+      manualColaboradores: manualColaboradoresAsistencia(obj),
+      sistemaColaboradoresExcluidos: normalizarUsuariosAsistencia(obj.sistemaColaboradoresExcluidos),
+      colaboradores: Array.isArray(obj.colaboradores) ? obj.colaboradores : [],
+      createdAt: String(obj.createdAt || '').trim() || new Date().toISOString(),
+      updatedAt: String(obj.updatedAt || '').trim() || new Date().toISOString()
+    };
+  }
+
+  function asegurarSucursalesAsistenciaConfig(config) {
+    if (!config || typeof config !== 'object') return false;
+    let changed = false;
+
+    if (!Array.isArray(config.sucursales) || !config.sucursales.length) {
+      const legacy = normalizarSucursalAsistencia({
+        id: config.defaultSucursalId || 'sucursal-principal',
+        nombre: 'sucursal principal',
+        manualColaboradores: config.manualColaboradores,
+        sistemaColaboradoresExcluidos: config.sistemaColaboradoresExcluidos,
+        colaboradores: config.colaboradores
+      }, 0);
+      config.sucursales = [legacy];
+      config.defaultSucursalId = legacy.id;
+      changed = true;
+    }
+
+    const seen = new Set();
+    config.sucursales = (config.sucursales || []).map((sucursal, index) => {
+      const normalized = normalizarSucursalAsistencia(sucursal, index);
+      if (seen.has(normalized.id)) {
+        normalized.id = generarIdSucursalAsistencia(`${normalized.nombre}-${index + 1}`);
+        changed = true;
+      }
+      seen.add(normalized.id);
+      return normalized;
+    });
+
+    if (!config.sucursales.length) {
+      const fallback = normalizarSucursalAsistencia({}, 0);
+      config.sucursales.push(fallback);
+      changed = true;
+    }
+
+    const defaultId = normalizarIdSucursalAsistencia(config.defaultSucursalId || '');
+    if (!defaultId || !config.sucursales.some(s => s.id === defaultId)) {
+      config.defaultSucursalId = config.sucursales[0].id;
+      changed = true;
+    } else {
+      config.defaultSucursalId = defaultId;
+    }
+
+    if (!window.__asistenciaSucursalSeleccionada) {
+      window.__asistenciaSucursalSeleccionada = config.defaultSucursalId;
+    }
+
+    return changed;
+  }
+
+  function obtenerSucursalActivaAsistencia(config, opts = {}) {
+    if (!config || typeof config !== 'object') return null;
+    asegurarSucursalesAsistenciaConfig(config);
+
+    const access = accesoAsistenciaActual();
+    const requestId = normalizarIdSucursalAsistencia(opts.sucursalId || '');
+    const selectedId = normalizarIdSucursalAsistencia(window.__asistenciaSucursalSeleccionada || '');
+    const baseId = requestId || selectedId || (access && access.sucursalId) || normalizarIdSucursalAsistencia(config.defaultSucursalId || '');
+
+    let sucursal = (config.sucursales || []).find(s => s.id === baseId) || null;
+    if (!sucursal) {
+      sucursal = (config.sucursales || []).find(s => (access && s.id === access.sucursalId)) || null;
+    }
+    if (!sucursal) sucursal = (config.sucursales || [])[0] || null;
+    if (!sucursal) return null;
+
+    if (access && !access.scopeAll && sucursal.id !== access.sucursalId) {
+      sucursal = (config.sucursales || []).find(s => s.id === access.sucursalId) || sucursal;
+    }
+
+    window.__asistenciaSucursalSeleccionada = sucursal.id;
+    config.defaultSucursalId = config.defaultSucursalId || sucursal.id;
+    return sucursal;
+  }
+
+  function sincronizarVistaSucursalActiva(config) {
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    if (!config || !sucursal) return null;
+    config.manualColaboradores = sucursal.manualColaboradores;
+    config.sistemaColaboradoresExcluidos = sucursal.sistemaColaboradoresExcluidos;
+    config.colaboradores = sucursal.colaboradores;
+    config.sucursalActivaId = sucursal.id;
+    return sucursal;
+  }
+
+  function sucursalResumenColaboradores(sucursal) {
+    const total = (Array.isArray(sucursal && sucursal.colaboradores) ? sucursal.colaboradores : []).filter(c => c && c.activo !== false).length;
+    const totalGerentes = (Array.isArray(sucursal && sucursal.colaboradores) ? sucursal.colaboradores : [])
+      .filter(c => c && c.activo !== false && esRolGerenteAsistencia(c.rol)).length;
+    return { total, totalGerentes };
+  }
+
   function catalogoColaboradoresRegistrados(owner = getOwnerActivo()) {
     return colaboradoresSistemaAsistencia(owner).map(c => ({
       user: String(c.user || '').trim().toLowerCase(),
       nombre: String(c.nombre || c.user || '').trim().toLowerCase(),
       pass: String(c.pass || '').trim(),
-      activo: c.activo !== false
+      activo: c.activo !== false,
+      rol: normalizarRolAsistencia(c.rol, ASISTENCIA_ROLES.OTROS),
+      sucursalId: normalizarIdSucursalAsistencia(c.sucursalId || '')
     }));
   }
 
@@ -313,7 +528,10 @@
         horaLimiteSalida: 4,
         cicloInicio: '',
         cicloFin: '',
+        defaultSucursalId: '',
+        sucursales: [],
         manualColaboradores: [],
+        sistemaColaboradoresExcluidos: [],
         colaboradores: [],
         updatedAt: new Date().toISOString()
       };
@@ -330,9 +548,14 @@
     config.masterPassword = String(config.masterPassword || '').trim();
     config.cicloInicio = normalizarYmd(config.cicloInicio);
     config.cicloFin = normalizarYmd(config.cicloFin);
+    if (!Array.isArray(config.sucursales)) config.sucursales = [];
+    asegurarSucursalesAsistenciaConfig(config);
     if (!Array.isArray(config.manualColaboradores)) config.manualColaboradores = [];
     config.manualColaboradores = manualColaboradoresAsistencia(config);
+    if (!Array.isArray(config.sistemaColaboradoresExcluidos)) config.sistemaColaboradoresExcluidos = [];
+    config.sistemaColaboradoresExcluidos = normalizarUsuariosAsistencia(config.sistemaColaboradoresExcluidos);
     if (!Array.isArray(config.colaboradores)) config.colaboradores = [];
+    sincronizarVistaSucursalActiva(config);
     sincronizarVentanaCicloAsistencia(config);
 
     return config;
@@ -342,57 +565,95 @@
     if (!config || typeof config !== 'object') return false;
 
     const regenerate = opts.forzarRegenerar === true;
-    const prevMap = new Map((Array.isArray(config.colaboradores) ? config.colaboradores : []).map(c => [String((c && c.user) || '').trim().toLowerCase(), c]));
-    const manualList = manualColaboradoresAsistencia(config);
-    config.manualColaboradores = manualList;
+    const sistemaCols = colaboradoresSistemaAsistencia(config.owner);
+    const sistemaPorSucursal = new Map();
+    const defaultSucursal = normalizarIdSucursalAsistencia(config.defaultSucursalId || '');
+    sistemaCols.forEach(c => {
+      const sucursalId = normalizarIdSucursalAsistencia(c.sucursalId || '') || defaultSucursal;
+      if (!sucursalId) return;
+      if (!sistemaPorSucursal.has(sucursalId)) sistemaPorSucursal.set(sucursalId, []);
+      sistemaPorSucursal.get(sucursalId).push(c);
+    });
+
+    asegurarSucursalesAsistenciaConfig(config);
     const nowIso = new Date().toISOString();
+    let changed = false;
 
-    const sources = new Map();
-    colaboradoresSistemaAsistencia(config.owner).forEach(c => {
-      sources.set(c.user, { ...c });
-    });
-    manualList.forEach(c => {
-      const prevSource = sources.get(c.user) || null;
-      if (prevSource) {
-        sources.set(c.user, {
-          ...prevSource,
-          nombre: c.nombre || prevSource.nombre,
-          activo: c.activo !== false,
-          pass: c.pass || prevSource.pass || '',
-          source: 'mixto',
-          esIndependiente: false
-        });
-        return;
-      }
-      sources.set(c.user, { ...c, source: 'manual', esIndependiente: true });
-    });
+    config.sucursales.forEach((sucursal) => {
+      const prevMap = new Map((Array.isArray(sucursal.colaboradores) ? sucursal.colaboradores : []).map(c => [String((c && c.user) || '').trim().toLowerCase(), c]));
+      const manualList = manualColaboradoresAsistencia(sucursal);
+      sucursal.manualColaboradores = manualList;
+      sucursal.sistemaColaboradoresExcluidos = normalizarUsuariosAsistencia(sucursal.sistemaColaboradoresExcluidos);
 
-    const next = [...sources.values()]
-      .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')))
-      .map(c => {
-        const user = String(c.user || '').trim().toLowerCase();
-        const prev = prevMap.get(user) || {};
-        let clave = String(prev.clave || '').trim();
-        if (regenerate || !/^\d{5}$/.test(clave)) {
-          clave = generarClave(`${config.owner}|${config.modulo}|${user}`);
-        }
-        return {
-          user,
-          nombre: String(c.nombre || user).trim().toLowerCase(),
-          activo: c.activo !== false,
-          pass: String(c.pass || prev.pass || '').trim(),
-          source: String(c.source || prev.source || '').trim() || 'manual',
-          esIndependiente: c.esIndependiente === true,
-          clave,
-          updatedAt: String(prev.updatedAt || c.updatedAt || nowIso)
-        };
+      const sistemaList = Array.isArray(sistemaPorSucursal.get(sucursal.id)) ? sistemaPorSucursal.get(sucursal.id) : [];
+      const sistemaUsers = new Set(sistemaList.map(c => String((c && c.user) || '').trim().toLowerCase()).filter(Boolean));
+      sucursal.sistemaColaboradoresExcluidos = sucursal.sistemaColaboradoresExcluidos
+        .filter(user => sistemaUsers.has(String(user || '').trim().toLowerCase()));
+      const excluidosSistema = new Set(sucursal.sistemaColaboradoresExcluidos);
+
+      const sources = new Map();
+      sistemaList.forEach(c => {
+        const user = String((c && c.user) || '').trim().toLowerCase();
+        if (!user || excluidosSistema.has(user)) return;
+        sources.set(c.user, { ...c, sucursalId: sucursal.id });
       });
 
-    const changed = JSON.stringify(config.colaboradores || []) !== JSON.stringify(next);
-    if (changed) {
-      config.colaboradores = next;
-      config.updatedAt = nowIso;
+      manualList.forEach(c => {
+        const prevSource = sources.get(c.user) || null;
+        if (prevSource) {
+          sources.set(c.user, {
+            ...prevSource,
+            nombre: c.nombre || prevSource.nombre,
+            activo: c.activo !== false,
+            pass: c.pass || prevSource.pass || '',
+            rol: normalizarRolAsistencia(c.rol || prevSource.rol || '', ASISTENCIA_ROLES.OTROS),
+            source: 'mixto',
+            esIndependiente: false
+          });
+          return;
+        }
+        sources.set(c.user, { ...c, rol: normalizarRolAsistencia(c.rol || '', ASISTENCIA_ROLES.OTROS), source: 'manual', esIndependiente: true, sucursalId: sucursal.id });
+      });
+
+      const next = [...sources.values()]
+        .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')))
+        .map(c => {
+          const user = String(c.user || '').trim().toLowerCase();
+          const prev = prevMap.get(user) || {};
+          let clave = String(prev.clave || '').trim();
+          if (regenerate || !/^\d{5}$/.test(clave)) {
+            clave = generarClave(`${config.owner}|${config.modulo}|${sucursal.id}|${user}`);
+          }
+          return {
+            user,
+            nombre: String(c.nombre || user).trim().toLowerCase(),
+            activo: c.activo !== false,
+            pass: String(c.pass || prev.pass || '').trim(),
+            rol: normalizarRolAsistencia(c.rol || prev.rol || '', ASISTENCIA_ROLES.OTROS),
+            sucursalId: sucursal.id,
+            source: String(c.source || prev.source || '').trim() || 'manual',
+            esIndependiente: c.esIndependiente === true,
+            clave,
+            updatedAt: String(prev.updatedAt || c.updatedAt || nowIso)
+          };
+        });
+
+      const sucursalChanged = JSON.stringify(sucursal.colaboradores || []) !== JSON.stringify(next)
+        || JSON.stringify(sucursal.manualColaboradores || []) !== JSON.stringify(manualList)
+        || JSON.stringify(sucursal.sistemaColaboradoresExcluidos || []) !== JSON.stringify(normalizarUsuariosAsistencia(sucursal.sistemaColaboradoresExcluidos));
+      if (sucursalChanged) {
+        sucursal.colaboradores = next;
+        sucursal.updatedAt = nowIso;
+        changed = true;
+      }
+    });
+
+    const active = sincronizarVistaSucursalActiva(config);
+    if (active && (!String(config.defaultSucursalId || '').trim() || !(config.sucursales || []).some(s => s.id === config.defaultSucursalId))) {
+      config.defaultSucursalId = active.id;
+      changed = true;
     }
+    if (changed) config.updatedAt = nowIso;
     return changed;
   }
 
@@ -483,13 +744,16 @@
 
   function estadoConfigTexto(config) {
     if (!config) return 'Asistencia sin configuracion';
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    const resumen = sucursalResumenColaboradores(sucursal);
     const estado = config.activo ? 'ACTIVO' : 'INACTIVO';
     const auth = config.requerirClave ? 'ON' : 'OFF';
-    const colabs = (config.colaboradores || []).filter(c => c && c.activo !== false).length;
+    const colabs = resumen.total;
     const inicio = String(config.cicloInicio || '').trim();
     const fin = String(config.cicloFin || '').trim();
+    const sucursalTxt = sucursal ? ` - Sucursal ${String(sucursal.nombre || sucursal.id).toUpperCase()}` : '';
     const cicloTxt = inicio && fin ? ` - Ciclo ${ymdToDisplay(fin)} a ${ymdToDisplay(inicio)}` : '';
-    return `Modulo ${estado} - Autorizacion ${auth} - Corte ${horaLimiteNormalizada(config.horaLimiteSalida)}:00 - Colaboradores ${colabs}${cicloTxt}`;
+    return `Modulo ${estado} - Autorizacion ${auth} - Corte ${horaLimiteNormalizada(config.horaLimiteSalida)}:00 - Colaboradores ${colabs}${sucursalTxt}${cicloTxt}`;
   }
   function setRegistroEstado(msg, color = '#57606f') {
     const el = document.getElementById('asistencia-registro-estado');
@@ -498,21 +762,68 @@
     el.style.color = color;
   }
 
-  function puedeVerRegistro(r) {
+  function sucursalIdDeRegistroAsistencia(record, config = null) {
+    const fromRecord = normalizarIdSucursalAsistencia((record && (record.sucursalId || record.asistenciaSucursalId)) || '');
+    if (fromRecord) return fromRecord;
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    if (!cfg) return '';
+    return normalizarIdSucursalAsistencia(cfg.defaultSucursalId || '');
+  }
+
+  function sucursalIdActivaAsistencia(config = null) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    if (!cfg) return '';
+    const sucursal = obtenerSucursalActivaAsistencia(cfg);
+    return normalizarIdSucursalAsistencia((sucursal && sucursal.id) || '');
+  }
+
+  function normalizarRegistrosConSucursal(config) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    if (!cfg) return false;
+    const defaultSucursalId = normalizarIdSucursalAsistencia(cfg.defaultSucursalId || '');
+    if (!defaultSucursalId) return false;
+    let changed = false;
+    getDbArray('asistenciaRegistros').forEach((r) => {
+      if (String((r && r.owner) || '').trim().toLowerCase() !== cfg.owner) return;
+      if (String((r && r.modulo) || '').trim().toUpperCase() !== cfg.modulo) return;
+      if (!normalizarIdSucursalAsistencia((r && (r.sucursalId || r.asistenciaSucursalId)) || '')) {
+        r.sucursalId = defaultSucursalId;
+        changed = true;
+      }
+    });
+    getDbArray('asistenciaAutorizaciones').forEach((r) => {
+      if (String((r && r.owner) || '').trim().toLowerCase() !== cfg.owner) return;
+      if (String((r && r.modulo) || '').trim().toUpperCase() !== cfg.modulo) return;
+      if (!normalizarIdSucursalAsistencia((r && (r.sucursalId || r.asistenciaSucursalId)) || '')) {
+        r.sucursalId = defaultSucursalId;
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  function puedeVerRegistro(r, config = null) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    if (!cfg) return false;
     const ownerOk = String((r && r.owner) || '').trim().toLowerCase() === getOwnerActivo();
     const moduloRaw = String((r && r.modulo) || '').trim();
     const moduloOk = typeof moduloPerteneceVista === 'function'
       ? moduloPerteneceVista(moduloRaw)
       : (moduloRaw.toUpperCase() === getModuloActivo());
-    return ownerOk && moduloOk;
+    if (!(ownerOk && moduloOk)) return false;
+    const sucursalTarget = sucursalIdActivaAsistencia(cfg);
+    if (!sucursalTarget) return true;
+    return sucursalIdDeRegistroAsistencia(r, cfg) === sucursalTarget;
   }
 
-  function registrosAsistenciaVisibles() {
-    return getDbArray('asistenciaRegistros').filter(r => puedeVerRegistro(r) && (!!(r && r.entradaAt) || !!(r && r.salidaAt)));
+  function registrosAsistenciaVisibles(config = null) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    return getDbArray('asistenciaRegistros').filter(r => puedeVerRegistro(r, cfg) && (!!(r && r.entradaAt) || !!(r && r.salidaAt)));
   }
 
-  function autorizacionesAsistenciaVisibles() {
-    return getDbArray('asistenciaAutorizaciones').filter(r => puedeVerRegistro(r));
+  function autorizacionesAsistenciaVisibles(config = null) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    return getDbArray('asistenciaAutorizaciones').filter(r => puedeVerRegistro(r, cfg));
   }
 
   function estadoRegistroTexto(record) {
@@ -532,14 +843,18 @@
     return `${hh}:${String(mm).padStart(2, '0')}`;
   }
 
-  function buscarRegistroAbierto(colaboradorUser, fechaOperativa = '') {
+  function buscarRegistroAbierto(colaboradorUser, fechaOperativa = '', config = null) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    if (!cfg) return null;
     const owner = getOwnerActivo();
     const modulo = getModuloActivo();
+    const sucursalId = sucursalIdActivaAsistencia(cfg);
     const user = String(colaboradorUser || '').trim().toLowerCase();
 
     const abiertos = getDbArray('asistenciaRegistros').filter(r =>
       String((r && r.owner) || '').trim().toLowerCase() === owner &&
       String((r && r.modulo) || '').trim().toUpperCase() === modulo &&
+      sucursalIdDeRegistroAsistencia(r, cfg) === sucursalId &&
       String((r && r.colaboradorUser) || '').trim().toLowerCase() === user &&
       !String((r && r.salidaAt) || '').trim() &&
       (!r.estado || String(r.estado).toLowerCase() === 'abierto')
@@ -556,11 +871,14 @@
   }
 
   function logAutorizacion(payload = {}) {
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    const sucursalId = sucursalIdActivaAsistencia(config);
     const now = new Date();
     getDbArray('asistenciaAutorizaciones').push({
       id: `ASAUTH-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
       owner: getOwnerActivo(),
       modulo: getModuloActivo(),
+      sucursalId,
       fecha: fechaTexto(now),
       hora: horaTexto(now, true),
       timestamp: now.toISOString(),
@@ -617,6 +935,8 @@
   }
 
   function getRegistroPorFecha(colaboradorUser, fechaAsistencia) {
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    const sucursalId = sucursalIdActivaAsistencia(config);
     const owner = getOwnerActivo();
     const modulo = getModuloActivo();
     const user = String(colaboradorUser || '').trim().toLowerCase();
@@ -624,14 +944,21 @@
     return getDbArray('asistenciaRegistros').find(r =>
       String((r && r.owner) || '').trim().toLowerCase() === owner &&
       String((r && r.modulo) || '').trim().toUpperCase() === modulo &&
+      sucursalIdDeRegistroAsistencia(r, config) === sucursalId &&
       String((r && r.colaboradorUser) || '').trim().toLowerCase() === user &&
       String((r && r.fechaAsistencia) || '').trim() === fecha
     ) || null;
   }
 
   function colaboradoresActivosVisibles(config) {
-    let cols = (config && Array.isArray(config.colaboradores) ? config.colaboradores : []).filter(c => c && c.activo !== false);
-    if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    if (!cfg) return [];
+    const sucursal = obtenerSucursalActivaAsistencia(cfg);
+    let cols = (sucursal && Array.isArray(sucursal.colaboradores) ? sucursal.colaboradores : []).filter(c => c && c.activo !== false);
+    const access = accesoAsistenciaActual();
+    if (access && !access.scopeAll && !esRolGerenteAsistencia(access.rol)) {
+      cols = cols.filter(c => String(c.user || '').trim().toLowerCase() === access.user);
+    } else if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) {
       const me = String((sesionUser && sesionUser.user) || '').trim().toLowerCase();
       cols = cols.filter(c => String(c.user || '').trim().toLowerCase() === me);
     }
@@ -650,19 +977,66 @@
     return fechas.filter(Boolean);
   }
 
+  function colaboradoresRemoviblesAsistencia(config) {
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    const list = Array.isArray(sucursal && sucursal.colaboradores) ? sucursal.colaboradores : [];
+    return list
+      .map(c => ({
+        user: String((c && c.user) || '').trim().toLowerCase(),
+        nombre: String((c && (c.nombre || c.user)) || '').trim().toLowerCase(),
+        source: String((c && c.source) || '').trim().toLowerCase(),
+        rol: normalizarRolAsistencia(c && c.rol, ASISTENCIA_ROLES.OTROS),
+        activo: c && c.activo !== false
+      }))
+      .filter(c => !!c.user)
+      .sort((a, b) => String(a.nombre || a.user).localeCompare(String(b.nombre || b.user)));
+  }
+
   function aplicarRestriccionesVisuales() {
-    const esBasico = typeof esModoBasicoColaborador === 'function' ? esModoBasicoColaborador() : false;
+    const puedeGestionarColabs = puedeGestionarColaboradoresPorRolAsistencia();
+    const puedeGestionarSucursales = puedeGestionarSucursalesAsistencia();
     document.querySelectorAll('#asistencia button[onclick*="limpiarRegistrosAsistencia"], #asistencia button[onclick*="limpiarAutorizacionesAsistencia"], #asistencia button[onclick*="actualizarCicloAsistencia"]').forEach(btn => {
-      btn.style.display = esBasico ? 'none' : '';
+      btn.style.display = puedeGestionarColabs ? '' : 'none';
     });
     const cardAuth = document.getElementById('asistencia-autorizaciones-card');
-    if (cardAuth) cardAuth.style.display = esBasico ? 'none' : '';
-    const addColabBtn = document.getElementById('btn-asistencia-add-colab');
-    if (addColabBtn) addColabBtn.style.display = esBasico ? 'none' : '';
+    if (cardAuth) cardAuth.style.display = puedeGestionarColabs ? '' : 'none';
+    const addSucursalBtn = document.getElementById('btn-asistencia-add-colab');
+    if (addSucursalBtn) addSucursalBtn.style.display = puedeGestionarSucursales ? '' : 'none';
+    const removeSucursalBtn = document.getElementById('btn-asistencia-remove-sucursal');
+    if (removeSucursalBtn) removeSucursalBtn.style.display = puedeGestionarSucursales ? '' : 'none';
+    const addColabBtn = document.getElementById('btn-asistencia-add-colab-sucursal');
+    if (addColabBtn) addColabBtn.style.display = puedeGestionarColabs ? '' : 'none';
+    const removeColabBtn = document.getElementById('btn-asistencia-remove-colab');
+    if (removeColabBtn) removeColabBtn.style.display = puedeGestionarColabs ? '' : 'none';
+  }
+
+  function actualizarEstadoBotonEliminarAsistencia(config) {
+    const removeBtn = document.getElementById('btn-asistencia-remove-colab');
+    if (!removeBtn) return;
+
+    const removibles = colaboradoresRemoviblesAsistencia(config);
+    const selected = String(window.__asistenciaColabSeleccionado || '').trim().toLowerCase();
+    const colab = removibles.find(c => c.user === selected) || null;
+
+    removeBtn.disabled = removibles.length === 0;
+    if (!removibles.length) {
+      removeBtn.title = 'No hay colaboradores en asistencia para eliminar.';
+      return;
+    }
+
+    removeBtn.title = colab
+      ? `Eliminar colaborador de asistencia: ${String(colab.nombre || colab.user || selected).toUpperCase()}`
+      : 'Selecciona un colaborador para eliminarlo de asistencia';
   }
 
   function renderEstado(config) {
     const status = document.getElementById('asistencia-status-modulo');
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    const sucursalLabel = document.getElementById('asistencia-sucursal-actual-label');
+    const tableroSucursal = document.getElementById('asistencia-tablero-sucursal');
+    const sucursalTexto = sucursal ? String(sucursal.nombre || sucursal.id).toUpperCase() : '---';
+    if (sucursalLabel) sucursalLabel.textContent = `Sucursal: ${sucursalTexto}`;
+    if (tableroSucursal) tableroSucursal.textContent = `Sucursal: ${sucursalTexto}`;
     if (status) {
       status.textContent = estadoConfigTexto(config);
       status.style.color = config && config.activo ? '#1f8f4c' : '#a66a00';
@@ -676,6 +1050,36 @@
     }
   }
 
+  function renderListaSucursalesAsistencia(config) {
+    const box = document.getElementById('asistencia-sucursales-lista');
+    if (!box) return;
+    const sucursales = Array.isArray(config && config.sucursales) ? config.sucursales : [];
+    const access = accesoAsistenciaActual();
+
+    let visibles = sucursales;
+    if (access && !access.scopeAll && !esRolGerenteAsistencia(access.rol)) {
+      visibles = sucursales.filter(s => s.id === access.sucursalId);
+    }
+
+    if (!visibles.length) {
+      box.innerHTML = '<div style="font-size:12px; color:#777;">Sin sucursales registradas.</div>';
+      return;
+    }
+
+    const sucursalActiva = obtenerSucursalActivaAsistencia(config);
+    box.innerHTML = visibles.map((s) => {
+      const active = (sucursalActiva && sucursalActiva.id === s.id) ? ' active' : '';
+      const resumen = sucursalResumenColaboradores(s);
+      const nombre = String(s.nombre || s.id).toUpperCase();
+      const meta = `${resumen.total} colaborador(es) - ${resumen.totalGerentes} gerente(s)`;
+      const sid = String(s.id || '').replace(/'/g, "\\'");
+      return `<button type="button" class="asistencia-colab-btn${active}" onclick="seleccionarSucursalAsistencia('${sid}')">
+        ${nombre}
+        <span class="asistencia-colab-meta">${meta}</span>
+      </button>`;
+    }).join('');
+  }
+
   function renderListaColaboradoresAsistencia(config) {
     const box = document.getElementById('asistencia-colaboradores-lista');
     if (!box) return;
@@ -686,6 +1090,7 @@
     if (cols.length === 0) {
       box.innerHTML = '<div style="font-size:12px; color:#777;">Sin colaboradores activos para asistencia.</div>';
       window.__asistenciaColabSeleccionado = '';
+      actualizarEstadoBotonEliminarAsistencia(config);
       return;
     }
 
@@ -703,15 +1108,17 @@
       const user = String(c.user || '').trim().toLowerCase();
       const active = user === selected ? ' active' : '';
       const ultima = getDbArray('asistenciaRegistros')
-        .filter(r => String((r && r.colaboradorUser) || '').trim().toLowerCase() === user && puedeVerRegistro(r))
+        .filter(r => String((r && r.colaboradorUser) || '').trim().toLowerCase() === user && puedeVerRegistro(r, config))
         .sort((a, b) => timeMs((b && b.updatedAt) || (b && b.entradaAt)) - timeMs((a && a.updatedAt) || (a && a.entradaAt)))[0];
       const estado = ultima ? estadoRegistroTexto(ultima) : 'SIN REGISTROS';
       const tipo = c && c.esIndependiente ? 'INDEPENDIENTE' : 'VINCULADO';
+      const rol = etiquetaRolAsistencia(c && c.rol);
       return `<button type="button" class="asistencia-colab-btn${active}" onclick="seleccionarColaboradorAsistencia('${user.replace(/'/g, "\\'")}')">
         ${String(c.nombre || user).toUpperCase()}
-        <span class="asistencia-colab-meta">Estado: ${estado} - ${tipo}</span>
+        <span class="asistencia-colab-meta">Rol: ${rol} - Estado: ${estado} - ${tipo}</span>
       </button>`;
     }).join('');
+    actualizarEstadoBotonEliminarAsistencia(config);
   }
 
   function renderTableroColaboradorAsistencia(config) {
@@ -720,6 +1127,8 @@
     const fechaLabel = document.getElementById('asistencia-fecha-operativa');
     if (!tbody || !config) return;
     sincronizarVentanaCicloAsistencia(config);
+    const access = accesoAsistenciaActual();
+    const sucursal = obtenerSucursalActivaAsistencia(config);
 
     const selected = String(window.__asistenciaColabSeleccionado || '').trim().toLowerCase();
     const colaborador = colaboradoresActivosVisibles(config).find(c => String(c.user || '').trim().toLowerCase() === selected) || null;
@@ -738,7 +1147,10 @@
       return;
     }
 
-    if (head) head.textContent = `Colaborador: ${String(colaborador.nombre || colaborador.user).toUpperCase()}`;
+    if (head) {
+      const sucursalTxt = sucursal ? ` - Sucursal ${String(sucursal.nombre || sucursal.id).toUpperCase()}` : '';
+      head.textContent = `Colaborador: ${String(colaborador.nombre || colaborador.user).toUpperCase()}${sucursalTxt}`;
+    }
 
     const fechas = construirFechasTablero(config);
     tbody.innerHTML = fechas.map(fecha => {
@@ -746,8 +1158,9 @@
       const entrada = horaRegistroTexto(registro, 'entradaAt', 'entradaHora');
       const salida = horaRegistroTexto(registro, 'salidaAt', 'salidaHora');
       const total = registro ? totalHorasTexto(registro) : '---';
-      const puedeEntrada = config.activo && fecha === jornada && !(registro && registro.entradaAt);
-      const puedeSalida = config.activo && fecha === jornada && !!(registro && registro.entradaAt) && !(registro && registro.salidaAt);
+      const permitidoPorRol = !access || access.scopeAll || esRolGerenteAsistencia(access.rol) || String(access.user || '').trim().toLowerCase() === String(colaborador.user || '').trim().toLowerCase();
+      const puedeEntrada = permitidoPorRol && config.activo && fecha === jornada && !(registro && registro.entradaAt);
+      const puedeSalida = permitidoPorRol && config.activo && fecha === jornada && !!(registro && registro.entradaAt) && !(registro && registro.salidaAt);
       const classEntrada = registro && registro.entradaAt ? 'asistencia-mark-btn asistencia-mark-ok' : 'asistencia-mark-btn';
       const classSalida = registro && registro.salidaAt ? 'asistencia-mark-btn asistencia-mark-ok' : 'asistencia-mark-btn';
       const fechaVisible = fecha ? fecha.split('-').reverse().join('/') : '---';
@@ -761,6 +1174,25 @@
       </tr>`;
     }).join('');
   }
+
+  window.seleccionarSucursalAsistencia = function seleccionarSucursalAsistencia(sucursalId = '') {
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    if (!config) return;
+    const targetId = normalizarIdSucursalAsistencia(sucursalId || '');
+    if (!targetId) return;
+    if (!puedeOperarSucursalAsistencia(targetId)) {
+      alert('No tienes acceso a esta sucursal.');
+      return;
+    }
+    window.__asistenciaSucursalSeleccionada = targetId;
+    syncConfigColaboradores(config);
+    const cols = colaboradoresActivosVisibles(config);
+    const selected = String(window.__asistenciaColabSeleccionado || '').trim().toLowerCase();
+    if (!cols.some(c => String(c.user || '').trim().toLowerCase() === selected)) {
+      window.__asistenciaColabSeleccionado = cols.length ? String(cols[0].user || '').trim().toLowerCase() : '';
+    }
+    window.renderAsistenciaModulo();
+  };
 
   window.seleccionarColaboradorAsistencia = function seleccionarColaboradorAsistencia(colaboradorUser) {
     window.__asistenciaColabSeleccionado = String(colaboradorUser || '').trim().toLowerCase();
@@ -782,11 +1214,387 @@
     modal.style.display = 'none';
   };
 
+  window.cerrarModalEliminarColaboradorAsistencia = function cerrarModalEliminarColaboradorAsistencia() {
+    const modal = document.getElementById('modal-asistencia-colaborador-remove');
+    if (!modal) return;
+    modal.style.display = 'none';
+  };
+
+  window.cerrarModalSucursalAsistencia = function cerrarModalSucursalAsistencia() {
+    const modal = document.getElementById('modal-asistencia-sucursal');
+    if (!modal) return;
+    modal.style.display = 'none';
+  };
+
+  window.abrirGestionSucursalesAsistencia = function abrirGestionSucursalesAsistencia() {
+    if (!puedeGestionarSucursalesAsistencia()) {
+      alert('Solo el rol Gerente puede crear sucursales.');
+      return;
+    }
+    const modal = document.getElementById('modal-asistencia-sucursal');
+    const input = document.getElementById('asistencia-sucursal-nombre');
+    if (!modal || !input) return;
+    input.value = '';
+    modal.style.display = 'flex';
+    setTimeout(() => input.focus(), 20);
+  };
+
+  window.guardarSucursalAsistencia = function guardarSucursalAsistencia() {
+    if (!puedeGestionarSucursalesAsistencia()) {
+      alert('No tienes permisos para crear sucursales.');
+      return false;
+    }
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    if (!config) return false;
+    const input = document.getElementById('asistencia-sucursal-nombre');
+    const nombre = normalizarNombreSucursalAsistencia((input && input.value) || '', '');
+    if (!nombre) {
+      alert('Ingresa el nombre de la sucursal.');
+      return false;
+    }
+    const existe = (config.sucursales || []).some(s => String((s && s.nombre) || '').trim().toLowerCase() === nombre);
+    if (existe) {
+      alert('Ya existe una sucursal con ese nombre.');
+      return false;
+    }
+    const nueva = normalizarSucursalAsistencia({
+      id: generarIdSucursalAsistencia(nombre),
+      nombre,
+      manualColaboradores: [],
+      sistemaColaboradoresExcluidos: [],
+      colaboradores: []
+    }, (config.sucursales || []).length);
+    if (!Array.isArray(config.sucursales)) config.sucursales = [];
+    config.sucursales.push(nueva);
+    config.defaultSucursalId = config.defaultSucursalId || nueva.id;
+    window.__asistenciaSucursalSeleccionada = nueva.id;
+    syncConfigColaboradores(config);
+    config.updatedAt = new Date().toISOString();
+    if (typeof guardarDatos === 'function') guardarDatos();
+    window.cerrarModalSucursalAsistencia();
+    window.renderAsistenciaModulo();
+    if (typeof window.renderConfigAsistencia === 'function') window.renderConfigAsistencia();
+    return true;
+  };
+
+  window.eliminarSucursalAsistenciaSeleccionada = function eliminarSucursalAsistenciaSeleccionada() {
+    if (!puedeGestionarSucursalesAsistencia()) {
+      alert('No tienes permisos para eliminar sucursales.');
+      return false;
+    }
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    if (!config || !Array.isArray(config.sucursales)) return false;
+    const actual = obtenerSucursalActivaAsistencia(config);
+    if (!actual) return false;
+    if (config.sucursales.length <= 1) {
+      alert('Debe existir al menos una sucursal de asistencia.');
+      return false;
+    }
+    const nombre = String(actual.nombre || actual.id).toUpperCase();
+    if (!confirm(`Eliminar la sucursal ${nombre}?\n\nSe eliminarán sus colaboradores y registros de asistencia de esa sucursal.`)) return false;
+
+    const targetId = String(actual.id || '').trim().toLowerCase();
+    config.sucursales = config.sucursales.filter(s => String((s && s.id) || '').trim().toLowerCase() !== targetId);
+    if (!config.sucursales.length) {
+      config.sucursales = [normalizarSucursalAsistencia({}, 0)];
+    }
+    if (!config.sucursales.some(s => s.id === config.defaultSucursalId)) {
+      config.defaultSucursalId = config.sucursales[0].id;
+    }
+    const sucursalFallbackId = config.sucursales[0].id;
+    window.__asistenciaSucursalSeleccionada = sucursalFallbackId;
+
+    // Reasigna referencias de usuarios vinculados a la sucursal eliminada para evitar IDs colgados.
+    getDbArray('usuarios').forEach((u) => {
+      if (!u || String((u && u.role) || '').trim().toLowerCase() !== 'colaborador') return;
+      if (String((u && u.owner) || '').trim().toLowerCase() !== String(config.owner || '').trim().toLowerCase()) return;
+      const sid = normalizarIdSucursalAsistencia((u && (u.sucursalAsistenciaId || u.asistenciaSucursalId)) || '');
+      if (sid !== targetId) return;
+      u.sucursalAsistenciaId = sucursalFallbackId;
+      if (Object.prototype.hasOwnProperty.call(u, 'asistenciaSucursalId')) u.asistenciaSucursalId = sucursalFallbackId;
+      u.updatedAt = new Date().toISOString();
+    });
+
+    db.asistenciaRegistros = getDbArray('asistenciaRegistros').filter(r =>
+      !(String((r && r.owner) || '').trim().toLowerCase() === config.owner &&
+        String((r && r.modulo) || '').trim().toUpperCase() === config.modulo &&
+        sucursalIdDeRegistroAsistencia(r, config) === targetId)
+    );
+    db.asistenciaAutorizaciones = getDbArray('asistenciaAutorizaciones').filter(r =>
+      !(String((r && r.owner) || '').trim().toLowerCase() === config.owner &&
+        String((r && r.modulo) || '').trim().toUpperCase() === config.modulo &&
+        sucursalIdDeRegistroAsistencia(r, config) === targetId)
+    );
+
+    if (window.__asistenciaAccesoActual && String((window.__asistenciaAccesoActual && window.__asistenciaAccesoActual.sucursalId) || '').trim().toLowerCase() === targetId) {
+      window.__asistenciaAccesoActual = null;
+      window.__asistenciaRequiereLogin = true;
+    }
+
+    syncConfigColaboradores(config);
+    config.updatedAt = new Date().toISOString();
+    if (typeof guardarDatos === 'function') guardarDatos();
+    window.renderAsistenciaModulo();
+    if (typeof window.renderConfigAsistencia === 'function') window.renderConfigAsistencia();
+    return true;
+  };
+
+  function usuariosSeleccionadosEliminarAsistenciaModal() {
+    return [...document.querySelectorAll('#asistencia-colab-remove-lista input[name="asistencia-colab-remove-item"]:checked')]
+      .map(input => String((input && input.value) || '').trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  function actualizarEstadoSeleccionEliminarAsistenciaModal() {
+    const checkAll = document.getElementById('asistencia-colab-remove-select-all');
+    const hint = document.getElementById('asistencia-colab-remove-hint');
+    const btnConfirm = document.getElementById('btn-asistencia-colab-remove-confirm');
+    const checks = [...document.querySelectorAll('#asistencia-colab-remove-lista input[name="asistencia-colab-remove-item"]')];
+    const selected = checks.filter(input => !!(input && input.checked));
+
+    if (checkAll) {
+      checkAll.disabled = checks.length === 0;
+      checkAll.checked = checks.length > 0 && selected.length === checks.length;
+      checkAll.indeterminate = selected.length > 0 && selected.length < checks.length;
+    }
+    if (btnConfirm) btnConfirm.disabled = selected.length === 0;
+    if (hint) {
+      if (!checks.length) {
+        hint.textContent = 'No hay colaboradores en asistencia para eliminar.';
+      } else if (!selected.length) {
+        hint.textContent = 'Seleccione al menos un colaborador para eliminar.';
+      } else {
+        hint.textContent = `${selected.length} colaborador(es) seleccionado(s) para eliminar.`;
+      }
+    }
+  }
+
+  function renderListaEliminarAsistenciaModal(removibles = [], preselectedUser = '') {
+    const box = document.getElementById('asistencia-colab-remove-lista');
+    if (!box) return;
+
+    if (!Array.isArray(removibles) || !removibles.length) {
+      box.innerHTML = '<div style="font-size:12px; color:#777;">Sin colaboradores en asistencia.</div>';
+      actualizarEstadoSeleccionEliminarAsistenciaModal();
+      return;
+    }
+
+    const pre = String(preselectedUser || '').trim().toLowerCase();
+    box.innerHTML = removibles.map(c => {
+      const user = String((c && c.user) || '').trim().toLowerCase();
+      const nombre = String((c && (c.nombre || c.user)) || user).toUpperCase();
+      const source = String((c && c.source) || '').trim().toLowerCase();
+      const tipo = source === 'mixto' ? 'VINCULADO + ANADIDO' : (source === 'manual' ? 'ANADIDO' : 'VINCULADO');
+      const estado = c && c.activo !== false ? 'ACTIVO' : 'INACTIVO';
+      const rol = etiquetaRolAsistencia(c && c.rol);
+      const checked = user === pre ? ' checked' : '';
+      const userAttr = user.replace(/"/g, '&quot;');
+      return `<label class="asistencia-colab-remove-item">
+        <input type="checkbox" name="asistencia-colab-remove-item" value="${userAttr}"${checked} onchange="actualizarSeleccionColaboradoresAsistencia()">
+        <span class="asistencia-colab-remove-item-text"><strong>${nombre}</strong><span class="asistencia-colab-remove-item-meta">${rol} - ${tipo} - ${estado}</span></span>
+      </label>`;
+    }).join('');
+    actualizarEstadoSeleccionEliminarAsistenciaModal();
+  }
+
+  window.actualizarSeleccionColaboradoresAsistencia = function actualizarSeleccionColaboradoresAsistencia() {
+    actualizarEstadoSeleccionEliminarAsistenciaModal();
+  };
+
+  window.toggleSeleccionMasivaColaboradoresAsistencia = function toggleSeleccionMasivaColaboradoresAsistencia(toggle = false) {
+    const mark = !!toggle;
+    document.querySelectorAll('#asistencia-colab-remove-lista input[name="asistencia-colab-remove-item"]').forEach(input => {
+      input.checked = mark;
+    });
+    actualizarEstadoSeleccionEliminarAsistenciaModal();
+  };
+
+  window.abrirModalEliminarColaboradorAsistencia = function abrirModalEliminarColaboradorAsistencia() {
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) {
+      return alert('Solo el rol Gerente puede eliminar colaboradores de asistencia.');
+    }
+
+    const modal = document.getElementById('modal-asistencia-colaborador-remove');
+    const checkAll = document.getElementById('asistencia-colab-remove-select-all');
+    const hint = document.getElementById('asistencia-colab-remove-hint');
+    const btnConfirm = document.getElementById('btn-asistencia-colab-remove-confirm');
+    if (!modal || !checkAll || !hint || !btnConfirm) return;
+
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    if (!config) return alert('No se pudo cargar la configuracion de asistencia.');
+
+    const removibles = colaboradoresRemoviblesAsistencia(config);
+    const selected = String(window.__asistenciaColabSeleccionado || '').trim().toLowerCase();
+    const preselected = removibles.find(c => c.user === selected) || removibles[0] || null;
+    renderListaEliminarAsistenciaModal(removibles, String((preselected && preselected.user) || '').trim().toLowerCase());
+    if (!removibles.length) hint.textContent = 'No hay colaboradores en asistencia para eliminar.';
+    if (!removibles.length) btnConfirm.disabled = true;
+
+    modal.style.display = 'flex';
+    setTimeout(() => {
+      const first = document.querySelector('#asistencia-colab-remove-lista input[name="asistencia-colab-remove-item"]');
+      if (first) first.focus();
+      else btnConfirm.focus();
+    }, 20);
+  };
+
+  window.eliminarColaboradoresAsistenciaMasivo = function eliminarColaboradoresAsistenciaMasivo(colaboradores = []) {
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) {
+      return { ok: false, reason: 'forbidden' };
+    }
+
+    const usuarios = [...new Set((Array.isArray(colaboradores) ? colaboradores : [colaboradores])
+      .map(user => String(user || '').trim().toLowerCase())
+      .filter(Boolean))];
+    if (!usuarios.length) return { ok: false, reason: 'empty' };
+
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    if (!config || !sucursal || !Array.isArray(sucursal.manualColaboradores)) {
+      return { ok: false, reason: 'config' };
+    }
+
+    const prevCols = new Map((sucursal.colaboradores || [])
+      .map(c => [String((c && c.user) || '').trim().toLowerCase(), c || {}]));
+    const presentes = usuarios.filter(user => prevCols.has(user));
+    if (!presentes.length) return { ok: false, reason: 'none-present' };
+
+    const manualUsers = new Set((sucursal.manualColaboradores || [])
+      .map(c => String((c && c.user) || '').trim().toLowerCase())
+      .filter(Boolean));
+
+    const excluidosPrevios = new Set(normalizarUsuariosAsistencia(sucursal.sistemaColaboradoresExcluidos));
+    const nextExcluidos = new Set(excluidosPrevios);
+    const targetManualRemove = new Set();
+
+    let removedManual = 0;
+    let ocultadosVinculados = 0;
+
+    presentes.forEach(user => {
+      const source = String((prevCols.get(user) && prevCols.get(user).source) || '').trim().toLowerCase();
+      if (source === 'manual') {
+        if (manualUsers.has(user)) {
+          targetManualRemove.add(user);
+          removedManual++;
+        }
+        return;
+      }
+      if (source === 'mixto') {
+        if (manualUsers.has(user)) {
+          targetManualRemove.add(user);
+          removedManual++;
+        }
+        if (!nextExcluidos.has(user)) nextExcluidos.add(user);
+        ocultadosVinculados++;
+        return;
+      }
+      if (source === 'sistema') {
+        if (!nextExcluidos.has(user)) nextExcluidos.add(user);
+        ocultadosVinculados++;
+      }
+    });
+
+    const huboCambioManual = targetManualRemove.size > 0;
+    if (huboCambioManual) {
+      sucursal.manualColaboradores = sucursal.manualColaboradores.filter(c => {
+        const user = String((c && c.user) || '').trim().toLowerCase();
+        return !targetManualRemove.has(user);
+      });
+    }
+
+    const excluidosPrevList = normalizarUsuariosAsistencia(sucursal.sistemaColaboradoresExcluidos);
+    const excluidosNextList = normalizarUsuariosAsistencia([...nextExcluidos.values()]);
+    const huboCambioExclusion = JSON.stringify(excluidosPrevList) !== JSON.stringify(excluidosNextList);
+    if (huboCambioExclusion) sucursal.sistemaColaboradoresExcluidos = excluidosNextList;
+
+    if (!huboCambioManual && !huboCambioExclusion) {
+      return { ok: false, reason: 'none-changed' };
+    }
+
+    // Limpieza de datos de asistencia para evitar referencias enganchadas al colaborador removido.
+    const ownerKey = String(config.owner || '').trim().toLowerCase();
+    const moduloKey = String(config.modulo || '').trim().toUpperCase();
+    const sucursalId = String((sucursal && sucursal.id) || '').trim().toLowerCase();
+    const removidosSet = new Set(presentes.map(user => String(user || '').trim().toLowerCase()));
+    db.asistenciaRegistros = getDbArray('asistenciaRegistros').filter((r) => {
+      if (String((r && r.owner) || '').trim().toLowerCase() !== ownerKey) return true;
+      if (String((r && r.modulo) || '').trim().toUpperCase() !== moduloKey) return true;
+      if (sucursalIdDeRegistroAsistencia(r, config) !== sucursalId) return true;
+      const userReg = String((r && r.colaboradorUser) || '').trim().toLowerCase();
+      return !removidosSet.has(userReg);
+    });
+    db.asistenciaAutorizaciones = getDbArray('asistenciaAutorizaciones').filter((r) => {
+      if (String((r && r.owner) || '').trim().toLowerCase() !== ownerKey) return true;
+      if (String((r && r.modulo) || '').trim().toUpperCase() !== moduloKey) return true;
+      if (sucursalIdDeRegistroAsistencia(r, config) !== sucursalId) return true;
+      const userReg = String((r && r.colaboradorUser) || '').trim().toLowerCase();
+      return !removidosSet.has(userReg);
+    });
+
+    syncConfigColaboradores(config);
+    config.updatedAt = new Date().toISOString();
+    if (typeof guardarDatos === 'function') guardarDatos();
+
+    const selected = String(window.__asistenciaColabSeleccionado || '').trim().toLowerCase();
+    const removidosAsistencia = new Set(presentes);
+    if (selected && removidosAsistencia.has(selected)) {
+      const stillExists = (sucursal.colaboradores || []).some(c => String((c && c.user) || '').trim().toLowerCase() === selected);
+      if (!stillExists) window.__asistenciaColabSeleccionado = '';
+    }
+
+    window.renderAsistenciaModulo();
+    if (typeof window.renderConfigAsistencia === 'function') window.renderConfigAsistencia();
+
+    return {
+      ok: true,
+      removidos: presentes.length,
+      removidosManual: removedManual,
+      ocultadosVinculados,
+      solicitados: usuarios.length
+    };
+  };
+
+  window.eliminarColaboradorAsistenciaDesdeModal = function eliminarColaboradorAsistenciaDesdeModal() {
+    const seleccionados = usuariosSeleccionadosEliminarAsistenciaModal();
+    if (!seleccionados.length) {
+      alert('Selecciona al menos un colaborador para eliminar.');
+      return false;
+    }
+
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    const nombres = seleccionados.map(user => {
+      const colab = (config && Array.isArray(config.colaboradores))
+        ? config.colaboradores.find(c => String((c && c.user) || '').trim().toLowerCase() === user)
+        : null;
+      return String((colab && (colab.nombre || colab.user)) || user).toUpperCase();
+    });
+    const preview = nombres.slice(0, 6).join(', ');
+    const extra = nombres.length > 6 ? ` y ${nombres.length - 6} mas` : '';
+    const msg = seleccionados.length === 1
+      ? `Eliminar al colaborador ${preview} de asistencia?`
+      : `Eliminar ${seleccionados.length} colaboradores de asistencia?\n\n${preview}${extra}`;
+    if (!confirm(msg)) return false;
+
+    const result = window.eliminarColaboradoresAsistenciaMasivo(seleccionados);
+    if (!result || !result.ok) {
+      alert('No se pudo completar la eliminacion masiva.');
+      return false;
+    }
+
+    const detalleVinculados = result.ocultadosVinculados > 0
+      ? ` ${result.ocultadosVinculados} colaborador(es) vinculados fueron desacoplados de asistencia.`
+      : '';
+    alert(`Eliminacion completada. Removidos de asistencia: ${result.removidos}.${detalleVinculados}`);
+    window.cerrarModalEliminarColaboradorAsistencia();
+    return true;
+  };
+
   window.autocompletarAsistenciaColaboradorDesdeSelect = function autocompletarAsistenciaColaboradorDesdeSelect() {
     const select = document.getElementById('asistencia-colab-existente');
     const inNombre = document.getElementById('asistencia-colab-nombre');
     const inPass = document.getElementById('asistencia-colab-pass');
     const inActivo = document.getElementById('asistencia-colab-activo');
+    const inRol = document.getElementById('asistencia-colab-rol');
     if (!select || !inNombre || !inPass || !inActivo) return;
 
     const user = String(select.value || '').trim().toLowerCase();
@@ -794,6 +1602,7 @@
       inNombre.value = '';
       inPass.value = '';
       inActivo.checked = true;
+      if (inRol) inRol.value = ASISTENCIA_ROLES.OTROS;
       return;
     }
 
@@ -804,12 +1613,17 @@
     inNombre.value = String(found.nombre || user).trim().toLowerCase();
     inPass.value = String(found.pass || '').trim();
     inActivo.checked = found.activo !== false;
+    if (inRol) inRol.value = normalizarRolAsistencia(found.rol, ASISTENCIA_ROLES.OTROS);
   };
 
-  window.abrirGestionColaboradoresAsistencia = function abrirGestionColaboradoresAsistencia() {
-    if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) {
-      return alert('Solo un administrador puede anadir colaboradores a asistencia.');
+  window.abrirGestionColaboradoresSucursalAsistencia = function abrirGestionColaboradoresSucursalAsistencia() {
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) {
+      return alert('Solo el rol Gerente puede añadir colaboradores en la sucursal.');
     }
+
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    if (!config || !sucursal) return alert('No se pudo cargar la sucursal activa.');
 
     const modal = document.getElementById('modal-asistencia-colaborador');
     if (!modal) return;
@@ -818,8 +1632,15 @@
     const inNombre = document.getElementById('asistencia-colab-nombre');
     const inPass = document.getElementById('asistencia-colab-pass');
     const inActivo = document.getElementById('asistencia-colab-activo');
+    const inRol = document.getElementById('asistencia-colab-rol');
+    const sucursalInfo = document.getElementById('asistencia-colab-sucursal-info');
 
-    const list = catalogoColaboradoresRegistrados(getOwnerActivo());
+    const list = catalogoColaboradoresRegistrados(getOwnerActivo())
+      .filter(c => {
+        if (!c) return false;
+        const sid = normalizarIdSucursalAsistencia(c.sucursalId || '');
+        return !sid || sid === sucursal.id;
+      });
     window.__asistenciaCatalogoColaboradores = list;
 
     if (select) {
@@ -827,7 +1648,8 @@
         .concat(list.map(c => {
           const user = String(c.user || '').replace(/"/g, '&quot;');
           const estado = c.activo !== false ? 'Activo' : 'Bloqueado';
-          return `<option value="${user}">${String(c.nombre || c.user).toUpperCase()} - ${estado}</option>`;
+          const rol = etiquetaRolAsistencia(c.rol);
+          return `<option value="${user}">${String(c.nombre || c.user).toUpperCase()} - ${rol} - ${estado}</option>`;
         }));
       select.innerHTML = options.join('');
       select.value = '';
@@ -836,28 +1658,35 @@
     if (inNombre) inNombre.value = '';
     if (inPass) inPass.value = '';
     if (inActivo) inActivo.checked = true;
+    if (inRol) inRol.value = ASISTENCIA_ROLES.OTROS;
+    if (sucursalInfo) sucursalInfo.textContent = `Sucursal: ${String(sucursal.nombre || sucursal.id).toUpperCase()}`;
 
     modal.style.display = 'flex';
     setTimeout(() => { inNombre?.focus(); }, 20);
   };
 
+  window.abrirGestionColaboradoresAsistencia = window.abrirGestionColaboradoresSucursalAsistencia;
+
   window.guardarColaboradorAsistenciaIndependiente = function guardarColaboradorAsistenciaIndependiente() {
-    if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) {
-      return alert('Solo un administrador puede guardar colaboradores de asistencia.');
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) {
+      return alert('Solo el rol Gerente puede guardar colaboradores de asistencia.');
     }
 
     const config = getAsistenciaConfig({ createIfMissing: true });
-    if (!config) return alert('No se pudo cargar la configuracion de asistencia.');
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    if (!config || !sucursal) return alert('No se pudo cargar la configuracion de asistencia.');
 
     const select = document.getElementById('asistencia-colab-existente');
     const inNombre = document.getElementById('asistencia-colab-nombre');
     const inPass = document.getElementById('asistencia-colab-pass');
     const inActivo = document.getElementById('asistencia-colab-activo');
+    const inRol = document.getElementById('asistencia-colab-rol');
 
     const fromSelect = String((select && select.value) || '').trim().toLowerCase();
     const nombreRaw = String((inNombre && inNombre.value) || '').trim();
     const passRaw = String((inPass && inPass.value) || '').trim();
     const activo = !!(inActivo && inActivo.checked);
+    const rol = normalizarRolAsistencia((inRol && inRol.value) || '', ASISTENCIA_ROLES.OTROS);
 
     const nombre = normalizarNombreColaborador(nombreRaw, fromSelect || 'colaborador');
     let user = normalizarUsuarioColaborador(fromSelect || nombre);
@@ -866,24 +1695,38 @@
     if (!nombre) return alert('Ingresa el nombre del colaborador.');
     if (!passRaw) return alert('Ingresa la contrasena del colaborador.');
 
-    if (!Array.isArray(config.manualColaboradores)) config.manualColaboradores = [];
+    if (!Array.isArray(sucursal.manualColaboradores)) sucursal.manualColaboradores = [];
     const nowIso = new Date().toISOString();
-    const idx = config.manualColaboradores.findIndex(c => String((c && c.user) || '').trim().toLowerCase() === user);
+    const idx = sucursal.manualColaboradores.findIndex(c => String((c && c.user) || '').trim().toLowerCase() === user);
     const payload = {
       user,
       nombre,
       pass: passRaw,
       activo,
+      rol,
       updatedAt: nowIso
     };
 
     if (idx >= 0) {
-      config.manualColaboradores[idx] = {
-        ...(config.manualColaboradores[idx] || {}),
+      sucursal.manualColaboradores[idx] = {
+        ...(sucursal.manualColaboradores[idx] || {}),
         ...payload
       };
     } else {
-      config.manualColaboradores.push(payload);
+      sucursal.manualColaboradores.push(payload);
+    }
+
+    const owner = String(config.owner || '').trim().toLowerCase();
+    const userSystem = getDbArray('usuarios').find(u =>
+      String((u && u.role) || '').trim().toLowerCase() === 'colaborador' &&
+      String((u && u.user) || '').trim().toLowerCase() === user &&
+      String((u && u.owner) || '').trim().toLowerCase() === owner
+    );
+    if (userSystem) {
+      userSystem.sucursalAsistenciaId = sucursal.id;
+      userSystem.rolAsistencia = rol;
+      if (passRaw) userSystem.pass = passRaw;
+      userSystem.updatedAt = nowIso;
     }
 
     syncConfigColaboradores(config);
@@ -895,20 +1738,71 @@
     window.__asistenciaColabSeleccionado = user;
     window.renderAsistenciaModulo();
     if (typeof window.renderConfigAsistencia === 'function') window.renderConfigAsistencia();
-    alert(`Colaborador ${nombre.toUpperCase()} agregado a asistencia.`);
+    alert(`Colaborador ${nombre.toUpperCase()} agregado a ${String(sucursal.nombre || sucursal.id).toUpperCase()}.`);
+  };
+
+  window.eliminarColaboradorAsistenciaSeleccionado = function eliminarColaboradorAsistenciaSeleccionado(colaboradorUser = '') {
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) {
+      alert('Solo el rol Gerente puede eliminar colaboradores de asistencia.');
+      return false;
+    }
+
+    const user = String(colaboradorUser || window.__asistenciaColabSeleccionado || '').trim().toLowerCase();
+    if (!user) {
+      alert('Selecciona un colaborador de la lista para eliminarlo.');
+      return false;
+    }
+
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    if (!config) {
+      alert('No se pudo cargar la configuracion de asistencia.');
+      return false;
+    }
+
+    const colab = (sucursal && Array.isArray(sucursal.colaboradores) ? sucursal.colaboradores : []).find(c => String((c && c.user) || '').trim().toLowerCase() === user) || null;
+    if (!colab) {
+      alert('Selecciona un colaborador valido de asistencia.');
+      return false;
+    }
+
+    const source = String((colab && colab.source) || '').trim().toLowerCase();
+    const nombre = String((colab && (colab.nombre || colab.user)) || user).trim().toUpperCase();
+    const msg = source === 'sistema'
+      ? `Este colaborador esta vinculado al sistema.\n\nSe ocultara de asistencia, sin borrar su usuario general.\n\nDeseas continuar con ${nombre}?`
+      : (source === 'mixto'
+        ? `Este colaborador esta vinculado y tambien anadido manualmente.\n\nSe eliminara de asistencia (manual + vinculado) para ${nombre}.\n\nDeseas continuar?`
+        : `Eliminar al colaborador ${nombre} de asistencia?`);
+    if (!confirm(msg)) return false;
+
+    const result = window.eliminarColaboradoresAsistenciaMasivo([user]);
+    if (!result || !result.ok) {
+      alert('No se pudo completar la eliminacion.');
+      return false;
+    }
+
+    const detalleVinculados = result.ocultadosVinculados > 0
+      ? ' Colaborador vinculado desacoplado de asistencia.'
+      : '';
+    alert(`Colaborador removido de asistencia.${detalleVinculados}`);
+    return true;
   };
 
   window.eliminarColaboradorAsistenciaIndependiente = function eliminarColaboradorAsistenciaIndependiente(colaboradorUser) {
-    if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) return;
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) return false;
     const user = String(colaboradorUser || '').trim().toLowerCase();
-    if (!user) return;
+    if (!user) return false;
 
     const config = getAsistenciaConfig({ createIfMissing: true });
-    if (!config || !Array.isArray(config.manualColaboradores)) return;
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    if (!config || !sucursal || !Array.isArray(sucursal.manualColaboradores)) return false;
 
-    const before = config.manualColaboradores.length;
-    config.manualColaboradores = config.manualColaboradores.filter(c => String((c && c.user) || '').trim().toLowerCase() !== user);
-    if (config.manualColaboradores.length === before) return;
+    const previo = (sucursal.colaboradores || []).find(c => String((c && c.user) || '').trim().toLowerCase() === user) || null;
+    const sourcePrevio = String((previo && previo.source) || '').trim().toLowerCase();
+
+    const before = sucursal.manualColaboradores.length;
+    sucursal.manualColaboradores = sucursal.manualColaboradores.filter(c => String((c && c.user) || '').trim().toLowerCase() !== user);
+    if (sucursal.manualColaboradores.length === before) return false;
 
     syncConfigColaboradores(config);
     config.updatedAt = new Date().toISOString();
@@ -920,13 +1814,31 @@
 
     window.renderAsistenciaModulo();
     if (typeof window.renderConfigAsistencia === 'function') window.renderConfigAsistencia();
-    alert('Colaborador de asistencia removido.');
+    const sigueVinculado = (sucursal.colaboradores || []).some(c => String((c && c.user) || '').trim().toLowerCase() === user);
+    if (sourcePrevio === 'mixto' && sigueVinculado) {
+      alert('Se removio solo el agregado manual. El colaborador sigue vinculado al sistema.');
+    } else {
+      alert('Colaborador de asistencia removido.');
+    }
+    return true;
   };
 
   window.addEventListener('click', (ev) => {
     const modal = document.getElementById('modal-asistencia-colaborador');
     if (modal && modal.style.display !== 'none' && ev.target === modal) {
       window.cerrarModalAsistenciaColaborador();
+    }
+    const modalSucursal = document.getElementById('modal-asistencia-sucursal');
+    if (modalSucursal && modalSucursal.style.display !== 'none' && ev.target === modalSucursal) {
+      window.cerrarModalSucursalAsistencia();
+    }
+    const modalRemove = document.getElementById('modal-asistencia-colaborador-remove');
+    if (modalRemove && modalRemove.style.display !== 'none' && ev.target === modalRemove) {
+      window.cerrarModalEliminarColaboradorAsistencia();
+    }
+    const modalAccess = document.getElementById('modal-asistencia-acceso');
+    if (modalAccess && modalAccess.style.display !== 'none' && ev.target === modalAccess) {
+      window.cancelarAccesoAsistenciaPorContrasena();
     }
     const panel = document.getElementById('asistencia-reporte-panel');
     if (panel && panel.classList.contains('is-open') && ev.target === panel) {
@@ -1113,16 +2025,204 @@
     }).join('') || '<tr><td colspan="7" style="text-align:center; color:gray;">Sin autorizaciones.</td></tr>';
   };
 
+  function bloquearVistaAsistenciaPorAcceso(msg = 'Acceso protegido. Ingrese contraseña para continuar.') {
+    const status = document.getElementById('asistencia-status-modulo');
+    if (status) {
+      status.textContent = msg;
+      status.style.color = '#a66a00';
+    }
+    const sucursales = document.getElementById('asistencia-sucursales-lista');
+    if (sucursales) sucursales.innerHTML = '<div style="font-size:12px; color:#777;">Acceso bloqueado.</div>';
+    const colabs = document.getElementById('asistencia-colaboradores-lista');
+    if (colabs) colabs.innerHTML = '<div style="font-size:12px; color:#777;">Acceso bloqueado.</div>';
+    const tbody = document.getElementById('asistencia-tablero-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#777;">Ingrese su contraseña para continuar.</td></tr>';
+    const head = document.getElementById('asistencia-tablero-header');
+    if (head) head.textContent = 'Acceso restringido por contraseña.';
+    const registro = document.getElementById('asistencia-registro-estado');
+    if (registro) registro.textContent = 'Ingrese su contraseña para habilitar el tablero de asistencia.';
+  }
+
+  function abrirModalAccesoAsistenciaPorContrasena() {
+    const modal = document.getElementById('modal-asistencia-acceso');
+    const input = document.getElementById('asistencia-access-pass');
+    const hint = document.getElementById('asistencia-access-hint');
+    if (!modal || !input) return;
+    input.value = '';
+    if (hint) {
+      hint.textContent = 'Ingrese su contraseña para detectar automáticamente su usuario y sucursal.';
+      hint.style.color = '#666';
+    }
+    modal.style.display = 'flex';
+    setTimeout(() => input.focus(), 20);
+  }
+
+  function cerrarModalAccesoAsistenciaPorContrasena() {
+    const modal = document.getElementById('modal-asistencia-acceso');
+    if (!modal) return;
+    modal.style.display = 'none';
+  }
+
+  function resolverAccesoAsistenciaPorContrasena(clave = '', config = null) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    if (!cfg) return null;
+    const password = String(clave || '').trim();
+    if (!password) return null;
+    syncConfigColaboradores(cfg);
+    asegurarSucursalesAsistenciaConfig(cfg);
+
+    for (const sucursal of (cfg.sucursales || [])) {
+      const matchColab = (sucursal.colaboradores || []).find(c =>
+        c && c.activo !== false && String((c.pass || '')).trim() === password
+      );
+      if (matchColab) {
+        return {
+          owner: cfg.owner,
+          modulo: cfg.modulo,
+          user: String(matchColab.user || '').trim().toLowerCase(),
+          nombre: String(matchColab.nombre || matchColab.user || '').trim().toLowerCase(),
+          rol: normalizarRolAsistencia(matchColab.rol, ASISTENCIA_ROLES.OTROS),
+          sucursalId: sucursal.id,
+          scopeAll: false,
+          source: 'asistencia-colaborador'
+        };
+      }
+    }
+
+    const ownerKey = String(cfg.owner || '').trim().toLowerCase();
+    const usuariosOwner = getDbArray('usuarios').filter(u => {
+      if (!u || u.activo === false) return false;
+      const role = String((u && u.role) || '').trim().toLowerCase();
+      if (!['colaborador', 'admin', 'super-master'].includes(role)) return false;
+      const ownerRef = role === 'colaborador'
+        ? String((u && u.owner) || '').trim().toLowerCase()
+        : String((u && (u.user || u.owner)) || '').trim().toLowerCase();
+      return ownerRef === ownerKey;
+    });
+    const usuario = usuariosOwner.find(u => String((u && u.pass) || '').trim() === password) || null;
+    if (!usuario) return null;
+
+    const role = String((usuario && usuario.role) || '').trim().toLowerCase();
+    if (role === 'admin' || role === 'super-master') {
+      const sucursalId = normalizarIdSucursalAsistencia((usuario && (usuario.sucursalAsistenciaId || usuario.asistenciaSucursalId)) || '')
+        || normalizarIdSucursalAsistencia(cfg.defaultSucursalId || '')
+        || String(((cfg.sucursales || [])[0] && (cfg.sucursales[0].id)) || '').trim().toLowerCase();
+      return {
+        owner: cfg.owner,
+        modulo: cfg.modulo,
+        user: normalizarUsuarioColaborador((usuario && usuario.user) || ''),
+        nombre: normalizarNombreColaborador((usuario && usuario.user) || ''),
+        rol: ASISTENCIA_ROLES.GERENTE,
+        sucursalId,
+        scopeAll: true,
+        source: 'usuario-admin'
+      };
+    }
+
+    const userColab = normalizarUsuarioColaborador((usuario && usuario.user) || '');
+    const sucursalByUser = (cfg.sucursales || []).find(s =>
+      (s.colaboradores || []).some(c => String((c && c.user) || '').trim().toLowerCase() === userColab)
+    ) || null;
+    const sucursalId = (sucursalByUser && sucursalByUser.id)
+      || normalizarIdSucursalAsistencia((usuario && (usuario.sucursalAsistenciaId || usuario.asistenciaSucursalId)) || '')
+      || normalizarIdSucursalAsistencia(cfg.defaultSucursalId || '');
+    return {
+      owner: cfg.owner,
+      modulo: cfg.modulo,
+      user: userColab,
+      nombre: normalizarNombreColaborador((usuario && usuario.user) || '', userColab),
+      rol: normalizarRolAsistencia((usuario && (usuario.rolAsistencia || usuario.asistenciaRole)) || '', ASISTENCIA_ROLES.OTROS),
+      sucursalId,
+      scopeAll: false,
+      source: 'usuario-colaborador'
+    };
+  }
+
+  function accesoAsistenciaValido(config = null) {
+    const cfg = config || getAsistenciaConfig({ createIfMissing: true });
+    if (!cfg) return false;
+    const access = accesoAsistenciaActual();
+    if (!access) return false;
+    if (window.__asistenciaRequiereLogin === true) return false;
+    if (!(cfg.sucursales || []).some(s => s.id === access.sucursalId)) return false;
+    return true;
+  }
+
+  window.cancelarAccesoAsistenciaPorContrasena = function cancelarAccesoAsistenciaPorContrasena() {
+    window.__asistenciaAccesoActual = null;
+    window.__asistenciaRequiereLogin = true;
+    cerrarModalAccesoAsistenciaPorContrasena();
+    if (typeof window.showPage === 'function') window.showPage('home');
+  };
+
+  window.validarAccesoAsistenciaPorContrasena = function validarAccesoAsistenciaPorContrasena() {
+    const config = getAsistenciaConfig({ createIfMissing: true });
+    if (!config) return false;
+    const input = document.getElementById('asistencia-access-pass');
+    const hint = document.getElementById('asistencia-access-hint');
+    const pass = String((input && input.value) || '').trim();
+    if (!pass) {
+      if (hint) {
+        hint.textContent = 'Ingrese su contraseña para continuar.';
+        hint.style.color = '#c0392b';
+      }
+      return false;
+    }
+    const access = resolverAccesoAsistenciaPorContrasena(pass, config);
+    if (!access) {
+      if (hint) {
+        hint.textContent = 'Contraseña inválida o sin sucursal asignada.';
+        hint.style.color = '#c0392b';
+      }
+      return false;
+    }
+    window.__asistenciaAccesoActual = access;
+    window.__asistenciaRequiereLogin = false;
+    window.__asistenciaSucursalSeleccionada = access.sucursalId;
+    if (!access.scopeAll || !esRolGerenteAsistencia(access.rol)) {
+      window.__asistenciaColabSeleccionado = String(access.user || '').trim().toLowerCase();
+    }
+    cerrarModalAccesoAsistenciaPorContrasena();
+    window.renderAsistenciaModulo();
+    return true;
+  };
+
+  function instalarGuardiaAccesoAsistencia() {
+    if (window.__asistenciaShowPageGuardInstalled) return;
+    if (typeof window.showPage !== 'function') return;
+    const previous = window.showPage;
+    window.showPage = function(pageId) {
+      const target = String(pageId || '').trim().toLowerCase();
+      if (target === 'asistencia') {
+        window.__asistenciaRequiereLogin = true;
+        window.__asistenciaAccesoActual = null;
+      } else if (document.getElementById('asistencia')?.classList.contains('active')) {
+        window.__asistenciaRequiereLogin = true;
+        window.__asistenciaAccesoActual = null;
+      }
+      return previous.apply(this, arguments);
+    };
+    window.__asistenciaShowPageGuardInstalled = true;
+  }
+
   window.renderAsistenciaModulo = function renderAsistenciaModulo() {
     const config = getAsistenciaConfig({ createIfMissing: true });
     if (!config) return;
 
     const changed = syncConfigColaboradores(config);
+    const sucursalChanged = normalizarRegistrosConSucursal(config);
     const cicloChanged = sincronizarVentanaCicloAsistencia(config);
-    const mustSave = changed || cicloChanged;
+    const mustSave = changed || cicloChanged || sucursalChanged;
     if (mustSave && typeof guardarDatos === 'function') guardarDatos();
 
+    if (!accesoAsistenciaValido(config)) {
+      bloquearVistaAsistenciaPorAcceso();
+      abrirModalAccesoAsistenciaPorContrasena();
+      return;
+    }
+
     renderEstado(config);
+    renderListaSucursalesAsistencia(config);
     renderListaColaboradoresAsistencia(config);
     renderTableroColaboradorAsistencia(config);
     window.renderAsistenciaRegistros();
@@ -1297,7 +2397,11 @@
 
     const options = (opts && typeof opts === 'object') ? opts : {};
     const config = getAsistenciaConfig({ createIfMissing: true });
+    const sucursal = obtenerSucursalActivaAsistencia(config);
+    const access = accesoAsistenciaActual();
     if (!config) return alert('No se pudo cargar la configuracion de asistencia.');
+    if (!sucursal) return alert('No se pudo cargar la sucursal de asistencia.');
+    if (!access) return alert('Debes autenticarte para registrar asistencia.');
     if (!config.activo) return alert('El modulo de asistencia esta desactivado.');
 
     syncConfigColaboradores(config);
@@ -1305,17 +2409,17 @@
     const selectedUser = String(options.colaboradorUser || window.__asistenciaColabSeleccionado || '').trim().toLowerCase();
     if (!selectedUser) return alert('Selecciona un colaborador para registrar asistencia.');
 
-    if (typeof esColaboradorSesion !== 'undefined' && esColaboradorSesion) {
-      const me = String((sesionUser && sesionUser.user) || '').trim().toLowerCase();
-      if (selectedUser !== me) return alert('Solo puedes registrar tu propia asistencia.');
+    if (!access.scopeAll && !esRolGerenteAsistencia(access.rol) && selectedUser !== String(access.user || '').trim().toLowerCase()) {
+      return alert('Tu rol solo puede marcar entrada/salida de su propio usuario.');
     }
 
-    const colab = (config.colaboradores || []).find(c => String((c && c.user) || '').trim().toLowerCase() === selectedUser && c && c.activo !== false);
+    const colab = (sucursal.colaboradores || []).find(c => String((c && c.user) || '').trim().toLowerCase() === selectedUser && c && c.activo !== false);
     if (!colab) return alert('El colaborador seleccionado no esta habilitado en asistencia.');
 
     const now = new Date();
     const jornadaActual = fechaNominaActual();
     const jornadaObjetivo = String(options.fechaAsistencia || jornadaActual).trim();
+    const sucursalId = normalizarIdSucursalAsistencia(sucursal.id || '');
 
     if (jornadaObjetivo !== jornadaActual) {
       return alert('Solo se permite marcar la jornada operativa actual.');
@@ -1338,6 +2442,7 @@
       const existeJornada = getDbArray('asistenciaRegistros').find(r =>
         String((r && r.owner) || '').trim().toLowerCase() === owner &&
         String((r && r.modulo) || '').trim().toUpperCase() === modulo &&
+        sucursalIdDeRegistroAsistencia(r, config) === sucursalId &&
         String((r && r.colaboradorUser) || '').trim().toLowerCase() === selectedUser &&
         String((r && r.fechaAsistencia) || '').trim() === jornadaObjetivo
       );
@@ -1353,6 +2458,7 @@
         id: `ASREG-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
         owner,
         modulo,
+        sucursalId,
         fechaAsistencia: jornadaObjetivo,
         colaboradorUser: selectedUser,
         colaborador: String(colab.nombre || selectedUser).trim().toLowerCase(),
@@ -1374,9 +2480,9 @@
       return;
     }
 
-    let abierto = buscarRegistroAbierto(selectedUser, jornadaObjetivo);
+    let abierto = buscarRegistroAbierto(selectedUser, jornadaObjetivo, config);
     if (!abierto && toNumber(now.getHours(), 0) < horaLimiteNormalizada(config.horaLimiteSalida)) {
-      abierto = buscarRegistroAbierto(selectedUser, '');
+      abierto = buscarRegistroAbierto(selectedUser, '', config);
     }
 
     if (!abierto) return alert('No existe una entrada abierta para registrar salida.');
@@ -1395,15 +2501,19 @@
   };
 
   window.limpiarRegistrosAsistencia = function limpiarRegistrosAsistencia() {
-    if (typeof bloquearAccionAdministrativaColaborador === 'function' && bloquearAccionAdministrativaColaborador()) return;
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) return alert('Solo el rol Gerente puede limpiar registros.');
     if (typeof validarPermiso === 'function' && !validarPermiso()) return;
-    if (!confirm('Eliminar todos los registros de asistencia del modulo actual?')) return;
+    if (!confirm('Eliminar todos los registros de asistencia de la sucursal activa?')) return;
 
+    const config = getAsistenciaConfig({ createIfMissing: true });
     const owner = getOwnerActivo();
     const modulo = getModuloActivo();
+    const sucursalId = sucursalIdActivaAsistencia(config);
 
     db.asistenciaRegistros = getDbArray('asistenciaRegistros').filter(r =>
-      !(String((r && r.owner) || '').trim().toLowerCase() === owner && String((r && r.modulo) || '').trim().toUpperCase() === modulo)
+      !(String((r && r.owner) || '').trim().toLowerCase() === owner &&
+        String((r && r.modulo) || '').trim().toUpperCase() === modulo &&
+        sucursalIdDeRegistroAsistencia(r, config) === sucursalId)
     );
 
     if (typeof guardarDatos === 'function') guardarDatos();
@@ -1411,15 +2521,19 @@
   };
 
   window.limpiarAutorizacionesAsistencia = function limpiarAutorizacionesAsistencia() {
-    if (typeof bloquearAccionAdministrativaColaborador === 'function' && bloquearAccionAdministrativaColaborador()) return;
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) return alert('Solo el rol Gerente puede limpiar autorizaciones.');
     if (typeof validarPermiso === 'function' && !validarPermiso()) return;
-    if (!confirm('Eliminar historial de autorizaciones de asistencia del modulo actual?')) return;
+    if (!confirm('Eliminar historial de autorizaciones de la sucursal activa?')) return;
 
+    const config = getAsistenciaConfig({ createIfMissing: true });
     const owner = getOwnerActivo();
     const modulo = getModuloActivo();
+    const sucursalId = sucursalIdActivaAsistencia(config);
 
     db.asistenciaAutorizaciones = getDbArray('asistenciaAutorizaciones').filter(r =>
-      !(String((r && r.owner) || '').trim().toLowerCase() === owner && String((r && r.modulo) || '').trim().toUpperCase() === modulo)
+      !(String((r && r.owner) || '').trim().toLowerCase() === owner &&
+        String((r && r.modulo) || '').trim().toUpperCase() === modulo &&
+        sucursalIdDeRegistroAsistencia(r, config) === sucursalId)
     );
 
     if (typeof guardarDatos === 'function') guardarDatos();
@@ -1440,13 +2554,14 @@
   };
 
   window.actualizarCicloAsistencia = function actualizarCicloAsistencia() {
-    if (typeof bloquearAccionAdministrativaColaborador === 'function' && bloquearAccionAdministrativaColaborador()) return;
+    if (!puedeGestionarColaboradoresPorRolAsistencia()) return alert('Solo el rol Gerente puede actualizar el ciclo.');
 
     const config = getAsistenciaConfig({ createIfMissing: true });
     if (!config) return;
 
     const owner = getOwnerActivo();
     const modulo = getModuloActivo();
+    const sucursalId = sucursalIdActivaAsistencia(config);
     const jornadaActual = fechaNominaActual();
     const inicioAntes = String(config.cicloInicio || '').trim();
     const finAntes = String(config.cicloFin || '').trim();
@@ -1457,6 +2572,7 @@
     getDbArray('asistenciaRegistros').forEach(r => {
       if (String((r && r.owner) || '').trim().toLowerCase() !== owner) return;
       if (String((r && r.modulo) || '').trim().toUpperCase() !== modulo) return;
+      if (sucursalIdDeRegistroAsistencia(r, config) !== sucursalId) return;
       if (r && r.salidaAt) return;
       if (!(r && r.entradaAt)) return;
       const fechaReg = String((r && r.fechaAsistencia) || '').trim();
@@ -1488,6 +2604,10 @@
   };
 
   document.addEventListener('DOMContentLoaded', () => {
+    instalarGuardiaAccesoAsistencia();
+    if (typeof window.__asistenciaRequiereLogin === 'undefined') {
+      window.__asistenciaRequiereLogin = true;
+    }
     if (document.getElementById('section-asistencia-config') && typeof window.renderConfigAsistencia === 'function') {
       window.renderConfigAsistencia();
     }

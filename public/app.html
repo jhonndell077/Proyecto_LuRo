@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0f1419">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20260413-asistencia-dev-2">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260418-salida-notificaciones-2">
 </head>
 <body onload="cargarDatos()">
 
@@ -765,10 +765,22 @@
         <div class="asistencia-main-grid" style="margin-bottom:12px;">
           <div class="asistencia-colaboradores-panel" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
-              <div style="font-size:12px; font-weight:bold; color:var(--secondary);">Colaboradores activos</div>
+              <div style="font-size:12px; font-weight:bold; color:var(--secondary);">Sucursales de asistencia</div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-              <button id="btn-asistencia-add-colab" class="btn btn-purple" style="padding:8px 10px;" onclick="abrirGestionColaboradoresAsistencia()">+ AÑADIR COLABORADOR</button>
+            <div class="asistencia-colab-actions">
+              <button id="btn-asistencia-add-colab" class="btn btn-purple asistencia-colab-action-btn" style="padding:8px 10px;" onclick="abrirGestionSucursalesAsistencia()">+ AÑADIR SUCURSAL</button>
+              <button id="btn-asistencia-remove-sucursal" class="btn btn-danger asistencia-colab-action-btn" style="padding:8px 10px;" onclick="eliminarSucursalAsistenciaSeleccionada()" title="Eliminar sucursal seleccionada">ELIMINAR SUCURSAL</button>
+            </div>
+            <div id="asistencia-sucursales-lista" class="asistencia-colab-lista" style="margin-bottom:10px;">
+              <div style="font-size:12px; color:#777;">Sin sucursales registradas.</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+              <div style="font-size:12px; font-weight:bold; color:var(--secondary);">Colaboradores de la sucursal</div>
+              <div id="asistencia-sucursal-actual-label" style="font-size:11px; color:#57606f; font-weight:700;">Sucursal: ---</div>
+            </div>
+            <div class="asistencia-colab-actions">
+              <button id="btn-asistencia-add-colab-sucursal" class="btn btn-purple asistencia-colab-action-btn" style="padding:8px 10px;" onclick="abrirGestionColaboradoresSucursalAsistencia()">+ AÑADIR COLABORADOR</button>
+              <button id="btn-asistencia-remove-colab" class="btn btn-danger asistencia-colab-action-btn" style="padding:8px 10px;" onclick="abrirModalEliminarColaboradorAsistencia()" disabled title="Selecciona un colaborador para eliminarlo de asistencia">ELIMINAR DE ASISTENCIA</button>
             </div>
             <div id="asistencia-colaboradores-lista" class="asistencia-colab-lista">
               <div style="font-size:12px; color:#777;">Sin colaboradores activos.</div>
@@ -776,6 +788,7 @@
           </div>
           <div class="asistencia-tablero-panel" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
             <div id="asistencia-fecha-operativa" style="font-size:12px; color:#666; margin-bottom:8px;">Jornada: --</div>
+            <div id="asistencia-tablero-sucursal" style="font-size:12px; color:#57606f; margin-bottom:8px;">Sucursal: ---</div>
             <div id="asistencia-tablero-header" style="font-size:13px; font-weight:800; color:var(--secondary); margin-bottom:8px;">Seleccione un colaborador para ver su casilla de asistencia.</div>
             <div class="asistencia-tablero-wrap">
               <table class="asistencia-tablero-table">
@@ -847,10 +860,11 @@
     <div id="modal-asistencia-colaborador" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3350; align-items:center; justify-content:center; padding:16px;">
       <div style="width:min(560px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--blue);">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid #eee;">
-          <strong>➕ Añadir Colaborador a Asistencia</strong>
+          <strong>➕ Añadir Colaborador a Sucursal</strong>
           <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalAsistenciaColaborador()">X</button>
         </div>
         <div style="padding:14px; display:grid; gap:10px;">
+          <div id="asistencia-colab-sucursal-info" style="font-size:12px; color:#666;">Sucursal: ---</div>
           <div style="font-size:12px; color:#666;">Puede seleccionar un colaborador existente (auto-completa nombre y contraseña) o registrar uno manual para asistencia independiente.</div>
           <div>
             <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Tomar desde colaboradores registrados</label>
@@ -866,10 +880,86 @@
               <input id="asistencia-colab-pass" type="text" placeholder="Clave de acceso">
             </div>
           </div>
+          <div>
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Rol de asistencia</label>
+            <select id="asistencia-colab-rol">
+              <option value="gerente">Gerente</option>
+              <option value="subgerente">Subgerente</option>
+              <option value="cajer@">Cajer@</option>
+              <option value="cocinero">Cocinero</option>
+              <option value="otros" selected>Otros</option>
+            </select>
+          </div>
           <label class="team-check-row" style="margin-top:4px;"><input type="checkbox" id="asistencia-colab-activo" checked><span>Activo para asistencia</span></label>
           <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
             <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalAsistenciaColaborador()">CANCELAR</button>
             <button class="btn btn-save" onclick="guardarColaboradorAsistenciaIndependiente()">GUARDAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="modal-asistencia-sucursal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3340; align-items:center; justify-content:center; padding:16px;">
+      <div style="width:min(520px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--purple);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid #eee;">
+          <strong>🏢 Añadir Sucursal de Asistencia</strong>
+          <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalSucursalAsistencia()">X</button>
+        </div>
+        <div style="padding:14px; display:grid; gap:10px;">
+          <div style="font-size:12px; color:#666;">Cree una sucursal para gestionar su propio equipo y tablero de asistencia.</div>
+          <div>
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Nombre de la sucursal</label>
+            <input id="asistencia-sucursal-nombre" type="text" placeholder="Ej. Sucursal Centro">
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+            <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalSucursalAsistencia()">CANCELAR</button>
+            <button class="btn btn-save" onclick="guardarSucursalAsistencia()">GUARDAR SUCURSAL</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="modal-asistencia-acceso" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:3370; align-items:center; justify-content:center; padding:16px;">
+      <div style="width:min(460px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--blue);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid #eee;">
+          <strong>🔐 Acceso al Módulo Asistencia</strong>
+          <button class="btn btn-danger" style="padding:6px 10px;" onclick="cancelarAccesoAsistenciaPorContrasena()">X</button>
+        </div>
+        <div style="padding:14px; display:grid; gap:10px;">
+          <div id="asistencia-access-hint" style="font-size:12px; color:#666;">Ingrese su contraseña para detectar automáticamente su usuario y sucursal.</div>
+          <div>
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Contraseña</label>
+            <input id="asistencia-access-pass" type="password" placeholder="Contraseña de acceso" onkeydown="if(event.key==='Enter'){validarAccesoAsistenciaPorContrasena();}">
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+            <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cancelarAccesoAsistenciaPorContrasena()">CANCELAR</button>
+            <button class="btn btn-save" onclick="validarAccesoAsistenciaPorContrasena()">ACCEDER</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="modal-asistencia-colaborador-remove" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3360; align-items:center; justify-content:center; padding:16px;">
+      <div class="asistencia-remove-modal-card">
+        <div class="asistencia-remove-modal-head">
+          <strong class="asistencia-remove-modal-title">🗑️ Eliminar Colaborador de Asistencia</strong>
+          <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalEliminarColaboradorAsistencia()">X</button>
+        </div>
+        <div class="asistencia-remove-modal-body">
+          <div class="asistencia-remove-modal-help">Seleccione los colaboradores que desea eliminar de asistencia.</div>
+          <div>
+            <div class="asistencia-remove-toolbar">
+              <label class="asistencia-remove-toolbar-title">Colaboradores en asistencia</label>
+              <label class="asistencia-remove-select-all">
+                <input type="checkbox" id="asistencia-colab-remove-select-all" onchange="toggleSeleccionMasivaColaboradoresAsistencia(this.checked)">
+                <span>Seleccionar todos</span>
+              </label>
+            </div>
+            <div id="asistencia-colab-remove-lista" class="asistencia-colab-remove-lista">
+              <div style="font-size:12px; color:#777;">Sin colaboradores en asistencia.</div>
+            </div>
+          </div>
+          <div id="asistencia-colab-remove-hint" class="asistencia-remove-hint">Seleccione un colaborador para continuar.</div>
+          <div class="asistencia-remove-actions">
+            <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalEliminarColaboradorAsistencia()">CANCELAR</button>
+            <button id="btn-asistencia-colab-remove-confirm" class="btn btn-danger" onclick="eliminarColaboradorAsistenciaDesdeModal()">ELIMINAR SELECCIONADOS</button>
           </div>
         </div>
       </div>
@@ -1223,7 +1313,10 @@
 <div id="salida" class="content-section">
     <div id="salida-layout" style="display:grid; grid-template-columns:1fr; gap:14px;">
         <div class="card" id="salida-selector-card">
-            <h2>💳 Espacios de Cobro</h2>
+            <div class="salida-title-actions">
+                <h2>💳 Espacios de Cobro</h2>
+                <button id="btn-salida-notificaciones" type="button" class="btn btn-blue salida-notificaciones-btn" onclick="abrirModalNotificacionesSalida()">NOTIFICACIONES</button>
+            </div>
             <div class="salida-mesas-shell" style="margin-bottom:12px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
                 <div class="salida-mesas-head">
                     <div>
@@ -1256,6 +1349,15 @@
             </div>
             <div id="salida-productos-shell" class="salida-productos-shell is-disabled">
                 <div id="salida-productos-hint" class="salida-productos-hint">El detalle de venta se abrirá cuando elijas una tarjeta de cobro.</div>
+                <div id="salida-stock-alertas-panel" class="salida-stock-alertas-panel" role="status" aria-live="polite">
+                    <div class="salida-stock-alertas-head">
+                        <strong>⚠️ Alertas de stock en salida</strong>
+                        <span id="salida-stock-alertas-meta">Monitoreo activo</span>
+                    </div>
+                    <div id="salida-stock-alertas-lista" class="salida-stock-alertas-lista">
+                        <div class="salida-stock-alerta-empty">Sin productos en riesgo de agotarse.</div>
+                    </div>
+                </div>
                 <div style="position: relative;">
                     <input type="text" id="busqueda-plato" onkeyup="buscarPlatoVenta()" placeholder="Seleccione una tarjeta para comenzar a cobrar" style="width:100%; margin-bottom:10px; padding: 12px;" disabled>
                 </div>
@@ -1304,6 +1406,20 @@
                 </button>
             </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="modal-salida-notificaciones" class="salida-notificaciones-modal" style="display:none;" onclick="if(event.target===this){cerrarModalNotificacionesSalida();}">
+    <div class="salida-notificaciones-card">
+        <div class="salida-notificaciones-head">
+            <strong>🔔 Notificaciones de Salida</strong>
+            <button class="btn btn-danger" onclick="cerrarModalNotificacionesSalida()">X</button>
+        </div>
+        <div class="salida-notificaciones-body">
+            <div id="salida-notificaciones-resumen" class="salida-notificaciones-resumen">Sin alertas activas.</div>
+            <div id="salida-notificaciones-lista" class="salida-stock-alertas-lista salida-stock-alertas-lista--modal">
+                <div class="salida-stock-alerta-empty">Sin productos en riesgo de agotarse.</div>
             </div>
         </div>
     </div>
@@ -1655,13 +1771,13 @@
     </div>
   </section>
 
-  <script src="assets/js/app.js?v=20260413-asistencia-dev-2"></script>
-  <script src="assets/js/asistencia-module.js?v=20260414-asistencia-ciclo-fix-2"></script>
+  <script src="assets/js/app.js?v=20260418-master-pass-3"></script>
+  <script src="assets/js/asistencia-module.js?v=20260417-asistencia-sucursal-fix-1"></script>
   <script src="assets/js/cloud-bridge.js?v=20260413-hotfix-1"></script>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260414-cachefix-2';
+      var swVersion = '20260418-master-pass-3';
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'

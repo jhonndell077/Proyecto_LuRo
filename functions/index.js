@@ -6,7 +6,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const MASTER_USER = String(process.env.MASTER_USER || "jssantana077").trim().toLowerCase();
-const MASTER_PASS = String(process.env.MASTER_PASS || "852347");
+const MASTER_PASS = String(process.env.MASTER_PASS || "160623");
 const FORCED_REMOVED_USER = "__forced_removed_user_disabled__";
 const INACTIVE_MSG = "Usuario Inactivo o eliminado. Comuníquese con su proveedor.";
 const PAYPAL_RECEIVER = String(process.env.PAYPAL_RECEIVER || "Jssantana077@gmail.com").trim();
@@ -362,7 +362,7 @@ async function getOwnerDoc(owner) {
         data: {
           ...masterData,
           username: MASTER_USER,
-          pass: String(masterData.pass || MASTER_PASS),
+          pass: MASTER_PASS,
           activo: masterData.activo !== false,
           estado: String(masterData.estado || "activo"),
           empresa: String(masterData.empresa || "MASTER"),

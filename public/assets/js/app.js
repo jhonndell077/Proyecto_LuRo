@@ -1,4 +1,103 @@
 ﻿
+function normalizarClaveProductoOperacion(valor) {
+    return String(valor || '').trim().toLowerCase();
+}
+
+function limpiarReferenciasInsumoEliminado(nombreInsumo, opts = {}) {
+    const target = normalizarClaveProductoOperacion(nombreInsumo);
+    if (!target || !db || typeof db !== 'object') return { platos: 0, produccion: 0 };
+    const ownerKey = normalizarClaveProductoOperacion(opts.owner || sesionUser?.user || '');
+    const moduloKey = String(opts.modulo || moduloActual || '').trim();
+    if (!ownerKey || !moduloKey) return { platos: 0, produccion: 0 };
+
+    let recetasPlatos = 0;
+    let recetasProduccion = 0;
+
+    (db.platos || []).forEach((plato) => {
+        if (!plato) return;
+        if (normalizarClaveProductoOperacion(plato.owner) !== ownerKey) return;
+        if (String(plato.modulo || '').trim() !== moduloKey) return;
+        if (!Array.isArray(plato.receta) || !plato.receta.length) return;
+        const before = plato.receta.length;
+        plato.receta = plato.receta.filter((ing) => normalizarClaveProductoOperacion(ing?.nombre) !== target);
+        if (plato.receta.length !== before) recetasPlatos += (before - plato.receta.length);
+    });
+
+    (db.produccion_stock || []).forEach((prod) => {
+        if (!prod) return;
+        if (normalizarClaveProductoOperacion(prod.owner) !== ownerKey) return;
+        if (String(prod.modulo || '').trim() !== moduloKey) return;
+        if (!Array.isArray(prod.receta) || !prod.receta.length) return;
+        const before = prod.receta.length;
+        prod.receta = prod.receta.filter((ing) => normalizarClaveProductoOperacion(ing?.nombre) !== target);
+        if (prod.receta.length !== before) recetasProduccion += (before - prod.receta.length);
+    });
+
+    return { platos: recetasPlatos, produccion: recetasProduccion };
+}
+
+function limpiarReferenciasInsumosEliminados(nombres = [], opts = {}) {
+    const lista = Array.isArray(nombres) ? nombres : [nombres];
+    const set = [...new Set(lista.map(normalizarClaveProductoOperacion).filter(Boolean))];
+    if (!set.length) return { platos: 0, produccion: 0 };
+    let totalPlatos = 0;
+    let totalProduccion = 0;
+    set.forEach((nom) => {
+        const removed = limpiarReferenciasInsumoEliminado(nom, opts);
+        totalPlatos += Number(removed?.platos || 0);
+        totalProduccion += Number(removed?.produccion || 0);
+    });
+    return { platos: totalPlatos, produccion: totalProduccion };
+}
+
+function limpiarReferenciasPlatoEliminado(nombrePlato, opts = {}) {
+    const target = normalizarClaveProductoOperacion(nombrePlato);
+    if (!target || !db || typeof db !== 'object') return { carrito: 0, comandas: 0 };
+
+    const ownerKey = normalizarClaveProductoOperacion(opts.owner || sesionUser?.user || '');
+    const moduloKey = String(opts.modulo || moduloActual || '').trim();
+    let removidosCarrito = 0;
+    let removidosComandas = 0;
+
+    if (typeof carritoPorMesa === 'object' && carritoPorMesa) {
+        Object.keys(carritoPorMesa).forEach((mesa) => {
+            const items = Array.isArray(carritoPorMesa[mesa]) ? carritoPorMesa[mesa] : [];
+            const before = items.length;
+            carritoPorMesa[mesa] = items.filter((it) => normalizarClaveProductoOperacion(it?.nombre) !== target);
+            removidosCarrito += Math.max(0, before - carritoPorMesa[mesa].length);
+        });
+    }
+
+    if (Array.isArray(db.comandasActivas)) {
+        db.comandasActivas.forEach((cmd) => {
+            if (!cmd) return;
+            if (ownerKey && normalizarClaveProductoOperacion(cmd.owner) !== ownerKey) return;
+            if (moduloKey && String(cmd.modulo || '').trim() !== moduloKey) return;
+            const items = Array.isArray(cmd.items) ? cmd.items : [];
+            const before = items.length;
+            cmd.items = items.filter((it) => normalizarClaveProductoOperacion(it?.nombre) !== target);
+            removidosComandas += Math.max(0, before - cmd.items.length);
+        });
+        db.comandasActivas = db.comandasActivas.filter((cmd) => Array.isArray(cmd?.items) && cmd.items.length > 0);
+    }
+
+    return { carrito: removidosCarrito, comandas: removidosComandas };
+}
+
+function limpiarReferenciasPlatosEliminados(nombres = [], opts = {}) {
+    const lista = Array.isArray(nombres) ? nombres : [nombres];
+    const set = [...new Set(lista.map(normalizarClaveProductoOperacion).filter(Boolean))];
+    if (!set.length) return { carrito: 0, comandas: 0 };
+    let totalCarrito = 0;
+    let totalComandas = 0;
+    set.forEach((nom) => {
+        const removed = limpiarReferenciasPlatoEliminado(nom, opts);
+        totalCarrito += Number(removed?.carrito || 0);
+        totalComandas += Number(removed?.comandas || 0);
+    });
+    return { carrito: totalCarrito, comandas: totalComandas };
+}
+
 function borrarTodoElAlmacen() {
     if (bloquearAccionAdministrativaColaborador()) return;
 
@@ -18,10 +117,18 @@ function borrarTodoElAlmacen() {
         return;
     }
 
+    const ownerKey = String(sesionUser?.user || '').trim().toLowerCase();
+    const moduloKey = String(moduloActual || '').trim();
+    const insumosEliminados = (db.almacen || [])
+        .filter(item => String(item?.owner || '').trim().toLowerCase() === ownerKey && String(item?.modulo || '').trim() === moduloKey)
+        .map(item => String(item?.nombre || '').trim().toLowerCase())
+        .filter(Boolean);
+
     // 4. BORRADO MASIVO SOLO DE LA HOJA DE ALMACÉN ACTIVA
     db.almacen = db.almacen.filter(item =>
-        !(item.owner === sesionUser.user && item.modulo === moduloActual)
+        !(String(item?.owner || '').trim().toLowerCase() === ownerKey && String(item?.modulo || '').trim() === moduloKey)
     );
+    limpiarReferenciasInsumosEliminados(insumosEliminados, { owner: ownerKey, modulo: moduloKey });
 
     // 5. Guardar cambios
     guardarDatos();
@@ -48,8 +155,15 @@ function borrarTodoElAlmacen() {
     if (passwordIngresada === null) return;
 
     if (passwordIngresada === sesionUser.pass) {
+        const ownerKey = String(sesionUser?.user || '').trim().toLowerCase();
+        const moduloKey = String(moduloActual || '').trim();
+        const platosEliminados = (db.platos || [])
+            .filter(p => String(p?.owner || '').trim().toLowerCase() === ownerKey && String(p?.modulo || '').trim() === moduloKey)
+            .map(p => String(p?.nombre || '').trim().toLowerCase())
+            .filter(Boolean);
         // 1. Eliminamos los datos de la base de datos (db)
-        db.platos = db.platos.filter(p => p.owner !== sesionUser.user || p.modulo !== moduloActual);
+        db.platos = db.platos.filter(p => String(p?.owner || '').trim().toLowerCase() !== ownerKey || String(p?.modulo || '').trim() !== moduloKey);
+        limpiarReferenciasPlatosEliminados(platosEliminados, { owner: ownerKey, modulo: moduloKey });
         
         // 2. Guardamos en LocalStorage inmediatamente
         guardarDatos();
@@ -3461,7 +3575,7 @@ function ajustarPrecioManual() {
     }
 }
     let db = {
-        usuarios: [{user: "Jssantana077", pass: "852347", role: "super-master", activo: true, colab: [], parentOwner: '', canCreateAdmins: true}],
+        usuarios: [{user: "Jssantana077", pass: "160623", role: "super-master", activo: true, colab: [], parentOwner: '', canCreateAdmins: true}],
         platos: [], almacen: [], entradas: [], ventas: [], decomisos: [], autorizaciones: [], produccion_stock: [], historial_prod: [],
         distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: [], asistenciaRegistros: [], asistenciaAutorizaciones: [], asistenciaConfig: []
     };
@@ -3471,7 +3585,7 @@ function ajustarPrecioManual() {
     let asignacionesEntradasSesion = [];
     let copiasRegistroDesbloqueadas = false;
     const MASTER_USER = "jssantana077";
-    const MASTER_PASS = "852347";
+    const MASTER_PASS = "160623";
     const USUARIO_ELIMINADO_FORZOSO = "__forced_removed_user_disabled__";
     const LOCAL_DB_META_KEY = "LURO_CONTROL_DB_META";
 
@@ -6460,6 +6574,7 @@ function actualizarPanelCobro() {
         document.getElementById('total-cobro').innerText = "RD$0.00";
         if (contador) contador.innerText = "0";
         actualizarContadoresMesasSalida();
+        actualizarNotificacionesStockSalidaPersistentes();
         return;
     }
 
@@ -6496,9 +6611,10 @@ function actualizarPanelCobro() {
     if (contador) contador.innerText = cantTotal;
     if (clienteActual) actualizarEstadoClienteSalida(clienteActual);
     actualizarContadoresMesasSalida();
+    actualizarNotificacionesStockSalidaPersistentes();
 }
 
-// Eliminación con Contraseña Maestra (5 números) e Historial
+// Eliminación con Contraseña Maestra (6 dígitos) e Historial
 function intentarEliminarItem(index) {
     if (typeof window.esMesaFacturadaActual === 'function' && window.esMesaFacturadaActual()) {
         alert("Esta cuenta ya está facturada. Solo puede cerrar la cuenta.");
@@ -6519,9 +6635,9 @@ function intentarEliminarItem(index) {
             return;
         }
     }
-    const pass = prompt("🔐 AUTORIZACIÓN REQUERIDA: Ingrese clave de 5 números:");
+    const pass = prompt("🔐 AUTORIZACIÓN REQUERIDA: Ingrese clave maestra de 6 dígitos:");
     
-    if (pass === "852347") { // Cambia "852347" por tu clave real
+    if (pass === MASTER_PASS) {
         const carritoActual = obtenerCarritoMesaActiva();
         let idxActual = carritoActual.findIndex(it => keyItemVenta(it) === itemKey);
         if (idxActual < 0 && index >= 0 && index < carritoActual.length) idxActual = index;
@@ -6610,7 +6726,7 @@ async function finalizarVenta() {
                 return;
             }
             let pass = prompt("SEGURIDAD: Ingrese CONTRASEÑA para autorizar:");
-            if (pass !== "852347") { // Reemplaza con tu clave maestra real si es distinta
+            if (pass !== MASTER_PASS) {
                 alert("❌ Contraseña incorrecta. Venta cancelada.");
                 return;
             }
@@ -7644,7 +7760,7 @@ function toggleDetallesProduccion(idx) {
         if(pageId === 'entrenamientos') renderEntrenamientos();
         if(pageId === 'procedimientos') renderProcedimientosSoloVista();
         if(pageId === 'clientes-puntos') { renderConfigPlanMembresia(); renderTablaClientesPuntos(); }
-        if(pageId === 'salida') { renderMesasSalida(); actualizarPanelCobro(); }
+        if(pageId === 'salida') { renderMesasSalida(); actualizarPanelCobro(); actualizarNotificacionesStockSalidaPersistentes(true); }
         if(pageId === 'home') renderHomeRegistroInfo();
         if(pageId === 'comandos' && typeof window.renderModuloComandos === 'function') window.renderModuloComandos();
         aplicarModoBasicoInterfaz(pageId);
@@ -8562,6 +8678,170 @@ function renderModuloDistribuidores() {
     actualizarFaltantesDistribuidorTabla();
 }
 
+const SALIDA_STOCK_ALERTA_UMBRAL_BAJO = 5;
+const SALIDA_STOCK_ALERTA_UMBRAL_CRITICO = 1;
+let salidaStockAlertasFirma = '';
+
+function escaparHtmlStockSalida(valor) {
+    return String(valor || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatearCantidadStockSalida(valor) {
+    const stock = Number(valor || 0);
+    if (!Number.isFinite(stock)) return '0';
+    return stock.toFixed(2).replace(/\.00$/, '');
+}
+
+function obtenerAlertasStockSalidaPersistentes() {
+    const ownerActivo = ownerDatosActivo();
+    const moduloVista = String(moduloActual || '').trim();
+    if (!ownerActivo || !moduloVista) return [];
+
+    return (db.platos || [])
+        .filter((plato) => {
+            if (!plato) return false;
+            if (String(plato.modulo || '').trim() !== moduloVista) return false;
+            if (String(plato.owner || '').trim().toLowerCase() !== ownerActivo) return false;
+            const stockNum = Number(plato.stock || 0);
+            if (!Number.isFinite(stockNum)) return true;
+            return stockNum <= SALIDA_STOCK_ALERTA_UMBRAL_BAJO;
+        })
+        .map((plato) => {
+            const stockNum = Number(plato.stock || 0);
+            const stock = Number.isFinite(stockNum) ? stockNum : 0;
+            const agotado = stock <= 0;
+            const critico = !agotado && stock <= SALIDA_STOCK_ALERTA_UMBRAL_CRITICO;
+            const estado = agotado ? 'agotado' : (critico ? 'critico' : 'bajo');
+            const estadoLabel = agotado ? 'AGOTADO' : (critico ? 'CRITICO' : 'BAJO');
+            const detalle = agotado
+                ? 'Sin existencia disponible. No puede salir sin autorización.'
+                : (critico
+                    ? `Queda ${formatearCantidadStockSalida(stock)} unidad(es). Acción inmediata recomendada.`
+                    : `Quedan ${formatearCantidadStockSalida(stock)} unidad(es). Próximo a agotarse.`);
+            return {
+                key: String(plato.nombre || '').trim().toLowerCase(),
+                nombre: String(plato.nombre || '').trim(),
+                stock,
+                estado,
+                estadoLabel,
+                detalle
+            };
+        })
+        .sort((a, b) => {
+            if (a.stock !== b.stock) return a.stock - b.stock;
+            return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
+        });
+}
+
+function renderAlertasStockSalidaPersistentes(force = false) {
+    const panel = document.getElementById('salida-stock-alertas-panel');
+    const lista = document.getElementById('salida-stock-alertas-lista');
+    const meta = document.getElementById('salida-stock-alertas-meta');
+    if (!panel || !lista || !meta) return;
+
+    const alertas = obtenerAlertasStockSalidaPersistentes();
+    const firma = alertas.map((a) => `${a.key}:${a.stock}`).join('|');
+    if (!force && firma === salidaStockAlertasFirma) return;
+    salidaStockAlertasFirma = firma;
+
+    panel.classList.remove('is-safe', 'is-warning', 'is-critical');
+
+    if (!alertas.length) {
+        panel.classList.add('is-safe');
+        meta.textContent = 'Sin alertas activas';
+        lista.innerHTML = '<div class="salida-stock-alerta-empty">Sin productos en riesgo de agotarse.</div>';
+        return;
+    }
+
+    const hayCritico = alertas.some((a) => a.estado === 'agotado' || a.estado === 'critico');
+    panel.classList.add(hayCritico ? 'is-critical' : 'is-warning');
+    meta.textContent = alertas.length === 1
+        ? '1 producto en alerta'
+        : `${alertas.length} productos en alerta`;
+    lista.innerHTML = alertas.map((a) => `
+        <article class="salida-stock-alerta-item is-${a.estado}">
+            <div class="salida-stock-alerta-main">
+                <strong>${escaparHtmlStockSalida(a.nombre.toUpperCase())}</strong>
+                <span>${escaparHtmlStockSalida(a.detalle)}</span>
+            </div>
+            <span class="salida-stock-alerta-badge is-${a.estado}">${escaparHtmlStockSalida(a.estadoLabel)}</span>
+        </article>
+    `).join('');
+}
+
+function actualizarBotonNotificacionesSalida(alertas = []) {
+    const btn = document.getElementById('btn-salida-notificaciones');
+    if (!btn) return;
+    const total = Array.isArray(alertas) ? alertas.length : 0;
+    const hayCritico = (alertas || []).some((a) => a && (a.estado === 'agotado' || a.estado === 'critico'));
+    btn.classList.remove('is-safe', 'is-warning', 'is-critical');
+    if (!total) {
+        btn.classList.add('is-safe');
+        btn.textContent = 'NOTIFICACIONES';
+        btn.title = 'Sin alertas activas';
+        return;
+    }
+    btn.classList.add(hayCritico ? 'is-critical' : 'is-warning');
+    btn.textContent = `NOTIFICACIONES (${total})`;
+    btn.title = hayCritico
+        ? 'Hay productos críticos o agotados'
+        : 'Hay productos con stock bajo';
+}
+
+function renderModalNotificacionesSalida(alertas = []) {
+    const resumen = document.getElementById('salida-notificaciones-resumen');
+    const lista = document.getElementById('salida-notificaciones-lista');
+    if (!resumen || !lista) return;
+    const items = Array.isArray(alertas) ? alertas : [];
+    if (!items.length) {
+        resumen.textContent = 'Sin alertas activas en este momento.';
+        lista.innerHTML = '<div class="salida-stock-alerta-empty">Sin productos en riesgo de agotarse.</div>';
+        return;
+    }
+    const agotados = items.filter((a) => a.estado === 'agotado').length;
+    const criticos = items.filter((a) => a.estado === 'critico').length;
+    const bajos = items.filter((a) => a.estado === 'bajo').length;
+    resumen.textContent = `Total: ${items.length} · Agotados: ${agotados} · Críticos: ${criticos} · Bajos: ${bajos}`;
+    lista.innerHTML = items.map((a) => `
+        <article class="salida-stock-alerta-item is-${a.estado}">
+            <div class="salida-stock-alerta-main">
+                <strong>${escaparHtmlStockSalida(a.nombre.toUpperCase())}</strong>
+                <span>${escaparHtmlStockSalida(a.detalle)}</span>
+            </div>
+            <span class="salida-stock-alerta-badge is-${a.estado}">${escaparHtmlStockSalida(a.estadoLabel)}</span>
+        </article>
+    `).join('');
+}
+
+function abrirModalNotificacionesSalida() {
+    const modal = document.getElementById('modal-salida-notificaciones');
+    if (!modal) return;
+    actualizarNotificacionesStockSalidaPersistentes(true);
+    modal.style.display = 'flex';
+}
+
+function cerrarModalNotificacionesSalida() {
+    const modal = document.getElementById('modal-salida-notificaciones');
+    if (!modal) return;
+    modal.style.display = 'none';
+}
+
+function actualizarNotificacionesStockSalidaPersistentes(force = false) {
+    try {
+        const alertas = obtenerAlertasStockSalidaPersistentes();
+        renderAlertasStockSalidaPersistentes(!!force);
+        actualizarBotonNotificacionesSalida(alertas);
+        renderModalNotificacionesSalida(alertas);
+    } catch (err) {
+        console.error('No se pudieron actualizar las alertas persistentes de salida.', err);
+    }
+}
+
 function escaparHtmlBusquedaSalida(valor) {
     return String(valor || '')
         .replace(/&/g, '&amp;')
@@ -8616,6 +8896,7 @@ function buscarPlatoVenta() {
     const input = document.getElementById('busqueda-plato');
     const resultados = document.getElementById('contenedor-salidas-busqueda');
     if (!input || !resultados) return;
+    actualizarNotificacionesStockSalidaPersistentes();
 
     const termino = String(input.value || '').trim().toLowerCase();
     resultados.innerHTML = '';
@@ -9246,8 +9527,15 @@ function eliminarAlmacen(nom) {
     const pass = prompt("Ingrese contraseña de 5 números para ELIMINAR:");
     if(pass === sesionUser.pass) { 
         if(confirm(`¿Eliminar ${nom.toUpperCase()}?`)){ 
+            const ownerKey = String(sesionUser?.user || '').trim().toLowerCase();
+            const moduloKey = String(moduloActual || '').trim();
             runWithRowRemovalAnimation(buildRowKeyId('almacen', nom), () => {
-                db.almacen = db.almacen.filter(a => !(a.nombre === nom && a.owner === sesionUser.user && a.modulo === moduloActual)); 
+                db.almacen = db.almacen.filter(a => !(
+                    normalizarClaveProductoOperacion(a?.nombre) === normalizarClaveProductoOperacion(nom) &&
+                    String(a?.owner || '').trim().toLowerCase() === ownerKey &&
+                    String(a?.modulo || '').trim() === moduloKey
+                )); 
+                limpiarReferenciasInsumoEliminado(nom, { owner: ownerKey, modulo: moduloKey });
                 guardarDatos(); 
                 renderAlmacen(); 
             });
@@ -9464,8 +9752,11 @@ function renderDispoTable() {
         if (!p) return;
         if (String(p.owner || '').trim().toLowerCase() !== ownerActivo || p.modulo !== moduloActual) return;
         if (validarPermiso()) {
+            const nombrePlato = String(p?.nombre || '').trim();
+            const moduloKey = String(moduloActual || '').trim();
             runWithRowRemovalAnimation([`plato-tr-${i}`, `detalles-plato-row-${i}`], () => {
                 db.platos.splice(i, 1);
+                limpiarReferenciasPlatoEliminado(nombrePlato, { owner: ownerActivo, modulo: moduloKey });
                 guardarDatos();
                 renderDispoTable();
             });
@@ -9567,7 +9858,7 @@ let backupPrecios = null;
 
 function validarYEjecutarAjuste(valor) {
     if (bloquearAccionAdministrativaColaborador()) return;
-    const pass = prompt("🔐 INGRESE CONTRASEÑA MAESTRA (5 NÚMEROS):");
+    const pass = prompt("🔐 INGRESE CONTRASEÑA MAESTRA (6 DÍGITOS):");
     
     // Validación basada en tu instrucción de seguridad [cite: 2025-12-27]
     if (pass === sesionUser.pass) {

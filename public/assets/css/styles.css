@@ -3072,6 +3072,44 @@ body.mobile-web-like #distribuidores .dist-contact-grid #dist_direccion {
   margin-bottom: 12px;
 }
 
+#salida-selector-card .salida-title-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+#salida-selector-card .salida-title-actions h2 {
+  margin: 0;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.salida-notificaciones-btn {
+  width: auto;
+  min-width: 180px;
+}
+
+.salida-notificaciones-btn.is-safe {
+  background: #edf6ee;
+  border-color: #cde9d1;
+  color: #1f7a46;
+}
+
+.salida-notificaciones-btn.is-warning {
+  background: #fff0d5;
+  border-color: #f0cc8d;
+  color: #8a5d10;
+}
+
+.salida-notificaciones-btn.is-critical {
+  background: #ffdfe1;
+  border-color: #f3b1b7;
+  color: #8d2316;
+  animation: parpadeoRojo 1.2s infinite;
+}
+
 #salida-selector-card .salida-mesas-label {
   margin-bottom: 4px !important;
 }
@@ -3254,6 +3292,177 @@ body.mobile-web-like #distribuidores .dist-contact-grid #dist_direccion {
   display: none;
 }
 
+.salida-stock-alertas-panel {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #d7e3ea;
+  border-radius: 12px;
+  background: #f7fbff;
+  display: grid;
+  gap: 8px;
+}
+
+.salida-stock-alertas-panel.is-safe {
+  border-color: #cde9d8;
+  background: #f3fbf6;
+}
+
+.salida-stock-alertas-panel.is-warning {
+  border-color: #f2d39b;
+  background: #fff8eb;
+}
+
+.salida-stock-alertas-panel.is-critical {
+  border-color: #f6b4b0;
+  background: #fff0f0;
+}
+
+.salida-stock-alertas-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.salida-stock-alertas-head strong {
+  color: #374b57;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.salida-stock-alertas-head span {
+  color: #5f7382;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.salida-stock-alertas-lista {
+  display: grid;
+  gap: 6px;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.salida-stock-alertas-lista--modal {
+  max-height: min(58vh, 460px);
+}
+
+.salida-stock-alerta-empty {
+  padding: 10px;
+  border: 1px dashed #c8d7e1;
+  border-radius: 10px;
+  color: #5e7382;
+  font-size: 12px;
+  background: #fff;
+  text-align: center;
+}
+
+.salida-stock-alerta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #dbe6ee;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.salida-stock-alerta-item.is-bajo {
+  border-color: #efd19a;
+  background: #fff9ee;
+}
+
+.salida-stock-alerta-item.is-critico,
+.salida-stock-alerta-item.is-agotado {
+  border-color: #f4b3b2;
+  background: #fff4f4;
+}
+
+.salida-stock-alerta-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.salida-stock-alerta-main strong {
+  color: #1f3443;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.salida-stock-alerta-main span {
+  color: #5b6f7e;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.salida-stock-alerta-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 1px solid #d4e0e8;
+  background: #f3f7fb;
+  color: #3b5364;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.salida-stock-alerta-badge.is-bajo {
+  border-color: #e6be7a;
+  background: #fff1d6;
+  color: #8c6111;
+}
+
+.salida-stock-alerta-badge.is-critico,
+.salida-stock-alerta-badge.is-agotado {
+  border-color: #f2a5a7;
+  background: #ffdfe1;
+  color: #8f2412;
+}
+
+.salida-notificaciones-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 2660;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.salida-notificaciones-card {
+  width: min(620px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 12px;
+  border-top: 6px solid var(--blue);
+}
+
+.salida-notificaciones-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.salida-notificaciones-body {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.salida-notificaciones-resumen {
+  font-size: 12px;
+  color: #5b6f7e;
+  font-weight: 700;
+}
+
 .salida-product-empty {
   padding: 12px;
   border: 1px dashed #cfdbe4;
@@ -3355,6 +3564,28 @@ body.mobile-web-like #distribuidores .dist-contact-grid #dist_direccion {
 .salida-product-add-btn {
   min-width: 88px;
   padding: 9px 12px;
+}
+
+@media (max-width: 640px) {
+  #salida-selector-card .salida-title-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .salida-notificaciones-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .salida-stock-alertas-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .salida-stock-alerta-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 .salida-facturacion-overlay {
@@ -3511,6 +3742,16 @@ body.salida-overlay-open {
 
   #salida-selector-card .salida-mesas-head {
     flex-direction: column;
+  }
+
+  #salida-selector-card .salida-title-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .salida-notificaciones-btn {
+    width: 100%;
+    min-width: 0;
   }
 
   #mesas-mostrar-mas-btn {
@@ -3719,6 +3960,160 @@ body.salida-overlay-open {
   gap: 12px;
 }
 
+.asistencia-colab-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.asistencia-colab-action-btn {
+  width: 100%;
+  min-width: 0;
+}
+
+.asistencia-remove-modal-card {
+  width: min(560px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 12px;
+  border-top: 6px solid var(--danger);
+  box-sizing: border-box;
+}
+
+.asistencia-remove-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.asistencia-remove-modal-title {
+  display: block;
+  font-size: 16px;
+  line-height: 1.25;
+  color: #243447;
+}
+
+.asistencia-remove-modal-body {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.asistencia-remove-modal-help {
+  font-size: 12px;
+  color: #666;
+}
+
+.asistencia-remove-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.asistencia-remove-toolbar-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.asistencia-remove-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.asistencia-remove-select-all input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.asistencia-colab-remove-lista {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #dfe6e9;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.asistencia-colab-remove-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #ecf0f3;
+  border-radius: 8px;
+  background: #fcfdff;
+}
+
+.asistencia-colab-remove-item input[type="checkbox"] {
+  margin: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.asistencia-colab-remove-item-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.asistencia-colab-remove-item-text strong {
+  display: block;
+  color: #1f2937;
+  font-size: 13px;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.asistencia-colab-remove-item-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.asistencia-remove-hint {
+  font-size: 12px;
+  color: #666;
+}
+
+.asistencia-remove-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.asistencia-remove-actions .btn {
+  min-width: 170px;
+}
+
 .asistencia-colab-lista {
   display: grid;
   gap: 8px;
@@ -3836,8 +4231,18 @@ body.salida-overlay-open {
     grid-template-columns: 1fr;
   }
 
-  #btn-asistencia-add-colab {
+  .asistencia-remove-toolbar {
+    align-items: stretch;
+  }
+
+  .asistencia-remove-select-all {
     width: 100%;
+    justify-content: center;
+  }
+
+  .asistencia-remove-actions .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
   }
 }
 
