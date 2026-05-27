@@ -6,14 +6,11 @@ function borrarTodoElAlmacen() {
         return;
     }
 
-    // 2. Solicitud de contraseña
-    let passwordIngresada = prompt("🔒 SEGURIDAD: Ingrese su contraseña para vaciar completamente el almacén:");
-
-    if (passwordIngresada === null) return;
-
-    // 3. Validación
-    if (passwordIngresada !== sesionUser.pass) {
-        alert("❌ Contraseña incorrecta. Operación cancelada.");
+    // 2. Confirmación por texto explícito (evita contraseña en memoria visible)
+    const confirmacion = prompt("🔒 Para confirmar, escriba exactamente: BORRAR TODO");
+    if (confirmacion === null) return;
+    if (confirmacion.trim().toUpperCase() !== "BORRAR TODO") {
+        alert("❌ Texto de confirmación incorrecto. Operación cancelada.");
         return;
     }
 
@@ -41,33 +38,28 @@ function borrarTodoElMenu() {
         return;
     }
 
-    // Pedimos la contraseña de 5 números
-    let passwordIngresada = prompt("🔒 SEGURIDAD: Ingrese su contraseña de 5 números para ejecutar el borrado masivo:");
-
-    if (passwordIngresada === null) return;
-
-    if (passwordIngresada === sesionUser.pass) {
+    const confirmacion = prompt("🔒 Para confirmar, escriba exactamente: BORRAR MENU");
+    if (confirmacion === null) return;
+    if (confirmacion.trim().toUpperCase() === "BORRAR MENU") {
         // 1. Eliminamos los datos de la base de datos (db)
         db.platos = db.platos.filter(p => p.owner !== sesionUser.user || p.modulo !== moduloActual);
-        
+
         // 2. Guardamos en LocalStorage inmediatamente
         guardarDatos();
-        
-        // 3. LIMPIEZA VISUAL INMEDIATA:
-        // Forzamos el vaciado del cuerpo de la tabla en el HTML
+
+        // 3. LIMPIEZA VISUAL INMEDIATA
         const tabla = document.getElementById('tabla-disponibilidad-full');
         if (tabla) {
-            tabla.innerHTML = ""; 
+            tabla.innerHTML = "";
         }
 
-        // 4. Opcional: Si tienes un contador de platos o totales, refrescamos todo
         if (typeof cargarDatos === "function") {
             cargarDatos();
         }
-        
+
         alert("✅ El menú ha sido vaciado correctamente.");
     } else {
-        alert("❌ Contraseña incorrecta. Acción cancelada.");
+        alert("❌ Texto de confirmación incorrecto. Acción cancelada.");
     }
 }
 
@@ -107,37 +99,32 @@ function convertirUnidad(cantidad, unidadOrigen, unidadDestino) {
 /**
  * Cambia la contraseña del usuario que tiene la sesión iniciada actualmente.
  */
-function cambiarMiPassword() {
+async function cambiarMiPassword() {
     const oldPass = document.getElementById('my_old_pass').value;
     const newPass = document.getElementById('my_new_pass').value;
     const confirmPass = document.getElementById('my_new_pass_confirm').value;
 
     if ((sesionUser.user || "").trim().toLowerCase() === MASTER_USER) {
-        return alert("🔒 La contraseña del usuario maestro es fija y no puede cambiarse.");
+        return alert("🔒 La contraseña del usuario maestro solo puede cambiarse desde el backend.");
     }
 
-    // 1. Validar que la contraseña actual sea correcta
-    if (oldPass !== sesionUser.pass) {
-        return alert("❌ La contraseña actual es incorrecta.");
-    }
-
-    // 2. Validar que las nuevas coincidan
     if (newPass === "" || newPass !== confirmPass) {
         return alert("⚠️ Las nuevas contraseñas no coinciden o están vacías.");
     }
+    if (newPass.length < 6) {
+        return alert("⚠️ La nueva contraseña debe tener al menos 6 caracteres.");
+    }
 
-    // 3. Actualizar en la base de datos (db.usuarios)
-    const userIndex = db.usuarios.findIndex(u => u.user === sesionUser.user);
-    if (userIndex !== -1) {
-        db.usuarios[userIndex].pass = newPass;
-        sesionUser.pass = newPass; // Actualizar sesión actual
-        guardarDatos();
-        alert("✅ Contraseña actualizada correctamente.");
-        
-        // Limpiar campos
-        document.getElementById('my_old_pass').value = "";
-        document.getElementById('my_new_pass').value = "";
-        document.getElementById('my_new_pass_confirm').value = "";
+    if (typeof window.actualizarPasswordCloud === 'function') {
+        const ok = await window.actualizarPasswordCloud(oldPass, newPass);
+        if (ok) {
+            document.getElementById('my_old_pass').value = "";
+            document.getElementById('my_new_pass').value = "";
+            document.getElementById('my_new_pass_confirm').value = "";
+            alert("✅ Contraseña actualizada en cloud correctamente.");
+        }
+    } else {
+        alert("⚠️ Backend no disponible. Intente nuevamente con conexión activa.");
     }
 }
 
@@ -221,20 +208,17 @@ function guardarPagoUsuarioMaestro() {
     const paymentMethod = (document.getElementById('new_u_payment_method')?.value || 'TRANSFERENCIA').trim().toUpperCase();
     const card = (document.getElementById('new_u_card')?.value || '').replace(/[^\d]/g, '');
     const cardExp = (document.getElementById('new_u_card_exp')?.value || '').trim().toUpperCase();
-    const cardCvv = (document.getElementById('new_u_card_cvv')?.value || '').replace(/[^\d]/g, '');
     const nextChargeRaw = (document.getElementById('new_u_next_charge')?.value || '').trim();
-    if (!clientName || !paymentMethod || !card || !cardExp || !cardCvv || !nextChargeRaw) return alert("⚠️ Complete todos los campos de pago.");
-    if (card.length < 12) return alert("❌ Número de tarjeta inválido.");
-    if (!/^\d{2}\/\d{2,4}$/.test(cardExp)) return alert("❌ Formato de vencimiento inválido. Use MM/AA.");
-    if (cardCvv.length < 3 || cardCvv.length > 4) return alert("❌ CVV inválido.");
+    if (!clientName || !paymentMethod || !nextChargeRaw) return alert("⚠️ Complete los campos de nombre, método y fecha de cobro.");
+    if (card && card.length < 4) return alert("❌ Número de tarjeta inválido (mínimo 4 dígitos).");
+    if (card && cardExp && !/^\d{2}\/\d{2,4}$/.test(cardExp)) return alert("❌ Formato de vencimiento inválido. Use MM/AA.");
     const dt = new Date(nextChargeRaw + 'T00:00:00');
     if (isNaN(dt.getTime())) return alert("❌ Fecha de próximo cobro inválida.");
     window.__nuevoUsuarioPagoTemp = {
         clientName,
         paymentMethod,
-        cardLast4: card.slice(-4),
-        cardExp,
-        cvvMasked: '*'.repeat(cardCvv.length),
+        cardLast4: card ? card.slice(-4) : '',
+        cardExp: card ? cardExp : '',
         nextChargeAt: dt.toISOString(),
         billingDay: dt.getDate()
     };
@@ -293,15 +277,7 @@ async function crearColaborador() {
 
     const ownerSesion = String(window.obtenerOwnerSesionActual?.() || sesionUser?.user || '').trim().toLowerCase();
     if (!ownerSesion || esColaboradorSesion) return alert("⛔ Solo un usuario maestro activo puede crear colaboradores.");
-    const claveAdmin = prompt("🔐 Ingrese su clave de Usuario Maestro para autorizar este colaborador:");
-    if (claveAdmin === null) return;
-    const adminAutorizador = (db.usuarios || []).find(u =>
-        (u.role === 'admin' || u.role === 'super-master') &&
-        u.activo !== false &&
-        String(u.user || '').trim().toLowerCase() === ownerSesion &&
-        u.pass === String(claveAdmin || '')
-    );
-    if (!adminAutorizador) return alert("❌ Clave inválida del Usuario Maestro en sesión.");
+    if (!confirm(`¿Confirma crear el colaborador "${nombre}" con los permisos seleccionados?`)) return;
     const ownerAsignado = ownerSesion;
 
     const nuevoColaborador = {
@@ -521,13 +497,11 @@ function entradaAutomaticaMasiva() {
         return alert("✅ El almacén ya está en su existencia ideal. No hay faltantes.");
     }
 
-    // 2. PEDIR CONTRASEÑA DE AUTORIZACIÓN
-    let passConfirm = prompt("🔒 SEGURIDAD: Ingrese su contraseña para autorizar la ENTRADA MASIVA:");
+    // 2. Confirmación explícita por texto
+    const passConfirm = prompt(`🔒 Se actualizarán ${productosFaltantes.length} productos. Escriba CONFIRMAR para proceder:`);
+    if (passConfirm === null) return;
 
-    // 3. Validar contra la contraseña del usuario en sesión
-    if (passConfirm === null) return; // Si cancela el prompt
-
-    if (passConfirm === sesionUser.pass) {
+    if (passConfirm.trim().toUpperCase() === "CONFIRMAR") {
         let confirmacionFinal = confirm(`Contraseña correcta.\nSe actualizarán ${productosFaltantes.length} productos.\n\n¿Desea proceder?`);
 
         if (confirmacionFinal) {
@@ -571,7 +545,15 @@ let facturaActualMesa = "";
 let clientePagoModalId = null;
 let calendarioCobroInterval = null;
 let WHATSAPP_DEFAULT = localStorage.getItem('LURO_WHATSAPP_DEFAULT') || "18297886552";
-const DGII_RNC_PROXY = localStorage.getItem('DGII_RNC_PROXY') || 'http://localhost:8787/api/dgii/rnc';
+const DGII_RNC_PROXY = (() => {
+    const ALLOWED_ORIGINS = ['http://localhost:8787', 'https://localhost:8787'];
+    const raw = localStorage.getItem('DGII_RNC_PROXY') || 'http://localhost:8787/api/dgii/rnc';
+    try {
+        const url = new URL(raw);
+        if (ALLOWED_ORIGINS.includes(url.origin) || url.hostname === 'localhost') return raw;
+    } catch (_) {}
+    return 'http://localhost:8787/api/dgii/rnc';
+})();
 
 function normalizarTelefonoWhatsapp(numero) {
     return (numero || '').toString().replace(/[^\d]/g, '');
