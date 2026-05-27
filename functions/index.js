@@ -1,16 +1,26 @@
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+const bcrypt = require("bcryptjs");
 const { registerWhatsAppNotifications } = require("./whatsapp-notifications");
 
 admin.initializeApp();
 const db = admin.firestore();
 
-const MASTER_USER = String(process.env.MASTER_USER || "jssantana077").trim().toLowerCase();
-const MASTER_PASS = String(process.env.MASTER_PASS || "160623");
+const MASTER_USER = (() => {
+  const v = String(process.env.MASTER_USER || "").trim().toLowerCase();
+  if (!v) console.error("[SECURITY] MASTER_USER env var no configurada — login maestro deshabilitado");
+  return v;
+})();
+const MASTER_PASS = (() => {
+  const v = String(process.env.MASTER_PASS || "").trim();
+  if (!v) console.error("[SECURITY] MASTER_PASS env var no configurada — login maestro deshabilitado");
+  return v;
+})();
 const FORCED_REMOVED_USER = "__forced_removed_user_disabled__";
 const INACTIVE_MSG = "Usuario Inactivo o eliminado. Comuníquese con su proveedor.";
-const PAYPAL_RECEIVER = String(process.env.PAYPAL_RECEIVER || "Jssantana077@gmail.com").trim();
-const PAYPAL_ME_USER = String(process.env.PAYPAL_ME_USER || "Jhonn0723").trim();
+const PAYPAL_RECEIVER = String(process.env.PAYPAL_RECEIVER || "").trim();
+const PAYPAL_ME_USER = String(process.env.PAYPAL_ME_USER || "").trim();
+const BCRYPT_ROUNDS = 12;
 const PAYPAL_PRODUCT_NAME = "LuRo Control SaaS";
 const PAYPAL_RUNTIME_OPTS = {
   secrets: ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET", "PAYPAL_WEBHOOK_ID", "PAYPAL_PLAN_BASICO", "PAYPAL_PLAN_PROFESIONAL", "PAYPAL_PLAN_EMPRESARIAL", "PAYPAL_PRODUCT_ID"]
@@ -125,11 +135,75 @@ function ownerDbHasContent(payload = {}) {
   return extras.some((k) => Array.isArray(payload[k]) && payload[k].length > 0);
 }
 
+async function hashPassword(plain) {
+  return bcrypt.hash(String(plain || ""), BCRYPT_ROUNDS);
+}
+
+function isPasswordMatch(stored, incoming) {
+  const s = String(stored || "");
+  const i = String(incoming || "");
+  if (!s || !i) return false;
+  if (s.startsWith("$2b$") || s.startsWith("$2a$")) {
+    return bcrypt.compareSync(i, s);
+  }
+  return s === i;
+}
+
 function isMasterPasswordAccepted(password, masterEntry = null) {
   const provided = String(password || "");
   if (!provided) return false;
   const ownerPass = String(masterEntry?.data?.pass || "");
-  return provided === ownerPass || provided === MASTER_PASS;
+  if (ownerPass) return isPasswordMatch(ownerPass, provided);
+  return Boolean(MASTER_PASS) && provided === MASTER_PASS;
+}
+
+function validatePasswordStrength(password) {
+  const p = String(password || "");
+  if (p.length < 6) throw new HttpsError("invalid-argument", "La contraseña debe tener al menos 6 caracteres.");
+  if (p.length > 128) throw new HttpsError("invalid-argument", "La contraseña es demasiado larga.");
+}
+
+function sanitizeUsername(username) {
+  const u = norm(username);
+  if (!u) return "";
+  if (!/^[a-z0-9._@\-+]+$/.test(u)) throw new HttpsError("invalid-argument", "El usuario contiene caracteres no permitidos.");
+  return u;
+}
+
+async function checkAuthRateLimit(username) {
+  const key = `rl_auth_${String(username || "").slice(0, 80)}`;
+  const ref = db.collection("_security").doc(key);
+  const snap = await ref.get();
+  const data = snap.data() || { attempts: 0, lockedUntil: 0 };
+  const now = Date.now();
+
+  if (data.lockedUntil && now < Number(data.lockedUntil)) {
+    const minutesLeft = Math.ceil((Number(data.lockedUntil) - now) / 60000);
+    throw new HttpsError("resource-exhausted", `Demasiados intentos fallidos. Intente en ${minutesLeft} minuto(s).`);
+  }
+
+  return {
+    recordFailure: async () => {
+      const attempts = (Number(data.attempts) || 0) + 1;
+      const lockedUntil = attempts >= 5 ? now + 15 * 60 * 1000 : 0;
+      await ref.set({ attempts, lockedUntil, lastAttempt: now }, { merge: true });
+    },
+    clearFailures: async () => {
+      await ref.set({ attempts: 0, lockedUntil: 0, lastAttempt: now }, { merge: true });
+    }
+  };
+}
+
+async function upgradePlaintextPassword(collectionName, docId, plainPassword, mergePayload = {}) {
+  try {
+    const hashed = await hashPassword(plainPassword);
+    await db.collection(collectionName).doc(docId).set(
+      { pass: hashed, ...mergePayload },
+      { merge: true }
+    );
+  } catch (_e) {
+    // upgrade is best-effort — don't fail the login
+  }
 }
 
 function hasManualPayPalLink() {
@@ -389,9 +463,7 @@ async function getOwnerDoc(owner) {
   return { id: q.docs[0].id, data: q.docs[0].data() || {} };
 }
 
-function isPasswordMatch(stored, incoming) {
-  return String(stored || "") === String(incoming || "");
-}
+// isPasswordMatch defined above with bcrypt support
 
 function sanitizeCollaboratorPerms(permisos = [], owner = "") {
   const ownerKey = norm(owner);
@@ -627,7 +699,10 @@ function billingDayFromDate(dateIso) {
 
 async function verifyPayPalWebhook(req, eventBody) {
   const webhookId = getPaypalWebhookId();
-  if (!webhookId) return true;
+  if (!webhookId) {
+    console.error("[SECURITY] PAYPAL_WEBHOOK_ID no configurado — rechazando webhook no verificable");
+    return false;
+  }
   const transmissionId = safeText(req.header("paypal-transmission-id"), 180);
   const transmissionTime = safeText(req.header("paypal-transmission-time"), 120);
   const certUrl = safeText(req.header("paypal-cert-url"), 500);
@@ -1136,10 +1211,18 @@ exports.authenticateSession = onCall(async (request) => {
   if (!username || !password) throw new HttpsError("invalid-argument", "Credenciales incompletas.");
   if (username === FORCED_REMOVED_USER) throw new HttpsError("permission-denied", INACTIVE_MSG);
 
+  const rateLimiter = await checkAuthRateLimit(username);
+
   // Super-master por contraseña vigente (owners.pass o fallback MASTER_PASS).
   if (username === MASTER_USER) {
     const masterEntry = await getOwnerDoc(MASTER_USER);
     if (isMasterPasswordAccepted(password, masterEntry)) {
+      await rateLimiter.clearFailures();
+      const storedPass = String(masterEntry?.data?.pass || "");
+      if (storedPass && !storedPass.startsWith("$2b$") && !storedPass.startsWith("$2a$")) {
+        const masterDocId = masterEntry?.id || MASTER_USER;
+        upgradePlaintextPassword("owners", masterDocId, storedPass);
+      }
       return {
         ok: true,
         role: "super-master",
@@ -1155,6 +1238,8 @@ exports.authenticateSession = onCall(async (request) => {
         asignacionesEntradas: ["manual", "automatica", "historial"]
       };
     }
+    await rateLimiter.recordFailure();
+    throw new HttpsError("permission-denied", "Credenciales inválidas.");
   }
 
   const ownerEntry = await getOwnerDoc(username);
@@ -1167,6 +1252,11 @@ exports.authenticateSession = onCall(async (request) => {
     ownerData?.activo !== false &&
     canAccessByStatus(ownerData || {})
   ) {
+    await rateLimiter.clearFailures();
+    const storedPass = String(ownerData?.pass || "");
+    if (storedPass && !storedPass.startsWith("$2b$") && !storedPass.startsWith("$2a$")) {
+      upgradePlaintextPassword("owners", ownerEntry.id, storedPass);
+    }
     const role = username === MASTER_USER ? "super-master" : "admin";
     return {
       ok: true,
@@ -1189,10 +1279,16 @@ exports.authenticateSession = onCall(async (request) => {
     const colDoc = await db.collection("autorizaciones").doc(docId).get();
     const colData = colDoc.data() || {};
     if (!colDoc.exists || !isPasswordMatch(colData.pass, password)) {
-      throw new HttpsError("permission-denied", "Credenciales invÃ¡lidas.");
+      await rateLimiter.recordFailure();
+      throw new HttpsError("permission-denied", "Credenciales inválidas.");
     }
     if (colData.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
     await assertOwnerActive(ownerHint);
+    await rateLimiter.clearFailures();
+    const storedColPass = String(colData.pass || "");
+    if (storedColPass && !storedColPass.startsWith("$2b$") && !storedColPass.startsWith("$2a$")) {
+      upgradePlaintextPassword("autorizaciones", docId, storedColPass);
+    }
     return {
       ok: true,
       role: "colaborador",
@@ -1212,11 +1308,19 @@ exports.authenticateSession = onCall(async (request) => {
     const data = d.data() || {};
     if (isPasswordMatch(data.pass, password)) found = { id: d.id, data };
   });
-  if (!found) throw new HttpsError("permission-denied", "Credenciales invÃ¡lidas.");
+  if (!found) {
+    await rateLimiter.recordFailure();
+    throw new HttpsError("permission-denied", "Credenciales inválidas.");
+  }
   if (found.data.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
 
   const owner = norm(found.data.owner);
   await assertOwnerActive(owner);
+  await rateLimiter.clearFailures();
+  const storedFoundPass = String(found.data.pass || "");
+  if (storedFoundPass && !storedFoundPass.startsWith("$2b$") && !storedFoundPass.startsWith("$2a$")) {
+    upgradePlaintextPassword("autorizaciones", found.id, storedFoundPass);
+  }
   return {
     ok: true,
     role: "colaborador",
@@ -1234,7 +1338,7 @@ exports.changeOwnPassword = onCall(async (request) => {
   const oldPass = String(request.data?.oldPass || "");
   const newPass = String(request.data?.newPass || "").trim();
   if (!oldPass || !newPass) throw new HttpsError("invalid-argument", "Datos incompletos.");
-  if (newPass.length < 4) throw new HttpsError("failed-precondition", "La nueva contraseña es demasiado corta.");
+  validatePasswordStrength(newPass);
 
   const s = await resolveSession(request, true);
   if (!s?.username) throw new HttpsError("unauthenticated", "Debe iniciar sesión.");
@@ -1248,8 +1352,9 @@ exports.changeOwnPassword = onCall(async (request) => {
     if (!isPasswordMatch(colData.pass, oldPass)) {
       throw new HttpsError("permission-denied", "La contraseña actual es incorrecta.");
     }
+    const hashedNew = await hashPassword(newPass);
     await colRef.set({
-      pass: newPass,
+      pass: hashedNew,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     return { ok: true, username: s.username, role: "colaborador" };
@@ -1262,9 +1367,10 @@ exports.changeOwnPassword = onCall(async (request) => {
     throw new HttpsError("permission-denied", "La contraseña actual es incorrecta.");
   }
   const ownerId = ownerEntry?.id || s.username;
+  const hashedNewOwner = await hashPassword(newPass);
   await db.collection("owners").doc(ownerId).set({
     username: norm(s.username),
-    pass: newPass,
+    pass: hashedNewOwner,
     activo: ownerData.activo !== false,
     estado: String(ownerData.estado || "activo"),
     empresa: String(ownerData.empresa || (norm(s.username) === MASTER_USER ? "MASTER" : "")),
@@ -1314,6 +1420,7 @@ exports.registerBusiness = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     throw new HttpsError("invalid-argument", "Correo electrónico inválido.");
   }
+  validatePasswordStrength(password);
 
   const ownerUsername = email;
   if (ownerUsername === MASTER_USER) throw new HttpsError("failed-precondition", "Usuario reservado.");
@@ -1359,9 +1466,10 @@ exports.registerBusiness = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
     updatedAt: now
   }, { merge: true });
 
+  const hashedRegPassword = await hashPassword(password);
   await db.collection("owners").doc(ownerUsername).set({
     username: ownerUsername,
-    pass: password,
+    pass: hashedRegPassword,
     empresa: businessName,
     negocioId,
     adminName,
@@ -1823,6 +1931,7 @@ exports.createMasterUser = onCall(async (request) => {
   const pass = String(request.data?.pass || "").trim();
   const empresa = String(request.data?.empresa || "").trim();
   if (!username || !pass) throw new HttpsError("invalid-argument", "Datos incompletos.");
+  validatePasswordStrength(pass);
   if (username === FORCED_REMOVED_USER) throw new HttpsError("failed-precondition", "Usuario reservado.");
   if (username === MASTER_USER) throw new HttpsError("failed-precondition", "Usuario reservado.");
   if (username === creator) throw new HttpsError("failed-precondition", "No puede crearse a si mismo.");
@@ -1834,10 +1943,11 @@ exports.createMasterUser = onCall(async (request) => {
   const childCanCreateAdmins = isSuperCreator === true;
   const dependenciaPago = isSuperCreator ? "master" : "owner";
   const proveedorDelegado = isSuperCreator ? "master_delegada" : "owner_delegada";
+  const hashedMasterPass = await hashPassword(pass);
 
   await db.collection("owners").doc(username).set({
     username,
-    pass,
+    pass: hashedMasterPass,
     empresa,
     estado: "activo",
     plan: "delegado",
@@ -1941,6 +2051,7 @@ exports.createTeamMember = onCall(async (request) => {
   const asignacionesEntradas = Array.isArray(request.data?.asignacionesEntradas) ? request.data.asignacionesEntradas : [];
   const activo = request.data?.activo !== false;
   if (!username || !pass) throw new HttpsError("invalid-argument", "Datos incompletos.");
+  validatePasswordStrength(pass);
   if (username === FORCED_REMOVED_USER) throw new HttpsError("failed-precondition", "Usuario reservado.");
 
   const ownerExists = await getOwnerDoc(username);
@@ -1952,10 +2063,11 @@ exports.createTeamMember = onCall(async (request) => {
   const createdAt = prev.exists
     ? (prevData.createdAt || prevData.updatedAt || admin.firestore.FieldValue.serverTimestamp())
     : admin.firestore.FieldValue.serverTimestamp();
+  const hashedTeamPass = await hashPassword(pass);
   await db.collection("autorizaciones").doc(docId).set({
     owner,
     username,
-    pass,
+    pass: hashedTeamPass,
     role: "colaborador",
     activo,
     permisos: Array.from(new Set(permisos)),

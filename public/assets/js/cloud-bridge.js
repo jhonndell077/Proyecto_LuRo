@@ -54,8 +54,10 @@
         return cloudAuth;
       }
 
-      // Expose for login fallback (cuando el backend no devolvió sesión, pero las credenciales son válidas).
-      window.rememberCloudAuth = rememberCloudAuth;
+      // Internal reference only — do not expose password storage to global scope
+      window.__cloudAuthSetFromLogin = function(u, p, meta) {
+        rememberCloudAuth(u, p, meta);
+      };
 
       function ensureCloudAuth() {
         if (cloudAuth?.username && cloudAuth?.password) return cloudAuth;
@@ -282,7 +284,7 @@
         try {
           const result = await postCallable('authenticateSession', { username: u, password: p }, { timeoutMs: 3500 });
           if (!result?.ok) return null;
-          rememberCloudAuth(u, p, result);
+          window.__cloudAuthSetFromLogin(u, p, result);
           startCloudPresenceHeartbeat();
           window.setStatusPublic(`Sesión cloud activa para ${String(result.owner || u)}.`);
           return {
@@ -714,7 +716,7 @@
         return {
           user: target,
           pass: String(f.pass || ''),
-          role: target === 'jssantana077' ? 'super-master' : 'admin',
+          role: String(f?.role || '').toLowerCase() === 'super-master' ? 'super-master' : 'admin',
           owner: target,
           activo: f.activo !== false,
           canCreateAdmins: f?.canCreateAdmins === true,
