@@ -2091,7 +2091,6 @@ exports.listMasterUsers = onCall(async (request) => {
     const data = dataRaw && typeof dataRaw === "object" ? dataRaw : {};
     owners.push({
       username,
-      pass: String(data.pass || ""),
       empresa: String(data.empresa || ""),
       activo: data.activo !== false,
       plan: String(data.plan || "basico"),
@@ -2182,7 +2181,6 @@ exports.listTeamMembers = onCall(async (request) => {
     collaborators.push({
       owner,
       username,
-      pass: String(it.pass || ""),
       role: "colaborador",
       activo: it.activo !== false,
       createdAt: tsToIso(it.createdAt || it.updatedAt),
