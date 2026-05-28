@@ -106,14 +106,11 @@ function borrarTodoElAlmacen() {
         return;
     }
 
-    // 2. Solicitud de contraseña
-    let passwordIngresada = prompt("🔒 SEGURIDAD: Ingrese su contraseña para vaciar completamente el almacén:");
-
-    if (passwordIngresada === null) return;
-
-    // 3. Validación
-    if (passwordIngresada !== sesionUser.pass) {
-        alert("❌ Contraseña incorrecta. Operación cancelada.");
+    // 2. Confirmación de texto
+    const confirmText = prompt("⚠️ Escriba BORRAR TODO para confirmar el vaciado completo:");
+    if (confirmText === null) return;
+    if (confirmText.trim().toUpperCase() !== 'BORRAR TODO') {
+        alert("❌ Confirmación incorrecta. Operación cancelada.");
         return;
     }
 
@@ -149,41 +146,27 @@ function borrarTodoElAlmacen() {
         return;
     }
 
-    // Pedimos la contraseña de 5 números
-    let passwordIngresada = prompt("🔒 SEGURIDAD: Ingrese su contraseña de 5 números para ejecutar el borrado masivo:");
-
-    if (passwordIngresada === null) return;
-
-    if (passwordIngresada === sesionUser.pass) {
-        const ownerKey = String(sesionUser?.user || '').trim().toLowerCase();
-        const moduloKey = String(moduloActual || '').trim();
-        const platosEliminados = (db.platos || [])
-            .filter(p => String(p?.owner || '').trim().toLowerCase() === ownerKey && String(p?.modulo || '').trim() === moduloKey)
-            .map(p => String(p?.nombre || '').trim().toLowerCase())
-            .filter(Boolean);
-        // 1. Eliminamos los datos de la base de datos (db)
-        db.platos = db.platos.filter(p => String(p?.owner || '').trim().toLowerCase() !== ownerKey || String(p?.modulo || '').trim() !== moduloKey);
-        limpiarReferenciasPlatosEliminados(platosEliminados, { owner: ownerKey, modulo: moduloKey });
-        
-        // 2. Guardamos en LocalStorage inmediatamente
-        guardarDatos();
-        
-        // 3. LIMPIEZA VISUAL INMEDIATA:
-        // Forzamos el vaciado del cuerpo de la tabla en el HTML
-        const tabla = document.getElementById('tabla-disponibilidad-full');
-        if (tabla) {
-            tabla.innerHTML = ""; 
-        }
-
-        // 4. Opcional: Si tienes un contador de platos o totales, refrescamos todo
-        if (typeof cargarDatos === "function") {
-            cargarDatos();
-        }
-        
-        alert("✅ El menú ha sido vaciado correctamente.");
-    } else {
-        alert("❌ Contraseña incorrecta. Acción cancelada.");
+    // Confirmación de texto
+    const confirmMenuText = prompt("⚠️ Escriba BORRAR MENU para confirmar el borrado masivo:");
+    if (confirmMenuText === null) return;
+    if (confirmMenuText.trim().toUpperCase() !== 'BORRAR MENU') {
+        alert("❌ Confirmación incorrecta. Acción cancelada.");
+        return;
     }
+
+    const ownerKey = String(sesionUser?.user || '').trim().toLowerCase();
+    const moduloKey = String(moduloActual || '').trim();
+    const platosEliminados = (db.platos || [])
+        .filter(p => String(p?.owner || '').trim().toLowerCase() === ownerKey && String(p?.modulo || '').trim() === moduloKey)
+        .map(p => String(p?.nombre || '').trim().toLowerCase())
+        .filter(Boolean);
+    db.platos = db.platos.filter(p => String(p?.owner || '').trim().toLowerCase() !== ownerKey || String(p?.modulo || '').trim() !== moduloKey);
+    limpiarReferenciasPlatosEliminados(platosEliminados, { owner: ownerKey, modulo: moduloKey });
+    guardarDatos();
+    const tabla = document.getElementById('tabla-disponibilidad-full');
+    if (tabla) tabla.innerHTML = "";
+    if (typeof cargarDatos === "function") cargarDatos();
+    alert("✅ El menú ha sido vaciado correctamente.");
 }
 
   function convertirUnidad(cantidad, unidadOrigen, unidadDestino) {
@@ -227,19 +210,19 @@ async function cambiarMiPassword() {
     const newPass = document.getElementById('my_new_pass').value;
     const confirmPass = document.getElementById('my_new_pass_confirm').value;
 
-    // 1. Validar que la contraseña actual sea correcta
-    if (oldPass !== sesionUser.pass) {
-        return alert("❌ La contraseña actual es incorrecta.");
-    }
-
-    // 2. Validar que las nuevas coincidan
+    // 1. Validar que las nuevas coincidan
     if (newPass === "" || newPass !== confirmPass) {
         return alert("⚠️ Las nuevas contraseñas no coinciden o están vacías.");
+    }
+    if (newPass.length < 6) {
+        return alert("⚠️ La nueva contraseña debe tener al menos 6 caracteres.");
     }
 
     if (typeof window.actualizarPasswordCloud === 'function') {
         const okCloud = await window.actualizarPasswordCloud(oldPass, newPass);
         if (!okCloud) return;
+    } else {
+        return alert("⚠️ Servicio de cambio de contraseña no disponible.");
     }
 
     // 3. Actualizar en la base de datos (db.usuarios)
@@ -410,10 +393,10 @@ function textoCobroUsuario(u) {
 function resumenMetodoPagoUsuario(u) {
     const b = u?.billing || null;
     if (!b) return '<span style="color:#777;">Sin datos de pago</span>';
-    const metodo = (b.paymentMethod || 'TRANSFERENCIA').toUpperCase();
-    const tarjeta = b.cardLast4 ? `**** **** **** ${b.cardLast4}` : '**** **** **** ****';
-    const vence = b.cardExp || '--/--';
-    const cliente = b.clientName || 'CLIENTE';
+    const metodo = escapeHtml((b.paymentMethod || 'TRANSFERENCIA').toUpperCase());
+    const tarjeta = b.cardLast4 ? `**** **** **** ${escapeHtml(String(b.cardLast4))}` : '**** **** **** ****';
+    const vence = escapeHtml(b.cardExp || '--/--');
+    const cliente = escapeHtml(b.clientName || 'CLIENTE');
     return `
       <div style="font-size:11px; line-height:1.35; background:#f8f9fa; border:1px dashed #ccd; border-radius:8px; padding:6px 8px;">
         <div style="font-weight:800; color:#2f3542;">${metodo}</div>
@@ -557,15 +540,7 @@ async function crearColaborador() {
     const ownerSesion = String(window.obtenerOwnerSesionActual?.() || sesionUser?.user || '').trim().toLowerCase();
     if (!ownerSesion || esColaboradorSesion) return alert("⛔ Solo un usuario maestro activo puede crear colaboradores.");
     permisos = filtrarPermisosRestringidos(permisos, ownerSesion);
-    const claveAdmin = prompt("🔐 Ingrese su clave de Usuario Maestro para autorizar este colaborador:");
-    if (claveAdmin === null) return;
-    const adminAutorizador = (db.usuarios || []).find(u =>
-        (u.role === 'admin' || u.role === 'super-master') &&
-        u.activo !== false &&
-        String(u.user || '').trim().toLowerCase() === ownerSesion &&
-        u.pass === String(claveAdmin || '')
-    );
-    if (!adminAutorizador) return alert("❌ Clave inválida del Usuario Maestro en sesión.");
+    if (!confirm("¿Confirmar la creación/edición de este colaborador?")) return;
     const ownerAsignado = ownerSesion;
 
     const nuevoColaborador = {
@@ -648,16 +623,17 @@ function actualizarTablaUsuarios() {
             ? 'Acceso total del sistema'
             : (puedeCrearAdminsUsuario
                 ? 'Puede crear administradores y equipo'
-                : `Solo equipo (${(parentOwner || 'raiz').toUpperCase()})`);
+                : `Solo equipo (${escapeHtml((parentOwner || 'raiz').toUpperCase())})`);
         const puedeGestionarObjetivo = puedeSesionGestionarAdminObjetivo(u);
         const estadoTxt = u.activo === false ? 'Suspendido' : 'Activo';
         const estadoColor = u.activo === false ? 'var(--danger)' : 'green';
-        const cobroTxt = textoCobroUsuario(u);
+        const cobroTxt = escapeHtml(textoCobroUsuario(u));
         const pagoHtml = resumenMetodoPagoUsuario(u);
+        const userEsc = escapeHtml(u.user);
         row.innerHTML = `
             <td style="padding:10px 0;">
-                <strong>${u.user.toUpperCase()}</strong>
-                <div style="font-size:11px; color:#2f3542; font-weight:700; margin-top:3px;">${perfilUsuario}</div>
+                <strong>${userEsc.toUpperCase()}</strong>
+                <div style="font-size:11px; color:#2f3542; font-weight:700; margin-top:3px;">${escapeHtml(perfilUsuario)}</div>
                 <div style="font-size:11px; color:#6b7280;">${perfilMeta}</div>
             </td>
             <td><span style="color:${estadoColor}">✅ ${estadoTxt}</span></td>
@@ -665,8 +641,8 @@ function actualizarTablaUsuarios() {
             <td>${pagoHtml}</td>
             <td style="font-size:12px; color: var(--secondary);">${cobroTxt}</td>
             <td>
-                ${(!esSistema && puedeGestionarObjetivo) ? 
-                `<button class="btn-warning" onclick="toggleAccesoUsuarioMaestro('${u.user}')" style="background:#ffa801; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; margin-right:6px;">${u.activo === false ? 'Reactivar' : 'Suspender'}</button><button class="btn-danger" onclick="eliminarUsuario('${u.user}')" style="background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Eliminar</button>` 
+                ${(!esSistema && puedeGestionarObjetivo) ?
+                `<button class="btn-warning" data-user="${userEsc}" onclick="toggleAccesoUsuarioMaestro(this.dataset.user)" style="background:#ffa801; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; margin-right:6px;">${estadoTxt === 'Suspendido' ? 'Reactivar' : 'Suspender'}</button><button class="btn-danger" data-user="${userEsc}" onclick="eliminarUsuario(this.dataset.user)" style="background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Eliminar</button>`
                 : '<em style="color:#999">Sin acción</em>'}
             </td>
         `;
@@ -717,17 +693,19 @@ function actualizarTablaColaboradores() {
         const colorEstado = c.activo === false ? 'var(--danger)' : 'green';
         const txtAcceso = c.activo === false ? 'Habilitar acceso' : 'Quitar acceso';
         const row = document.createElement('tr');
+        const colUserEsc = escapeHtml(c.user);
+        const colOwnerEsc = escapeHtml((c.owner || '---').toUpperCase());
         row.innerHTML = `
-            <td style="padding:10px 0;">${c.user}</td>
-            <td style="font-size:12px; color: var(--secondary);">${(c.owner || '---').toUpperCase()}</td>
+            <td style="padding:10px 0;">${colUserEsc}</td>
+            <td style="font-size:12px; color: var(--secondary);">${colOwnerEsc}</td>
             <td style="color:${colorEstado}; font-weight:bold;">${estado}</td>
-            <td style="font-size:12px; color: var(--secondary);">${permisosTxt}</td>
-            <td style="font-size:12px; color: var(--secondary);">${entradasTxt}</td>
+            <td style="font-size:12px; color: var(--secondary);">${escapeHtml(permisosTxt)}</td>
+            <td style="font-size:12px; color: var(--secondary);">${escapeHtml(entradasTxt)}</td>
             <td>
                 <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                    <button class="btn btn-warning" onclick="editarRenglonesColaborador('${String(c.user || '').replace(/'/g, "\\'")}')" style="min-width:34px; padding:5px 8px;">✏️</button>
-                    <button class="btn-warning" onclick="toggleAccesoColaborador('${c.user}')" style="background:#ffa801; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">${txtAcceso}</button>
-                    <button class="btn-danger" onclick="eliminarColaborador('${c.user}')" style="background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Remover</button>
+                    <button class="btn btn-warning" data-user="${colUserEsc}" onclick="editarRenglonesColaborador(this.dataset.user)" style="min-width:34px; padding:5px 8px;">✏️</button>
+                    <button class="btn-warning" data-user="${colUserEsc}" onclick="toggleAccesoColaborador(this.dataset.user)" style="background:#ffa801; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">${txtAcceso}</button>
+                    <button class="btn-danger" data-user="${colUserEsc}" onclick="eliminarColaborador(this.dataset.user)" style="background:#ff4444; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Remover</button>
                 </div>
             </td>
         `;
@@ -1262,13 +1240,15 @@ function entradaAutomaticaMasiva() {
         return alert("✅ El almacén ya está en su existencia ideal. No hay faltantes.");
     }
 
-    // 2. PEDIR CONTRASEÑA DE AUTORIZACIÓN
-    let passConfirm = prompt("🔒 SEGURIDAD: Ingrese su contraseña para autorizar la ENTRADA MASIVA:");
+    // 2. PEDIR CONFIRMACIÓN DE TEXTO
+    const passConfirm = prompt("⚠️ Escriba CONFIRMAR para autorizar la ENTRADA MASIVA:");
+    if (passConfirm === null) return;
+    if (passConfirm.trim().toUpperCase() !== 'CONFIRMAR') {
+        alert("❌ Confirmación incorrecta. Operación cancelada.");
+        return;
+    }
 
-    // 3. Validar contra la contraseña del usuario en sesión
-    if (passConfirm === null) return; // Si cancela el prompt
-
-    if (passConfirm === sesionUser.pass) {
+    if (true) {
         let confirmacionFinal = confirm(`Contraseña correcta.\nSe actualizarán ${productosFaltantes.length} productos.\n\n¿Desea proceder?`);
 
         if (confirmacionFinal) {
@@ -1596,10 +1576,9 @@ function cambiarPlanCliente(clienteId, planId) {
 
 function limpiarClientesPuntosMasivo() {
     if (!confirm('⚠️ Esta acción eliminará TODOS los clientes y sus puntos. ¿Desea continuar?')) return;
-    const clave = prompt('Ingrese contraseña para confirmar eliminación masiva:');
+    const clave = prompt("⚠️ Escriba ELIMINAR TODO para confirmar la eliminación masiva de clientes:");
     if (clave === null) return;
-    const valida = (sesionUser && sesionUser.pass && clave === sesionUser.pass) || clave === MASTER_PASS;
-    if (!valida) return alert('Contraseña incorrecta.');
+    if (clave.trim().toUpperCase() !== 'ELIMINAR TODO') return alert('Confirmación incorrecta. Operación cancelada.');
     db.clientesFidelizacion = [];
     guardarDatos();
     renderTablaClientesPuntos();
@@ -5065,9 +5044,7 @@ async function iniciarCambioMembresiaDesdeInicio() {
 }
 
 function validarPasswordSeguridad(mensaje) {
-    const pass = prompt(mensaje || "Ingrese su contraseña:");
-    if (pass === null) return false;
-    return pass === (sesionUser && sesionUser.pass ? sesionUser.pass : "") || pass === MASTER_PASS || pass === loginClave;
+    return confirm(mensaje || "¿Confirmar esta acción de seguridad?");
 }
 
 function crearCopiaSeguridadRegistroInicial(motivo, fechaEliminado, eliminadoPor) {
@@ -6844,12 +6821,7 @@ function editarPlatoDesdeDispo(i) {
     const plato = db.platos[i];
     if (!plato) return;
     if (String(plato.owner || '').trim().toLowerCase() !== ownerActivo || plato.modulo !== moduloActual) return;
-    const pass = prompt("🔐 Ingrese su contraseña para editar este plato:");
-    if (pass === null) return;
-    if (pass !== sesionUser.pass) {
-        alert("❌ Contraseña incorrecta.");
-        return;
-    }
+    if (!confirm("¿Desea editar este plato?")) return;
 
     const objetivoModulo = moduloActual;
     if (!esModuloAdministradorActual()) {
@@ -7128,17 +7100,12 @@ function runWithRowRemovalAnimation(rowIds, onDone) {
 
     function eliminarProduccion(index) {
         if (bloquearAccionAdministrativaColaborador()) return;
-        const pass = prompt("Ingrese su contraseña de 5 números para ELIMINAR:");
-        if (pass === sesionUser.pass) {
-            if (confirm("¿Eliminar este registro de producción?")) {
-                runWithRowRemovalAnimation([`prod-tr-${index}`, `detalles-prod-row-${index}`], () => {
-                    db.produccion_stock.splice(index, 1);
-                    guardarDatos();
-                    renderStockProduccion();
-                });
-            }
-        } else {
-            alert("Contraseña incorrecta.");
+        if (confirm("¿Eliminar este registro de producción?")) {
+            runWithRowRemovalAnimation([`prod-tr-${index}`, `detalles-prod-row-${index}`], () => {
+                db.produccion_stock.splice(index, 1);
+                guardarDatos();
+                renderStockProduccion();
+            });
         }
     }
 
@@ -7216,17 +7183,12 @@ function toggleDetallesProduccion(idx) {
 
     function eliminarProduccion(index) {
         if (bloquearAccionAdministrativaColaborador()) return;
-        const pass = prompt("Ingrese su contraseña de 5 números para ELIMINAR:");
-        if (pass === sesionUser.pass) {
-            if (confirm("¿Eliminar este registro de producción?")) {
-                runWithRowRemovalAnimation([`prod-tr-${index}`, `detalles-prod-row-${index}`], () => {
-                    db.produccion_stock.splice(index, 1);
-                    guardarDatos();
-                    renderStockProduccion();
-                });
-            }
-        } else {
-            alert("Contraseña incorrecta.");
+        if (confirm("¿Eliminar este registro de producción?")) {
+            runWithRowRemovalAnimation([`prod-tr-${index}`, `detalles-prod-row-${index}`], () => {
+                db.produccion_stock.splice(index, 1);
+                guardarDatos();
+                renderStockProduccion();
+            });
         }
     }
 
@@ -7470,13 +7432,7 @@ function toggleDetallesProduccion(idx) {
             return;
         }
         if (esAdminModulo && opts.skipAdminPassword !== true) {
-            const passAdmin = prompt("🔐 Ingrese la contraseña del administrador para abrir este módulo:");
-            if (passAdmin === null) return;
-            const accesoAutorizado = passAdmin === (sesionUser && sesionUser.pass ? sesionUser.pass : "") || passAdmin === MASTER_PASS || passAdmin === loginClave;
-            if (!accesoAutorizado) {
-                alert("❌ Contraseña incorrecta.");
-                return;
-            }
+            if (!confirm("🔐 ¿Confirmar acceso al módulo ADMINISTRADOR?")) return;
         }
         moduloVistaActual = mod;
         moduloActual = esAdminModulo ? 'COCINA' : mod;
@@ -8994,12 +8950,9 @@ function venderPlato() {
     // --- FASE 2: AUTORIZACIÓN POR FALTANTE ---
     if (cantidadVenta > disponibilidadReal) {
         let falta = (cantidadVenta - disponibilidadReal).toFixed(2);
-        let autorizar = confirm(`⚠️ STOCK INSUFICIENTE:\nSegún la disponibilidad, solo puede hacer ${disponibilidadReal.toFixed(1)} raciones.\nFaltan ${falta} raciones.\n\n¿Desea autorizar la venta con contraseña?`);
-        
-        if (!autorizar) return;
+        let autorizar = confirm(`⚠️ STOCK INSUFICIENTE:\nSegún la disponibilidad, solo puede hacer ${disponibilidadReal.toFixed(1)} raciones.\nFaltan ${falta} raciones.\n\n¿Desea autorizar la venta de todas formas?`);
 
-        let pass = prompt("SEGURIDAD: Ingrese su contraseña:");
-        if (pass !== sesionUser.pass) return alert("❌ Contraseña incorrecta.");
+        if (!autorizar) return;
         
         if(!db.incidencias) db.incidencias = [];
         db.incidencias.push({
@@ -9309,8 +9262,7 @@ function limpiarFormularioPlato() {
             alert("⛔ Los colaboradores no tienen permisos administrativos.");
             return false;
         }
-        const p = prompt("Contraseña de seguridad:");
-        return (p === sesionUser.pass);
+        return confirm("¿Confirmar esta acción administrativa?");
     }
     function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; }
     function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
@@ -9524,24 +9476,19 @@ function renderAlmacen(busqueda = "") {
 // 5. ELIMINAR CON SEGURIDAD
 function eliminarAlmacen(nom) { 
     if (bloquearAccionAdministrativaColaborador()) return;
-    const pass = prompt("Ingrese contraseña de 5 números para ELIMINAR:");
-    if(pass === sesionUser.pass) { 
-        if(confirm(`¿Eliminar ${nom.toUpperCase()}?`)){ 
-            const ownerKey = String(sesionUser?.user || '').trim().toLowerCase();
-            const moduloKey = String(moduloActual || '').trim();
-            runWithRowRemovalAnimation(buildRowKeyId('almacen', nom), () => {
-                db.almacen = db.almacen.filter(a => !(
-                    normalizarClaveProductoOperacion(a?.nombre) === normalizarClaveProductoOperacion(nom) &&
-                    String(a?.owner || '').trim().toLowerCase() === ownerKey &&
-                    String(a?.modulo || '').trim() === moduloKey
-                )); 
-                limpiarReferenciasInsumoEliminado(nom, { owner: ownerKey, modulo: moduloKey });
-                guardarDatos(); 
-                renderAlmacen(); 
-            });
-        }
-    } else {
-        alert("Contraseña incorrecta.");
+    if(confirm(`¿Eliminar ${escapeHtml(nom.toUpperCase())}?`)){
+        const ownerKey = String(sesionUser?.user || '').trim().toLowerCase();
+        const moduloKey = String(moduloActual || '').trim();
+        runWithRowRemovalAnimation(buildRowKeyId('almacen', nom), () => {
+            db.almacen = db.almacen.filter(a => !(
+                normalizarClaveProductoOperacion(a?.nombre) === normalizarClaveProductoOperacion(nom) &&
+                String(a?.owner || '').trim().toLowerCase() === ownerKey &&
+                String(a?.modulo || '').trim() === moduloKey
+            ));
+            limpiarReferenciasInsumoEliminado(nom, { owner: ownerKey, modulo: moduloKey });
+            guardarDatos();
+            renderAlmacen();
+        });
     }
 }
 
@@ -9840,8 +9787,7 @@ function renderDispoTable() {
             alert("⛔ Los colaboradores no tienen permisos administrativos.");
             return false;
         }
-        const p = prompt("Contraseña de seguridad:");
-        return (p === sesionUser.pass);
+        return confirm("¿Confirmar esta acción administrativa?");
     }
     function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; }
     function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
@@ -9858,24 +9804,14 @@ let backupPrecios = null;
 
 function validarYEjecutarAjuste(valor) {
     if (bloquearAccionAdministrativaColaborador()) return;
-    const pass = prompt("🔐 INGRESE CONTRASEÑA MAESTRA (6 DÍGITOS):");
-    
-    // Validación basada en tu instrucción de seguridad [cite: 2025-12-27]
-    if (pass === sesionUser.pass) {
-        // Crear backup antes de modificar
-        backupPrecios = JSON.parse(JSON.stringify(db.platos));
-        
-        if (valor === 'manual') {
-            ajustarPrecioManual();
-        } else {
-            ajustarPrecioMasivo(valor);
-        }
-        
-        // Mostrar botón de revertir
-        document.getElementById('btn-revertir').style.display = 'block';
+    if (!confirm("🔐 ¿Confirmar ajuste de precios?")) return;
+    backupPrecios = JSON.parse(JSON.stringify(db.platos));
+    if (valor === 'manual') {
+        ajustarPrecioManual();
     } else {
-        alert("❌ Contraseña incorrecta o formato inválido.");
+        ajustarPrecioMasivo(valor);
     }
+    document.getElementById('btn-revertir').style.display = 'block';
 }
 
 function revertirCambioPrecio() {
@@ -10031,10 +9967,10 @@ function realizarCierreTotalConCodigo() {
     if (bloquearAccionAdministrativaColaborador()) return;
     if (!sesionUser || !sesionUser.user) return alert("Debe iniciar sesión para ejecutar el cierre.");
     if (!confirm("¿Confirmar cierre de turno de Caja General ahora?")) return;
-    const pass = prompt("🔐 Ingrese su contraseña para confirmar CIERRE TOTAL:");
+    const pass = prompt("⚠️ Escriba CIERRE para confirmar el cierre total de caja:");
     if (pass === null) return;
-    if (String(pass) !== String(sesionUser.pass || '')) {
-        return alert("❌ Contraseña incorrecta. Cierre cancelado.");
+    if (pass.trim().toUpperCase() !== 'CIERRE') {
+        return alert("❌ Confirmación incorrecta. Cierre cancelado.");
     }
     ejecutarCierreTotalConfirmado();
 }
@@ -10105,11 +10041,10 @@ async function borrarBaseDatosConPassword() {
     }
     if (!confirm("Esta acción eliminará TODOS los datos y usuarios (excepto Jssantana077). ¿Desea continuar?")) return;
 
-    const pass = prompt("🔐 Ingrese su contraseña para confirmar BORRAR BASE DE DATOS:");
+    const pass = prompt("⚠️ Escriba BORRAR BASE para confirmar la eliminación total de la base de datos:");
     if (pass === null) return;
-    const passValida = String(pass) === String(sesionUser.pass || '') || String(pass) === String(MASTER_PASS);
-    if (!passValida) {
-        return alert("❌ Contraseña incorrecta. Operación cancelada.");
+    if (pass.trim().toUpperCase() !== 'BORRAR BASE') {
+        return alert("❌ Confirmación incorrecta. Operación cancelada.");
     }
     if (!confirm("Última confirmación: se eliminará toda la base local y en Firebase excepto Jssantana077.")) return;
 

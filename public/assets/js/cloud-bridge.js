@@ -37,7 +37,7 @@
       }
 
       function getCurrentPassword() {
-        return String(window.loginClave || '').trim();
+        return String(cloudAuth?.password || window.loginClave || '').trim();
       }
 
       function rememberCloudAuth(username, password, meta = {}) {
@@ -212,11 +212,9 @@
         const mapCloud = new Map();
         (Array.isArray(collaborators) ? collaborators : []).forEach((c) => {
           const user = String(c?.username || c?.user || '').trim().toLowerCase();
-          const pass = String(c?.pass || '').trim();
-          if (!user || !pass) return;
+          if (!user) return;
           mapCloud.set(user, {
             user,
-            pass,
             role: 'colaborador',
             owner: ownerKey,
             activo: c?.activo !== false,
@@ -715,7 +713,6 @@
         if (!f) return null;
         return {
           user: target,
-          pass: String(f.pass || ''),
           role: String(f?.role || '').toLowerCase() === 'super-master' ? 'super-master' : 'admin',
           owner: target,
           activo: f.activo !== false,

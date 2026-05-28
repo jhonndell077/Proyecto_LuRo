@@ -524,7 +524,7 @@
         modulo,
         activo: true,
         requerirClave: true,
-        masterPassword: String((sesionUser && sesionUser.pass) || '').trim(),
+        masterPassword: '',
         horaLimiteSalida: 4,
         cicloInicio: '',
         cicloFin: '',
@@ -2281,9 +2281,6 @@
     const passInput = String((document.getElementById('cfg-asistencia-master-pass') && document.getElementById('cfg-asistencia-master-pass').value) || '').trim();
 
     if (passInput) config.masterPassword = passInput;
-    if (!String(config.masterPassword || '').trim()) {
-      config.masterPassword = String((sesionUser && sesionUser.pass) || '').trim();
-    }
 
     if (requerirClave && !String(config.masterPassword || '').trim()) {
       return alert('Define una clave maestra antes de activar autorizacion por clave.');
@@ -2350,7 +2347,7 @@
     const config = getAsistenciaConfig({ createIfMissing: true });
     if (!config) return false;
 
-    const master = String(config.masterPassword || (sesionUser && sesionUser.pass) || '').trim();
+    const master = String(config.masterPassword || '').trim();
     if (!master) return alert('Define primero la clave maestra en configuracion.');
 
     const input = prompt('Ingresa la clave maestra de asistencia para ver las claves:');
