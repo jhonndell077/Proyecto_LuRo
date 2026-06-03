@@ -1,4 +1,4 @@
-const SW_VERSION = 'luro-pwa-cachefix-20260414-2';
+const SW_VERSION = 'luro-pwa-20260603-1';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -12,6 +12,7 @@ const CORE_ASSETS = [
   '/assets/css/styles.css?v=20260413-hotfix-1',
   '/assets/js/app.js?v=20260413-hotfix-1',
   '/assets/js/cloud-bridge.js?v=20260413-hotfix-1',
+  '/assets/js/sw-registration.js?v=20260603-sw-fix-1',
   '/assets/brand/logo-luro.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',

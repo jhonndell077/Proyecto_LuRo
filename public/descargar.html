@@ -33,49 +33,8 @@
       <li>iPhone (Safari): Compartir → Añadir a pantalla de inicio</li>
     </ul>
   </div>
+  <script src="assets/js/sw-registration.js?v=20260603-sw-fix-1"></script>
   <script>
-    (function () {
-      if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260414-cachefix-2';
-      var swReloadRequestedByUser = false;
-
-      function solicitarActualizacionSW(worker) {
-        if (!worker || window.__swUpdatePromptShown) return;
-        window.__swUpdatePromptShown = true;
-        var aceptar = window.confirm('Hay una nueva actualización disponible. ¿Deseas aplicarla ahora?');
-        if (!aceptar) return;
-        swReloadRequestedByUser = true;
-        worker.postMessage({ type: 'SKIP_WAITING' });
-      }
-
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
-          updateViaCache: 'none'
-        }).then(function (registration) {
-          if (registration.waiting) {
-            solicitarActualizacionSW(registration.waiting);
-          }
-          registration.addEventListener('updatefound', function () {
-            var newWorker = registration.installing;
-            if (!newWorker) return;
-            newWorker.addEventListener('statechange', function () {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                solicitarActualizacionSW(newWorker);
-              }
-            });
-          });
-          registration.update().catch(function () {});
-        }).catch(function () {});
-      });
-
-      navigator.serviceWorker.addEventListener('controllerchange', function () {
-        if (!swReloadRequestedByUser) return;
-        if (window.__swRefreshed) return;
-        window.__swRefreshed = true;
-        window.location.reload();
-      });
-    })();
-
     (function () {
       var deferredPrompt = null;
       var btn = document.getElementById('btn-instalar');
@@ -95,9 +54,7 @@
           return;
         }
         deferredPrompt.prompt();
-        try {
-          await deferredPrompt.userChoice;
-        } catch (_) {}
+        try { await deferredPrompt.userChoice; } catch (_) {}
         deferredPrompt = null;
         btn.style.display = 'none';
         status.textContent = 'Si aceptaste, la app ya quedó instalada.';
