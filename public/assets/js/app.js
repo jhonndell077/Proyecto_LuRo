@@ -3542,7 +3542,7 @@ function ajustarPrecioManual() {
     let db = {
         usuarios: [{user: "Jssantana077", pass: "160623", role: "super-master", activo: true, colab: [], parentOwner: '', canCreateAdmins: true}],
         platos: [], almacen: [], entradas: [], ventas: [], decomisos: [], autorizaciones: [], produccion_stock: [], historial_prod: [],
-        distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: [], asistenciaRegistros: [], asistenciaAutorizaciones: [], asistenciaConfig: []
+        distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: []
     };
     let sesionUser = null; let operadorActual = ""; let loginClave = ""; let moduloActual = "COCINA"; let moduloVistaActual = "COCINA"; let moduloAdminObjetivo = "COCINA";
     let registroInicialModoUsuario = ""; let registroInicialPassTemporal = "";
@@ -3660,7 +3660,7 @@ function normalizarDBSyncGlobal() {
         'usuarios', 'platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones',
         'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores',
         'facturasResumen', 'clientesFidelizacion', 'entrenamientos', 'modulosCustom',
-        'comandasActivas', 'comandasHistorial', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'
+        'comandasActivas', 'comandasHistorial'
     ];
     arrKeys.forEach((k) => { if (!Array.isArray(db[k])) db[k] = []; });
 
@@ -3680,7 +3680,7 @@ function baseTieneContenido(dbRef) {
     if (!dbRef || typeof dbRef !== 'object') return false;
     const claves = ['platos', 'almacen', 'ventas', 'clientes', 'distribuidores', 'historial_prod', 'entradas'];
     if (claves.some((k) => Array.isArray(dbRef[k]) && dbRef[k].length > 0)) return true;
-    const extras = ['clientesFidelizacion', 'clientesRNC', 'facturasResumen', 'produccion_stock', 'decomisos', 'autorizaciones', 'catalogoDistribuidores', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones'];
+    const extras = ['clientesFidelizacion', 'clientesRNC', 'facturasResumen', 'produccion_stock', 'decomisos', 'autorizaciones', 'catalogoDistribuidores', 'entrenamientos'];
     return extras.some((k) => Array.isArray(dbRef[k]) && dbRef[k].length > 0);
 }
 
@@ -3692,7 +3692,7 @@ window.baseTieneContenido = baseTieneContenido;
         const saveSource = String(opts?.source || '').trim().toLowerCase();
         asegurarCuentaMaestra();
         normalizarDBSyncGlobal();
-        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
+        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos'];
         tablasModulo.forEach(k => {
             if (!Array.isArray(db[k])) return;
             db[k] = db[k].map(item => (item && item.modulo === 'ADMINISTRADOR') ? { ...item, modulo: 'COCINA' } : item);
@@ -3807,9 +3807,6 @@ function cargarDatos() {
           if(!db.distribuidores) db.distribuidores = [];
           if(!db.catalogoDistribuidores) db.catalogoDistribuidores = [];
           if(!Array.isArray(db.modulosCustom)) db.modulosCustom = [];
-          if(!Array.isArray(db.asistenciaRegistros)) db.asistenciaRegistros = [];
-          if(!Array.isArray(db.asistenciaAutorizaciones)) db.asistenciaAutorizaciones = [];
-          if(!Array.isArray(db.asistenciaConfig)) db.asistenciaConfig = [];
           if(!db.mesasEstado) db.mesasEstado = {};
 
           // Migración de estructura vieja (db.colaboradores) a usuarios persistentes.
@@ -4084,7 +4081,6 @@ function etiquetaPermisoRenglon(p) {
         disponibilidad: 'Disponibilidad',
         'disponibilidad-lite': 'Disponibilidad (solo nombre y existencias)',
         salida: 'Registro de Salida (Caja)',
-        asistencia: 'Asistencia',
         comandas: 'Comandas',
         'clientes-puntos': 'Clientes y Puntos',
         entrenamientos: 'Entrenamientos',
@@ -4229,7 +4225,6 @@ function obtenerPermisosColaboradorSesion() {
         'disponibilidad',
         'disponibilidad-lite',
         'salida',
-        'asistencia',
         'comandas',
         'clientes-puntos',
         'entrenamientos',
@@ -4254,7 +4249,6 @@ function obtenerPaginaInicialSesion() {
     if (!esColaboradorSesion) return 'home';
     const orden = [
         'salida',
-        'asistencia',
         'comandas',
         'disponibilidad',
         'inventario',
@@ -5570,7 +5564,6 @@ window.refrescarUITrasSyncCloud = function () {
                     if (pageId === 'ventas' && typeof renderHistorialVentas === 'function') return renderHistorialVentas();
                     if (pageId === 'inventario' && typeof renderAlmacen === 'function') return renderAlmacen();
                     if (pageId === 'disponibilidad' && typeof renderDispoTable === 'function') return renderDispoTable();
-                    if (pageId === 'asistencia' && typeof renderAsistenciaModulo === 'function') return renderAsistenciaModulo();
                     if (pageId === 'historial-decomiso' && typeof renderHistorialDecomiso === 'function') return renderHistorialDecomiso();
                     if (pageId === 'decomiso' && typeof actualizarListaDecomiso === 'function') return actualizarListaDecomiso();
                     if (pageId === 'entradas-almacen' && typeof renderEntradas === 'function') return renderEntradas();
@@ -7395,7 +7388,7 @@ function toggleDetallesProduccion(idx) {
             !(m.owner === sesionUser.user && String(m.nombre || '').trim().toUpperCase() === nombre)
         );
 
-        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
+        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos'];
         tablasModulo.forEach(k => {
             if (!Array.isArray(db[k])) return;
             db[k] = db[k].filter(item => !(item && item.owner === sesionUser.user && String(item.modulo || '').trim().toUpperCase() === nombre));
@@ -7606,7 +7599,6 @@ function toggleDetallesProduccion(idx) {
             actualizarTablaUsuarios();
             actualizarTablaColaboradores();
             actualizarEstadoPagoNuevoUsuario();
-            if (typeof renderConfigAsistencia === 'function') renderConfigAsistencia();
             if (esMasterGlobal && typeof cargarBovedaMaster === 'function') cargarBovedaMaster();
             if (esMasterGlobal && typeof window.cargarEstadoDeployGithubUI === 'function') {
                 window.cargarEstadoDeployGithubUI({ silent: true });
@@ -7688,7 +7680,6 @@ function toggleDetallesProduccion(idx) {
         if(pageId === 'ventas') renderHistorialVentas();
         if(pageId === 'inventario') renderAlmacen();
         if(pageId === 'disponibilidad') renderDispoTable();
-        if(pageId === 'asistencia' && typeof renderAsistenciaModulo === 'function') renderAsistenciaModulo();
         if(pageId === 'historial-decomiso') renderHistorialDecomiso();
         if(pageId === 'decomiso') actualizarListaDecomiso();
         if(pageId === 'entradas-almacen') renderEntradas();
@@ -9987,9 +9978,6 @@ function crearBaseLimpiaSoloMaster() {
         qrClienteLinks: {},
         entrenamientos: [],
         modulosCustom: [],
-        asistenciaRegistros: [],
-        asistenciaAutorizaciones: [],
-        asistenciaConfig: [],
         cierresTotales: [],
         comandasActivas: [],
         comandasHistorial: [],
@@ -11712,12 +11700,6 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       description: 'Gestiona mesas, ventas, clientes y el cierre operativo de una salida o factura.'
     },
     {
-      page: 'asistencia',
-      label: 'Asistencia',
-      aliases: ['asistencia', 'control de asistencia', 'entrada y salida de personal', 'abrir asistencia', 'ir a asistencia'],
-      description: 'Registra entrada y salida del personal, controla autorizaciones por clave y consolida reportes diarios.'
-    },
-    {
       page: 'procedimientos',
       label: 'Procedimientos',
       aliases: ['procedimientos', 'manuales', 'protocolos', 'proceso operativo', 'abrir procedimientos', 'ir a procedimientos', 'ver protocolos'],
@@ -11866,7 +11848,6 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     'produccion-interna': 'Producción Interna sirve para fabricar semielaborados desde insumos del almacén y controlar su costo y existencia.',
     disponibilidad: 'Disponibilidad te permite controlar los platos activos para venta y ajustar su existencia disponible.',
     salida: 'Registrar Salida gestiona mesas, clientes, facturación y el cierre operativo de una venta.',
-    asistencia: 'Asistencia registra entradas y salidas del personal con clave de seguridad y reporte consolidado por colaborador.',
     procedimientos: 'Procedimientos muestra protocolos y guías de trabajo para consulta rápida del equipo.',
     'clientes-puntos': 'Clientes y Puntos administra la fidelización, el historial del cliente y sus puntos acumulados.',
     'historial-produccion': 'Historial Producción te deja consultar operaciones ya registradas, con fechas, cantidades y costos.',
@@ -11926,12 +11907,6 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       title: '📤 Registrar Salida',
       description: 'Accesos rápidos al módulo de ventas operativas.',
       commands: ['abrir registrar salida', 'registrar salida de [cantidad] platos mesa [número]', 'cobrar mesa [número]', 'dividir cuenta mesa [número]']
-    },
-    {
-      page: 'asistencia',
-      title: '🕒 Asistencia',
-      description: 'Comandos para registrar entrada/salida y revisar reportes de asistencia.',
-      commands: ['abrir asistencia', 'registrar entrada de [colaborador]', 'registrar salida de [colaborador]', 'ver reporte de asistencia']
     },
     {
       page: 'procedimientos',
@@ -12043,7 +12018,6 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     'produccion-interna': { label: '🏭 Producción', command: 'Ir a producción interna' },
     ventas: { label: '📊 Ventas', command: 'Ventas de hoy' },
     disponibilidad: { label: '👁️ Disponibilidad', command: 'Abrir disponibilidad' },
-    asistencia: { label: '🕒 Asistencia', command: 'Abrir asistencia' },
     'historial-decomiso': { label: '📉 Pérdidas', command: '¿Cuál es mi total de pérdidas?' }
   };
   const ASSISTANT_IDLE_CLEAR_MS = 5 * 60 * 1000;
