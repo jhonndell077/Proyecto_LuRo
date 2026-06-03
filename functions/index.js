@@ -129,6 +129,10 @@ function safeText(v, max = 160) {
 
 function ownerDbHasContent(payload = {}) {
   if (!payload || typeof payload !== "object") return false;
+  // usuarios con al menos el admin del tenant cuentan como contenido válido.
+  // Esto permite que nuevos tenants sincronicen sin tener datos operativos aún.
+  if (Array.isArray(payload.usuarios) && payload.usuarios.length > 0) return true;
+  if (payload.tenant && typeof payload.tenant === "object" && payload.tenant.negocioId) return true;
   const claves = ["platos", "almacen", "ventas", "clientes", "distribuidores", "historial_prod", "entradas"];
   if (claves.some((k) => Array.isArray(payload[k]) && payload[k].length > 0)) return true;
   const extras = ["clientesFidelizacion", "clientesRNC", "facturasResumen", "produccion_stock", "decomisos", "autorizaciones", "catalogoDistribuidores", "entrenamientos"];
@@ -152,9 +156,15 @@ function isPasswordMatch(stored, incoming) {
 function isMasterPasswordAccepted(password, masterEntry = null) {
   const provided = String(password || "");
   if (!provided) return false;
+  // Priority 1: use stored bcrypt hash from Firestore doc (preferred path).
   const ownerPass = String(masterEntry?.data?.pass || "");
   if (ownerPass) return isPasswordMatch(ownerPass, provided);
-  return Boolean(MASTER_PASS) && provided === MASTER_PASS;
+  // Priority 2: fall back to env var — plain-text compare using timing-safe method.
+  if (!MASTER_PASS) return false;
+  const envBuf = Buffer.from(MASTER_PASS);
+  const inBuf = Buffer.from(provided);
+  if (envBuf.length !== inBuf.length) return false;
+  return require("crypto").timingSafeEqual(envBuf, inBuf);
 }
 
 function validatePasswordStrength(password) {
@@ -415,7 +425,7 @@ function createTenantDbSeed(owner, negocioId, negocioNombre) {
 }
 
 function mustAuth(request) {
-  if (!request.auth) throw new HttpsError("unauthenticated", "Debe iniciar sesiÃ³n.");
+  if (!request.auth) throw new HttpsError("unauthenticated", "Debe iniciar sesión.");
   return request.auth;
 }
 
@@ -431,12 +441,13 @@ async function getOwnerDoc(owner) {
     const masterDoc = await db.collection("owners").doc(MASTER_USER).get();
     if (masterDoc.exists) {
       const masterData = masterDoc.data() || {};
+      // Pass is resolved via isMasterPasswordAccepted — do NOT embed MASTER_PASS env var here.
+      // If the doc has no stored hash, isMasterPasswordAccepted falls back to env var comparison internally.
       return {
         id: MASTER_USER,
         data: {
           ...masterData,
           username: MASTER_USER,
-          pass: MASTER_PASS,
           activo: masterData.activo !== false,
           estado: String(masterData.estado || "activo"),
           empresa: String(masterData.empresa || "MASTER"),
@@ -444,11 +455,11 @@ async function getOwnerDoc(owner) {
         }
       };
     }
+    // No Firestore doc: return minimal skeleton — MASTER_PASS stays in env var only.
     return {
       id: MASTER_USER,
       data: {
         username: MASTER_USER,
-        pass: MASTER_PASS,
         activo: true,
         estado: "activo",
         empresa: "MASTER",
@@ -1059,7 +1070,6 @@ async function scrubCollaboratorReferences(owner, username) {
   await ownerDataRef.set({
     owner: ownerKey,
     db: tenantDb,
-    "base de datos": tenantDb,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAtClient: Date.now(),
     syncKey: `purge-colab-${Date.now()}`,
@@ -1112,7 +1122,7 @@ async function resolveSession(request, allowCredentialFallback = false) {
       via: "auth"
     };
   }
-  if (!allowCredentialFallback) throw new HttpsError("unauthenticated", "Debe iniciar sesiÃ³n.");
+  if (!allowCredentialFallback) throw new HttpsError("unauthenticated", "Debe iniciar sesión.");
 
   const username = norm(request.data?.authUsername);
   const password = String(request.data?.authPassword || "");
@@ -1165,7 +1175,7 @@ async function resolveSession(request, allowCredentialFallback = false) {
     const colDoc = await db.collection("autorizaciones").doc(docId).get();
     const colData = colDoc.data() || {};
     if (!colDoc.exists || !isPasswordMatch(colData.pass, password)) {
-      throw new HttpsError("permission-denied", "Credenciales invÃ¡lidas.");
+      throw new HttpsError("permission-denied", "Credenciales inválidas.");
     }
     if (colData.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
     await assertOwnerActive(ownerHint);
@@ -1188,7 +1198,7 @@ async function resolveSession(request, allowCredentialFallback = false) {
     const data = d.data() || {};
     if (isPasswordMatch(data.pass, password)) colab = data;
   });
-  if (!colab) throw new HttpsError("permission-denied", "Credenciales invÃ¡lidas.");
+  if (!colab) throw new HttpsError("permission-denied", "Credenciales inválidas.");
   if (colab.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
   const owner = norm(colab.owner);
   await assertOwnerActive(owner);
@@ -1523,12 +1533,19 @@ exports.registerBusiness = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
     owner: ownerUsername,
     negocioId,
     db: seed,
-    "base de datos": seed,
     updatedAt: now,
     updatedAtClient: Date.now(),
     syncKey: `register-${Date.now()}`,
     updatedBy: ownerUsername,
     updatedFrom: "register-business"
+  }, { merge: true });
+
+  // One-time PayPal confirmation token — avoids storing password on client side.
+  const confirmToken = require("crypto").randomBytes(32).toString("hex");
+  const confirmTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes
+  await db.collection("owners").doc(ownerUsername).set({
+    paypalConfirmToken: confirmToken,
+    paypalConfirmTokenExpiry: confirmTokenExpiry
   }, { merge: true });
 
   const paymentUrl = billingState.subscriptionsReady
@@ -1549,7 +1566,8 @@ exports.registerBusiness = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
     paymentMode: billingState.paymentMode,
     subscriptionsReady: billingState.subscriptionsReady,
     missingConfig: Array.isArray(billingState.missingConfig) ? billingState.missingConfig : [],
-    trialDays: 0
+    trialDays: 0,
+    confirmToken
   };
 });
 
@@ -1586,6 +1604,8 @@ exports.confirmPaypalSubscriptionApproval = onCall(PAYPAL_RUNTIME_OPTS, async (r
   const negocioId = safeText(request.data?.negocioId, 120);
   const plan = norm(request.data?.plan) || "basico";
   const subscriptionId = safeText(request.data?.subscriptionId, 120);
+  // Accept either a one-time confirmation token (preferred) or legacy password.
+  const confirmToken = safeText(request.data?.confirmToken, 80);
   const password = String(request.data?.password || "");
   if (!owner || !subscriptionId) {
     throw new HttpsError("invalid-argument", "Datos incompletos para confirmar suscripción.");
@@ -1593,7 +1613,28 @@ exports.confirmPaypalSubscriptionApproval = onCall(PAYPAL_RUNTIME_OPTS, async (r
 
   const ownerEntry = await getOwnerDoc(owner);
   if (!ownerEntry) throw new HttpsError("not-found", "Cuenta no encontrada.");
-  if (!isPasswordMatch(ownerEntry.data?.pass, password)) {
+
+  const ownerData = ownerEntry.data || {};
+  let authorized = false;
+
+  if (confirmToken) {
+    // Token-based auth: one-time token generated during registration.
+    const storedToken = String(ownerData.paypalConfirmToken || "");
+    const tokenExpiry = Number(ownerData.paypalConfirmTokenExpiry || 0);
+    if (storedToken && confirmToken === storedToken && Date.now() <= tokenExpiry) {
+      authorized = true;
+      // Consume token immediately (one-time use).
+      await db.collection("owners").doc(ownerEntry.id).set({
+        paypalConfirmToken: admin.firestore.FieldValue.delete(),
+        paypalConfirmTokenExpiry: admin.firestore.FieldValue.delete()
+      }, { merge: true });
+    }
+  } else if (password) {
+    // Legacy password-based auth (still supported for backward compatibility).
+    authorized = isPasswordMatch(ownerData.pass, password);
+  }
+
+  if (!authorized) {
     throw new HttpsError("permission-denied", "No autorizado para activar esta cuenta.");
   }
 
@@ -1761,10 +1802,6 @@ exports.createMembershipCheckout = onCall(PAYPAL_RUNTIME_OPTS, async (request) =
 });
 
 exports.paypalWebhook = onRequest(PAYPAL_RUNTIME_OPTS, async (req, res) => {
-  if (req.method === "GET") {
-    res.status(200).json({ ok: true, endpoint: "paypalWebhook", configured: !!getPaypalWebhookId() });
-    return;
-  }
   if (req.method !== "POST") {
     res.status(405).json({ ok: false, message: "Method not allowed" });
     return;
@@ -1914,10 +1951,6 @@ exports.paypalWebhook = onRequest(PAYPAL_RUNTIME_OPTS, async (req, res) => {
   }
 });
 
-exports.stripeWebhook = onRequest(async (_req, res) => {
-  res.status(410).json({ ok: false, message: "Stripe deshabilitado. Este sistema usa únicamente PayPal." });
-});
-
 exports.createMasterUser = onCall(async (request) => {
   const s = await resolveSession(request, true);
   const creator = norm(s.username || s.owner);
@@ -2040,7 +2073,7 @@ exports.deleteMasterAccount = onCall(async (request) => {
 exports.createTeamMember = onCall(async (request) => {
   const s = await resolveSession(request, true);
   const owner = norm(s.owner);
-  if (!owner) throw new HttpsError("permission-denied", "SesiÃ³n sin owner.");
+  if (!owner) throw new HttpsError("permission-denied", "Sesión sin owner.");
   if (s.role !== "admin" && s.role !== "super-master") throw new HttpsError("permission-denied", "Solo maestro.");
   await assertOwnerActive(owner);
 
@@ -2127,7 +2160,6 @@ exports.listMasterUsers = onCall(async (request) => {
     if (!hasMaster) {
       pushOwnerSafe(MASTER_USER, {
         username: MASTER_USER,
-        pass: MASTER_PASS,
         empresa: "MASTER",
         activo: true,
         plan: "empresarial",
@@ -2254,7 +2286,7 @@ exports.getMasterVaultOverview = onCall(async (request) => {
 exports.setTeamMemberStatus = onCall(async (request) => {
   const s = await resolveSession(request, true);
   const owner = norm(s.owner);
-  if (!owner) throw new HttpsError("permission-denied", "SesiÃ³n sin owner.");
+  if (!owner) throw new HttpsError("permission-denied", "Sesión sin owner.");
   if (s.role !== "admin" && s.role !== "super-master") throw new HttpsError("permission-denied", "Solo maestro.");
   await assertOwnerActive(owner);
 
@@ -2275,7 +2307,7 @@ exports.setTeamMemberStatus = onCall(async (request) => {
 exports.deleteTeamMember = onCall(async (request) => {
   const s = await resolveSession(request, true);
   const owner = norm(s.owner);
-  if (!owner) throw new HttpsError("permission-denied", "SesiÃ³n sin owner.");
+  if (!owner) throw new HttpsError("permission-denied", "Sesión sin owner.");
   if (s.role !== "admin" && s.role !== "super-master") throw new HttpsError("permission-denied", "Solo maestro.");
   await assertOwnerActive(owner);
 
@@ -2654,7 +2686,6 @@ exports.deleteMasterControlDetail = onCall(async (request) => {
     await ref.set({
       owner,
       db: payload,
-      "base de datos": payload,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAtClient: Date.now(),
       syncKey: `delete-fid-${Date.now()}`,
@@ -2749,7 +2780,6 @@ exports.upsertOwnerData = onCall(async (request) => {
     tx.set(docRef, {
       owner,
       db: payload,
-      "base de datos": payload,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAtClient,
       syncKey,

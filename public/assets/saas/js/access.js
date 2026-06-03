@@ -55,22 +55,21 @@
 
   function readPendingAuth() {
     try {
-      const raw = sessionStorage.getItem("LURO_SAAS_PENDING_LOGIN");
+      const raw = sessionStorage.getItem("LURO_SAAS_PENDING_REG");
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       const user = String(parsed?.user || "").trim().toLowerCase();
-      const pass = String(parsed?.pass || "");
+      const confirmToken = String(parsed?.confirmToken || "");
       const at = Number(parsed?.at || 0);
-      // Expire after 5 minutes
-      if (!user || !pass || (Date.now() - at) > 5 * 60 * 1000) {
-        sessionStorage.removeItem("LURO_SAAS_PENDING_LOGIN");
+      if (!user || !confirmToken || (Date.now() - at) > 15 * 60 * 1000) {
+        sessionStorage.removeItem("LURO_SAAS_PENDING_REG");
         return null;
       }
       // Clear immediately after reading — one-time use
-      sessionStorage.removeItem("LURO_SAAS_PENDING_LOGIN");
-      return { user, pass };
+      sessionStorage.removeItem("LURO_SAAS_PENDING_REG");
+      return { user, confirmToken };
     } catch (_e) {
-      sessionStorage.removeItem("LURO_SAAS_PENDING_LOGIN");
+      sessionStorage.removeItem("LURO_SAAS_PENDING_REG");
       return null;
     }
   }
@@ -116,7 +115,7 @@
     const negocioId = String(payload?.negocioId || "").trim();
     const plan = String(payload?.plan || "basico").trim().toLowerCase();
     const pending = readPendingAuth();
-    const ownerPassword = pending && pending.user === owner ? pending.pass : "";
+    const ownerConfirmToken = pending && pending.user === owner ? pending.confirmToken : "";
 
     showPayPalSlot();
     await window.paypal.Buttons({
@@ -134,7 +133,7 @@
           owner,
           negocioId,
           plan,
-          password: ownerPassword,
+          confirmToken: ownerConfirmToken,
           subscriptionId: subscriptionID
         });
         statusEl().textContent = "Suscripción autorizada. Activando acceso...";
@@ -159,8 +158,6 @@
     try {
       const rs = await call("authenticateSession", { username: user, password: pass });
       if (!rs?.ok) throw new Error("Credenciales inválidas.");
-      // Store pending auth briefly only if PayPal subscription confirmation is needed
-      sessionStorage.setItem("LURO_SAAS_PENDING_LOGIN", JSON.stringify({ user, pass, at: Date.now() }));
       statusEl().textContent = "Acceso correcto. Redirigiendo...";
       window.location.href = "app.html";
     } catch (e) {
@@ -189,8 +186,9 @@
     try {
       const rs = await call("registerBusiness", payload);
       const user = String(rs?.username || payload.email).toLowerCase();
-      const pass = payload.password;
-      sessionStorage.setItem("LURO_SAAS_PENDING_LOGIN", JSON.stringify({ user, pass, at: Date.now() }));
+      if (rs?.confirmToken) {
+        sessionStorage.setItem("LURO_SAAS_PENDING_REG", JSON.stringify({ user, confirmToken: rs.confirmToken, at: Date.now() }));
+      }
 
       payBox()?.classList.remove("hidden");
       payLink().classList.add("hidden");

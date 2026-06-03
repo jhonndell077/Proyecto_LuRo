@@ -59,15 +59,18 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 20
+        node-version: 22
 
     - name: Prepare Firebase credentials
       shell: bash
       run: |
-        cat <<'JSON' > "$RUNNER_TEMP/firebase-service-account.json"
+        SA_FILE="$RUNNER_TEMP/firebase-service-account.json"
+        cat <<'JSON' > "$SA_FILE"
         ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         JSON
-        echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+        chmod 600 "$SA_FILE"
+        echo "GOOGLE_APPLICATION_CREDENTIALS=$SA_FILE" >> "$GITHUB_ENV"
+        echo "SA_FILE_PATH=$SA_FILE" >> "$GITHUB_ENV"
 
     - name: Install Firebase CLI
       run: npm install -g firebase-tools
@@ -96,3 +99,12 @@ jobs:
             firebase deploy --project "$FIREBASE_PROJECT_ID" --only "hosting" --non-interactive
             ;;
         esac
+
+    - name: Cleanup credentials
+      if: always()
+      shell: bash
+      run: |
+        if [ -n "$SA_FILE_PATH" ] && [ -f "$SA_FILE_PATH" ]; then
+          rm -f "$SA_FILE_PATH"
+          echo "Service account credentials cleaned up."
+        fi

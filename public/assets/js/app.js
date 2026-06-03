@@ -225,22 +225,7 @@ async function cambiarMiPassword() {
         return alert("⚠️ Servicio de cambio de contraseña no disponible.");
     }
 
-    // 3. Actualizar en la base de datos (db.usuarios)
-    const userIndex = db.usuarios.findIndex(u => u.user === sesionUser.user);
-    if (userIndex !== -1) {
-        db.usuarios[userIndex].pass = newPass;
-    } else {
-        db.usuarios.push({
-            user: sesionUser.user,
-            pass: newPass,
-            role: String(sesionUser.role || 'admin'),
-            owner: String(sesionUser.owner || sesionUser.user || '').toLowerCase(),
-            parentOwner: normalizarOwnerPadreAdmin(sesionUser.parentOwner || sesionUser.delegadoPor),
-            canCreateAdmins: puedeUsuarioCrearAdmins(sesionUser),
-            activo: true
-        });
-    }
-    sesionUser.pass = newPass; // Actualizar sesión actual
+    sesionUser.pass = newPass;
     if (typeof window.loginClave !== 'undefined') window.loginClave = newPass;
     guardarDatos();
     alert("✅ Contraseña actualizada correctamente.");
@@ -868,15 +853,16 @@ function renderRowsBovedaMaster(body, owners = []) {
         const marca = withColabs ? '<span class="master-owner-indicator"></span>' : '';
         const onlineBadge = isOnline ? '<span class="master-owner-online-badge">EN LINEA</span>' : '';
         const noDelete = owner === MASTER_USER;
+        const ownerEsc = escapeHtml(owner);
         return `<tr class="${rowClass}">
-          <td>${marca}<strong>${owner.toUpperCase()}</strong>${onlineBadge}</td>
-          <td>${String(o?.empresa || '---')}</td>
+          <td>${marca}<strong>${ownerEsc.toUpperCase()}</strong>${onlineBadge}</td>
+          <td>${escapeHtml(String(o?.empresa || '---'))}</td>
           <td>${formatoTiempoSistema(o?.createdAt)}</td>
           <td style="color:${estadoColor}; font-weight:700;">${estadoTxt}</td>
           <td>${colabsTxt}</td>
           <td style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button class="btn btn-blue" onclick="verColaboradoresBoveda('${owner}')">Ver colaboradores</button>
-            ${noDelete ? '<em style="color:#777;">Sistema</em>' : `<button class="btn btn-danger" onclick="eliminarMaestroDesdeBoveda('${owner}')">Eliminar total</button>`}
+            <button class="btn btn-blue" data-owner="${ownerEsc}" onclick="verColaboradoresBoveda(this.dataset.owner)">Ver colaboradores</button>
+            ${noDelete ? '<em style="color:#777;">Sistema</em>' : `<button class="btn btn-danger" data-owner="${ownerEsc}" onclick="eliminarMaestroDesdeBoveda(this.dataset.owner)">Eliminar total</button>`}
           </td>
         </tr>`;
     }).join('');
@@ -968,10 +954,10 @@ async function verColaboradoresBoveda(owner, opts = {}) {
             const txt = activo ? 'Activo' : 'Suspendido';
             const createdTxt = c?.createdAt ? new Date(c.createdAt).toLocaleDateString() : '---';
             return `<tr>
-              <td>${user}</td>
+              <td>${escapeHtml(user)}</td>
               <td style="color:${color}; font-weight:700;">${txt}</td>
               <td>${createdTxt}</td>
-              <td><button class="btn btn-danger" onclick="eliminarColaboradorDesdeBoveda('${ownerKey}','${user}')">Eliminar total</button></td>
+              <td><button class="btn btn-danger" data-owner="${escapeHtml(ownerKey)}" data-user="${escapeHtml(user)}" onclick="eliminarColaboradorDesdeBoveda(this.dataset.owner,this.dataset.user)">Eliminar total</button></td>
             </tr>`;
         }).join('');
     } catch (_e) {
@@ -4870,7 +4856,6 @@ async function guardarPerfilDesdeInicio() {
                     return;
                 }
             }
-            if (cuenta) cuenta.pass = newPass;
             if (sesionUser) sesionUser.pass = newPass;
             loginClave = newPass;
             window.loginClave = newPass;
