@@ -12086,7 +12086,10 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     lastUnit: '',
     lastCost: null,
     lastIdeal: null,
-    lastQueryTopic: ''
+    lastQueryTopic: '',
+    lastDate: null,
+    lastDateLabel: '',
+    lastOperation: ''
   };
   const assistantConversationContext = { ...ASSISTANT_CONTEXT_DEFAULTS };
   function assistantRefs() {
@@ -12450,7 +12453,51 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     [/\bactualiza\b/g, 'edita'],
     [/\bactualizar\b/g, 'editar'],
     [/\bproveedor\b/g, 'distribuidor'],
-    [/\bproveedores\b/g, 'distribuidores']
+    [/\bproveedores\b/g, 'distribuidores'],
+    // Sinónimos de ENTRADA (compra/recepción de inventario) → canónica: recibi
+    [/\bcompré\b/g, 'recibi'],
+    [/\bcompre\b/g, 'recibi'],
+    [/\brecibí\b/g, 'recibi'],
+    [/\bllegó\b/g, 'recibi'],
+    [/\bllego\b/g, 'recibi'],
+    [/\bllegaron\b/g, 'recibi'],
+    [/\bentró\b/g, 'recibi'],
+    [/\bentro\b/g, 'recibi'],
+    [/\bengresé\b/g, 'recibi'],
+    // Sinónimos de SALIDA (retiro/consumo de inventario) → canónica: retire
+    [/\bsaqué\b/g, 'retire'],
+    [/\bsaque\b/g, 'retire'],
+    [/\bconsumí\b/g, 'retire'],
+    [/\bconsumi\b/g, 'retire'],
+    [/\butilicé\b/g, 'retire'],
+    [/\butilice\b/g, 'retire'],
+    [/\bgasté\b/g, 'retire'],
+    [/\bgaste\b/g, 'retire'],
+    [/\bretiré\b/g, 'retire'],
+    [/\bdespaché\b/g, 'retire'],
+    [/\bdespache\b/g, 'retire'],
+    [/\busé\b/g, 'retire'],
+    // Sinónimos de PRODUCCIÓN (elaboración) → canónica: produje
+    [/\bpreparé\b/g, 'produje'],
+    [/\bprepare\b/g, 'produje'],
+    [/\bcociné\b/g, 'produje'],
+    [/\bcocine\b/g, 'produje'],
+    [/\belaboré\b/g, 'produje'],
+    [/\belabore\b/g, 'produje'],
+    [/\bfabrique\b/g, 'produje'],
+    [/\bfabriqué\b/g, 'produje'],
+    [/\bhice\b/g, 'produje'],
+    // Sinónimos de DECOMISO (pérdidas/daños) → canónica: decomisa (ya reconocida por el detector existente)
+    [/\bboté\b/g, 'decomisa'],
+    [/\bbote\b/g, 'decomisa'],
+    [/\bdeseché\b/g, 'decomisa'],
+    [/\bdeseche\b/g, 'decomisa'],
+    [/\bdañé\b/g, 'decomisa'],
+    [/\bdane\b/g, 'decomisa'],
+    [/\bse dañó\b/g, 'decomisa'],
+    [/\bse dano\b/g, 'decomisa'],
+    [/\bse venció\b/g, 'decomisa'],
+    [/\bse vencio\b/g, 'decomisa']
   ];
 
   function normalizarSinonimosAsistente(texto) {
@@ -12658,6 +12705,103 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     return dp[left.length][right.length];
   }
 
+  // ─── MOTOR TEMPORAL INTELIGENTE ─────────────────────────────────────────────
+
+  function formatearFechaISOAsistente(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function interpretarFechaRelativaAsistente(textoNormalizado) {
+    const t = String(textoNormalizado || '');
+    const hoy = new Date();
+
+    if (/\bhoy\b/.test(t)) {
+      return { date: formatearFechaISOAsistente(hoy), label: 'hoy' };
+    }
+
+    if (/\banteayer\b|\bantes de ayer\b/.test(t)) {
+      const d = new Date(hoy); d.setDate(d.getDate() - 2);
+      return { date: formatearFechaISOAsistente(d), label: 'anteayer' };
+    }
+
+    if (/\bayer\b/.test(t)) {
+      const d = new Date(hoy); d.setDate(d.getDate() - 1);
+      return { date: formatearFechaISOAsistente(d), label: 'ayer' };
+    }
+
+    if (/\banoche\b/.test(t)) {
+      const d = new Date(hoy); d.setDate(d.getDate() - 1);
+      return { date: formatearFechaISOAsistente(d), label: 'anoche' };
+    }
+
+    if (/\besta manana\b|\besta tarde\b|\besta noche\b/.test(t)) {
+      return { date: formatearFechaISOAsistente(hoy), label: 'hoy' };
+    }
+
+    const diasMatch = t.match(/\bhace\s+(\d+)\s+dias?\b/);
+    if (diasMatch) {
+      const n = Number(diasMatch[1]);
+      const d = new Date(hoy); d.setDate(d.getDate() - n);
+      return { date: formatearFechaISOAsistente(d), label: `hace ${n} día(s)` };
+    }
+
+    const semanasMatch = t.match(/\bhace\s+(\d+)\s+semanas?\b/);
+    if (semanasMatch) {
+      const n = Number(semanasMatch[1]);
+      const d = new Date(hoy); d.setDate(d.getDate() - n * 7);
+      return { date: formatearFechaISOAsistente(d), label: `hace ${n} semana(s)` };
+    }
+
+    const mesesMatch = t.match(/\bhace\s+(\d+)\s+meses?\b/);
+    if (mesesMatch) {
+      const n = Number(mesesMatch[1]);
+      const d = new Date(hoy); d.setMonth(d.getMonth() - n);
+      return { date: formatearFechaISOAsistente(d), label: `hace ${n} mes(es)` };
+    }
+
+    const anosMatch = t.match(/\bhace\s+(\d+)\s+anos?\b/);
+    if (anosMatch) {
+      const n = Number(anosMatch[1]);
+      const d = new Date(hoy); d.setFullYear(d.getFullYear() - n);
+      return { date: formatearFechaISOAsistente(d), label: `hace ${n} año(s)` };
+    }
+
+    const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    for (let i = 0; i < diasSemana.length; i++) {
+      const patron = new RegExp(`\\bel\\s+${diasSemana[i]}\\b`);
+      if (patron.test(t)) {
+        const d = new Date(hoy);
+        const diff = ((d.getDay() - i) + 7) % 7 || 7;
+        d.setDate(d.getDate() - diff);
+        return { date: formatearFechaISOAsistente(d), label: `el ${diasSemana[i]}` };
+      }
+    }
+
+    if (/\bla semana pasada\b/.test(t)) {
+      const d = new Date(hoy);
+      const diaSemana = d.getDay() || 7;
+      d.setDate(d.getDate() - diaSemana - 6);
+      return { date: formatearFechaISOAsistente(d), label: 'la semana pasada' };
+    }
+
+    if (/\bel mes pasado\b/.test(t)) {
+      const d = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+      return { date: formatearFechaISOAsistente(d), label: 'el mes pasado' };
+    }
+
+    if (/\bel ano pasado\b/.test(t)) {
+      const d = new Date(hoy.getFullYear() - 1, 0, 1);
+      return { date: formatearFechaISOAsistente(d), label: 'el año pasado' };
+    }
+
+    return null;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+
   function normalizarUnidadAsistente(texto) {
     const valor = normalizarTextoAsistente(texto);
     if (!valor) return '';
@@ -12847,6 +12991,10 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       patch.lastQueryTopic = payload.queryTopic;
     }
 
+    if (payload.lastDate !== undefined) patch.lastDate = payload.lastDate;
+    if (payload.lastDateLabel !== undefined) patch.lastDateLabel = payload.lastDateLabel;
+    if (payload.lastOperation !== undefined) patch.lastOperation = payload.lastOperation;
+
     return actualizarContextoConversacionAsistente(patch);
   }
 
@@ -12931,6 +13079,32 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     }
   }
 
+  function ejecutarVerificacionProactivaAsistente() {
+    try {
+      const almacen = typeof obtenerItemsAlmacenAsistente === 'function'
+        ? obtenerItemsAlmacenAsistente()
+        : (db.almacen || []).filter(item => item.owner === sesionUser.user);
+
+      const alertas = [];
+      almacen.forEach(item => {
+        const actual = Number(item.actual || 0);
+        const ideal = Number(item.ideal || 0);
+        if (actual === 0) {
+          alertas.push(`${capitalizarTextoAsistente(item.nombre)}: agotado`);
+        } else if (ideal > 0 && actual < ideal * 0.2) {
+          alertas.push(`${capitalizarTextoAsistente(item.nombre)}: stock crítico (${formatearNumeroAsistente(actual)} ${item.unidad || ''})`);
+        }
+      });
+
+      if (alertas.length) {
+        const resumen = alertas.slice(0, 3).join(', ') + (alertas.length > 3 ? ` y ${alertas.length - 3} más` : '');
+        setTimeout(() => {
+          registrarMensajeAsistente('system', `⚠️ Alerta de inventario: ${resumen}.`);
+        }, 600);
+      }
+    } catch (_) {}
+  }
+
   function abrirPanelAsistente() {
     sembrarAsistenteSiHaceFalta();
     registrarActividadAsistente();
@@ -12939,6 +13113,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       window.cerrarSidebarMovil('assistant');
     }
     enfocarInputAsistente();
+    ejecutarVerificacionProactivaAsistente();
   }
 
   function cerrarPanelAsistente() {
@@ -14367,6 +14542,29 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       return { kind: 'system-query', topic: 'almacen-buscar', reference: busquedaInventario };
     }
 
+    // ─── VNEXT: CONSULTAS DE HISTORIAL OPERATIVO ────────────────────────────
+
+    if (/(cuanto entro|cuanto se recibio|resumen de entradas|entradas de hoy|entradas de esta semana|cuanto compre|que se recibio|historial de entradas)/.test(textoNormalizado)) {
+      const fechaConsulta = interpretarFechaRelativaAsistente(textoNormalizado);
+      return { kind: 'system-query', topic: 'historial-entradas', fecha: fechaConsulta?.date || null, fechaLabel: fechaConsulta?.label || 'reciente' };
+    }
+
+    if (/(cuanto salio|cuanto se retiro|resumen de salidas|salidas de hoy|salidas de esta semana|cuanto retire|cuanto consumi|historial de salidas)/.test(textoNormalizado)) {
+      const fechaConsulta = interpretarFechaRelativaAsistente(textoNormalizado);
+      return { kind: 'system-query', topic: 'historial-salidas', fecha: fechaConsulta?.date || null, fechaLabel: fechaConsulta?.label || 'reciente' };
+    }
+
+    if (/(decomisos de hoy|decomisos de esta semana|cuanto perdimos|perdidas de hoy|perdidas recientes|resumen de decomisos|historial de decomisos)/.test(textoNormalizado)) {
+      const fechaConsulta = interpretarFechaRelativaAsistente(textoNormalizado);
+      return { kind: 'system-query', topic: 'historial-decomisos-reciente', fecha: fechaConsulta?.date || null, fechaLabel: fechaConsulta?.label || 'reciente' };
+    }
+
+    if (/(como estuvo hoy|resumen del dia|resumen de hoy|resumen operativo|como fue hoy|que paso hoy en el sistema)/.test(textoNormalizado)) {
+      return { kind: 'system-query', topic: 'resumen-operativo-dia' };
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+
     return null;
   }
 
@@ -14654,6 +14852,215 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     };
   }
 
+  // ─── CAPA DE SEGURIDAD ───────────────────────────────────────────────────────
+
+  function validarPermisoOperacionAsistente(kind) {
+    const mapaPermisos = {
+      'entrada-create': ['inventario', 'entradas-almacen'],
+      'salida-create': ['salida'],
+      'decomiso-create': ['decomiso'],
+      'produccion-create': ['produccion-interna'],
+      'distribuidor-create': ['distribuidores'],
+      'distribuidor-delete': ['distribuidores'],
+      'almacen-delete': ['inventario'],
+      'entity-delete': ['configuracion']
+    };
+    const paginasRequeridas = mapaPermisos[kind];
+    if (!paginasRequeridas || !paginasRequeridas.length) return { allowed: true };
+    const tieneAcceso = paginasRequeridas.some(p => {
+      if (typeof tienePermisoPagina === 'function') return tienePermisoPagina(p);
+      return true;
+    });
+    if (!tieneAcceso) {
+      return { allowed: false, reason: 'No tienes permiso para ejecutar esta operación.' };
+    }
+    return { allowed: true };
+  }
+
+  // ─── MOTOR NLP: DETECTORES DE OPERACIONES CONVERSACIONALES ──────────────────
+
+  function detectarComandoEntrada(textoNormalizado) {
+    if (!/\brecibi\b/.test(textoNormalizado)) return null;
+
+    let trabajo = textoNormalizado;
+    let costo = null;
+    let fecha = null;
+    let fechaLabel = '';
+    let cantidad = null;
+    let unidad = '';
+
+    const fechaDetectada = interpretarFechaRelativaAsistente(textoNormalizado);
+    if (fechaDetectada) {
+      fecha = fechaDetectada.date;
+      fechaLabel = fechaDetectada.label;
+    }
+
+    const costoMatch = trabajo.match(/\ba\s*(?:rd\$?|rds?\$?|\$)?\s*(\d+(?:[.,]\d+)?)/i);
+    if (costoMatch) {
+      costo = normalizarNumeroAsistente(costoMatch[1]);
+      trabajo = trabajo.replace(costoMatch[0], ' ');
+    }
+
+    const cantidadMatch = trabajo.match(/\b(\d+(?:[.,]\d+)?)\s*([a-z]+)?\b/);
+    if (cantidadMatch) {
+      const posibleCantidad = normalizarNumeroAsistente(cantidadMatch[1]);
+      if (Number.isFinite(posibleCantidad) && posibleCantidad > 0) {
+        cantidad = posibleCantidad;
+        unidad = normalizarUnidadAsistente(cantidadMatch[2] || '');
+        trabajo = trabajo.replace(cantidadMatch[0], ' ');
+      }
+    }
+
+    trabajo = trabajo
+      .replace(/\brecibi\b/g, ' ')
+      .replace(/\b(?:de|del?|en el|en la)\s+(?:almacen|inventario)\b/g, ' ')
+      .replace(/\b(?:ayer|hoy|anteayer|anoche|esta manana|esta tarde|esta noche)\b/g, ' ')
+      .replace(/\bhace\s+\d+\s+(?:dias?|semanas?|meses?|anos?)\b/g, ' ')
+      .replace(/\b(?:el|la)\s+(?:semana|mes|ano)\s+pasad[ao]\b/g, ' ')
+      .replace(/\bel\s+(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const producto = limpiarNombreEntidadAsistente(trabajo);
+
+    if (!producto && !cantidad) return null;
+
+    if (!producto) {
+      return { kind: 'entrada-create-incomplete', cantidad, unidad, costo, fecha, fechaLabel };
+    }
+
+    return {
+      kind: 'entrada-create',
+      producto,
+      productoBonito: capitalizarTextoAsistente(producto),
+      cantidad,
+      unidad,
+      costo,
+      fecha,
+      fechaLabel
+    };
+  }
+
+  function detectarComandoSalida(textoNormalizado) {
+    if (!/\bretire\b/.test(textoNormalizado)) return null;
+
+    let trabajo = textoNormalizado;
+    let fecha = null;
+    let fechaLabel = '';
+    let cantidad = null;
+    let unidad = '';
+
+    const fechaDetectada = interpretarFechaRelativaAsistente(textoNormalizado);
+    if (fechaDetectada) {
+      fecha = fechaDetectada.date;
+      fechaLabel = fechaDetectada.label;
+    }
+
+    const cantidadMatch = trabajo.match(/\b(\d+(?:[.,]\d+)?)\s*([a-z]+)?\b/);
+    if (cantidadMatch) {
+      const posibleCantidad = normalizarNumeroAsistente(cantidadMatch[1]);
+      if (Number.isFinite(posibleCantidad) && posibleCantidad > 0) {
+        cantidad = posibleCantidad;
+        unidad = normalizarUnidadAsistente(cantidadMatch[2] || '');
+        trabajo = trabajo.replace(cantidadMatch[0], ' ');
+      }
+    }
+
+    trabajo = trabajo
+      .replace(/\bretire\b/g, ' ')
+      .replace(/\b(?:ayer|hoy|anteayer|anoche|esta manana|esta tarde|esta noche)\b/g, ' ')
+      .replace(/\bhace\s+\d+\s+(?:dias?|semanas?|meses?|anos?)\b/g, ' ')
+      .replace(/\b(?:el|la)\s+(?:semana|mes|ano)\s+pasad[ao]\b/g, ' ')
+      .replace(/\bel\s+(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/g, ' ')
+      .replace(/\b(?:de|del?|del almacen|del inventario)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const producto = limpiarNombreEntidadAsistente(trabajo);
+
+    if (!producto && !cantidad) return null;
+
+    if (!producto) {
+      const contexto = obtenerContextoConversacionAsistente();
+      const productoContexto = contexto.lastProduct;
+      if (productoContexto) {
+        return {
+          kind: 'salida-create',
+          producto: productoContexto,
+          productoBonito: capitalizarTextoAsistente(productoContexto),
+          cantidad,
+          unidad,
+          fecha,
+          fechaLabel,
+          fromContext: true
+        };
+      }
+      return { kind: 'salida-create-incomplete', cantidad, unidad, fecha, fechaLabel };
+    }
+
+    return {
+      kind: 'salida-create',
+      producto,
+      productoBonito: capitalizarTextoAsistente(producto),
+      cantidad,
+      unidad,
+      fecha,
+      fechaLabel
+    };
+  }
+
+  function detectarComandoProduccion(textoNormalizado) {
+    if (!/\bproduje\b/.test(textoNormalizado)) return null;
+
+    let trabajo = textoNormalizado;
+    let fecha = null;
+    let fechaLabel = '';
+    let cantidad = null;
+    let unidad = '';
+
+    const fechaDetectada = interpretarFechaRelativaAsistente(textoNormalizado);
+    if (fechaDetectada) {
+      fecha = fechaDetectada.date;
+      fechaLabel = fechaDetectada.label;
+    }
+
+    const cantidadMatch = trabajo.match(/\b(\d+(?:[.,]\d+)?)\s*([a-z]+)?\b/);
+    if (cantidadMatch) {
+      const posibleCantidad = normalizarNumeroAsistente(cantidadMatch[1]);
+      if (Number.isFinite(posibleCantidad) && posibleCantidad > 0) {
+        cantidad = posibleCantidad;
+        unidad = normalizarUnidadAsistente(cantidadMatch[2] || '');
+        trabajo = trabajo.replace(cantidadMatch[0], ' ');
+      }
+    }
+
+    trabajo = trabajo
+      .replace(/\bproduje\b/g, ' ')
+      .replace(/\b(?:una tanda de|una batch de|una produccion de|de)\b/g, ' ')
+      .replace(/\b(?:ayer|hoy|anteayer|anoche|esta manana|esta tarde|esta noche)\b/g, ' ')
+      .replace(/\bhace\s+\d+\s+(?:dias?|semanas?|meses?|anos?)\b/g, ' ')
+      .replace(/\b(?:el|la)\s+(?:semana|mes|ano)\s+pasad[ao]\b/g, ' ')
+      .replace(/\bel\s+(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const nombre = limpiarNombreEntidadAsistente(trabajo);
+
+    if (!nombre) return null;
+
+    return {
+      kind: 'produccion-create',
+      nombre,
+      nombreBonito: capitalizarTextoAsistente(nombre),
+      cantidad,
+      unidad,
+      fecha,
+      fechaLabel
+    };
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+
   function detectarIntencionAsistente(textoNormalizado) {
     const consultaAvanzada = detectarConsultaSistemaAvanzadaAsistente(textoNormalizado);
     if (consultaAvanzada) return consultaAvanzada;
@@ -14689,6 +15096,15 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     const decomiso = detectarComandoDecomiso(textoNormalizado);
     if (decomiso) return decomiso;
 
+    const entrada = detectarComandoEntrada(textoNormalizado);
+    if (entrada) return entrada;
+
+    const salida = detectarComandoSalida(textoNormalizado);
+    if (salida) return salida;
+
+    const produccion = detectarComandoProduccion(textoNormalizado);
+    if (produccion) return produccion;
+
     if (detectarIntencionExplicacion(textoNormalizado)) return { kind: 'explain' };
     if (detectarIntencionProcedimiento(textoNormalizado)) return { kind: 'guide' };
     if (detectarIntencionAyuda(textoNormalizado)) return { kind: 'help' };
@@ -14700,6 +15116,9 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (intento?.kind === 'almacen-add-incomplete') return detectarComandoAgregarBasico(textoNormalizado) || intento;
     if (intento?.kind === 'almacen-delete') return detectarComandoEliminarAlmacen(textoNormalizado) || intento;
     if (intento?.kind === 'entity-delete') return detectarComandoEliminarGenerico(textoNormalizado) || intento;
+    if (intento?.kind === 'entrada-create') return detectarComandoEntrada(textoNormalizado) || intento;
+    if (intento?.kind === 'salida-create') return detectarComandoSalida(textoNormalizado) || intento;
+    if (intento?.kind === 'produccion-create') return detectarComandoProduccion(textoNormalizado) || intento;
     if (intento?.kind === 'distribuidor-delete') return detectarComandoEliminarDistribuidor(textoNormalizado) || intento;
     if (intento?.kind === 'distribuidor-create') return detectarComandoCrearDistribuidor(textoNormalizado) || intento;
     if (intento?.kind === 'distribuidor-update-phone') return detectarComandoActualizarTelefonoDistribuidor(textoNormalizado) || intento;
@@ -15002,6 +15421,98 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       }
     }
   }
+
+  // ─── EJECUTORES TRANSACCIONALES VNEXT ───────────────────────────────────────
+
+  function ejecutarEntradaAlmacenAsistente(datos, itemResuelto) {
+    if (!datos || !itemResuelto) return;
+    const nombre = itemResuelto.nombre || datos.producto;
+    const cantidad = Number(datos.cantidad || 0);
+    const unidad = datos.unidad || itemResuelto.unidad || 'Unidad';
+    const costoUnitario = Number(datos.costo || itemResuelto.costoUnitario || 0);
+    const fecha = datos.fecha || new Date().toLocaleDateString('es-DO');
+
+    // Actualizar stock del ítem en almacén
+    itemResuelto.actual = Math.max(0, Number(itemResuelto.actual || 0)) + cantidad;
+
+    // Registrar en historial de entradas
+    (db.entradas || (db.entradas = [])).push({
+      owner: sesionUser.user,
+      modulo: moduloActual,
+      fecha: fecha,
+      producto: nombre,
+      cant: cantidad,
+      unidad: unidad,
+      costoUnitario: costoUnitario,
+      costo: costoUnitario * cantidad,
+      distribuidor: '',
+      operador: typeof operadorActual !== 'undefined' ? operadorActual : sesionUser.user,
+      source: 'asistente-luro'
+    });
+
+    guardarDatos();
+    if (typeof window.showPage === 'function') window.showPage('inventario');
+    if (typeof renderAlmacen === 'function') { try { renderAlmacen(); } catch (_) {} }
+    if (typeof renderHistorialEntradas === 'function') { try { renderHistorialEntradas(); } catch (_) {} }
+  }
+
+  function ejecutarSalidaAlmacenAsistente(datos, itemResuelto) {
+    if (!datos || !itemResuelto) return;
+    const nombre = itemResuelto.nombre || datos.producto;
+    const cantidad = Number(datos.cantidad || 0);
+    const unidad = datos.unidad || itemResuelto.unidad || 'Unidad';
+    const fecha = datos.fecha || new Date().toLocaleDateString('es-DO');
+
+    // Descontar stock
+    itemResuelto.actual = Math.max(0, Number(itemResuelto.actual || 0) - cantidad);
+
+    // Registrar en historial de decomisos con tipo SALIDA
+    (db.decomisos || (db.decomisos = [])).push({
+      owner: sesionUser.user,
+      modulo: moduloActual,
+      fecha: fecha,
+      tipo: 'SALIDA',
+      nombre: nombre,
+      cant: cantidad,
+      medida: unidad,
+      perdida: 0,
+      operador: typeof operadorActual !== 'undefined' ? operadorActual : sesionUser.user,
+      source: 'asistente-luro'
+    });
+
+    guardarDatos();
+    if (typeof window.showPage === 'function') window.showPage('inventario');
+    if (typeof renderAlmacen === 'function') { try { renderAlmacen(); } catch (_) {} }
+  }
+
+  function ejecutarProduccionAsistente(datos, itemResuelto) {
+    if (!datos || !itemResuelto) return;
+    const nombre = itemResuelto.nombre || datos.nombre;
+    const cantidad = Number(datos.cantidad || 0);
+    const unidad = datos.unidad || itemResuelto.unidad || 'Unidad';
+    const fecha = datos.fecha || new Date().toLocaleDateString('es-DO');
+
+    // Aumentar stock de producción
+    itemResuelto.actual = Math.max(0, Number(itemResuelto.actual || 0)) + cantidad;
+
+    // Registrar en historial de producción
+    (db.historial_prod || (db.historial_prod = [])).push({
+      owner: sesionUser.user,
+      modulo: moduloActual,
+      fecha: fecha,
+      nombre: nombre,
+      cant: cantidad,
+      unidad: unidad,
+      operador: typeof operadorActual !== 'undefined' ? operadorActual : sesionUser.user,
+      source: 'asistente-luro'
+    });
+
+    guardarDatos();
+    if (typeof window.showPage === 'function') window.showPage('produccion-interna');
+    if (typeof renderStockProduccion === 'function') { try { renderStockProduccion(); } catch (_) {} }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   function responderConsultaSistemaAsistente(intencion, dato) {
     if (!intencion) return null;
@@ -15490,6 +16001,113 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       };
     }
 
+    // ─── VNEXT: HISTORIAL OPERATIVO ─────────────────────────────────────────
+
+    if (intencion.topic === 'historial-entradas') {
+      try {
+        const fechaFiltro = intencion.fecha;
+        const entradas = (db.entradas || []).filter(e => {
+          if (!itemPerteneceContextoAsistente(e)) return false;
+          if (fechaFiltro) {
+            const fechaE = String(e.fecha || '').slice(0, 10);
+            return fechaE === fechaFiltro;
+          }
+          const hoy = formatearFechaISOAsistente(new Date());
+          return String(e.fecha || '').slice(0, 10) === hoy;
+        });
+        const labelTiempo = intencion.fechaLabel || 'hoy';
+        if (!entradas.length) {
+          return { message: `No encontré registros de entradas para ${labelTiempo}.`, role: 'assistant' };
+        }
+        const total = entradas.reduce((sum, e) => sum + Number(e.costo || 0), 0);
+        const productos = [...new Set(entradas.map(e => capitalizarTextoAsistente(e.producto || '')).filter(Boolean))].slice(0, 4);
+        return {
+          message: `Registré ${entradas.length} entrada(s) de almacén ${labelTiempo} con un costo total de ${formatearMontoRespuestaAsistente(total)}. Productos: ${productos.join(', ') || 'varios'}.`,
+          role: 'assistant'
+        };
+      } catch (_) {
+        return { message: 'No pude procesar el historial de entradas en este momento.', role: 'assistant' };
+      }
+    }
+
+    if (intencion.topic === 'historial-salidas') {
+      try {
+        const fechaFiltro = intencion.fecha;
+        const salidas = (db.decomisos || []).filter(e => {
+          if (!itemPerteneceContextoAsistente(e)) return false;
+          if (e.tipo !== 'SALIDA') return false;
+          if (fechaFiltro) {
+            return String(e.fecha || '').slice(0, 10) === fechaFiltro;
+          }
+          const hoy = formatearFechaISOAsistente(new Date());
+          return String(e.fecha || '').slice(0, 10) === hoy;
+        });
+        const labelTiempo = intencion.fechaLabel || 'hoy';
+        if (!salidas.length) {
+          return { message: `No encontré registros de salidas para ${labelTiempo}.`, role: 'assistant' };
+        }
+        const productos = [...new Set(salidas.map(e => capitalizarTextoAsistente(e.nombre || '')).filter(Boolean))].slice(0, 4);
+        return {
+          message: `Registré ${salidas.length} salida(s) del almacén ${labelTiempo}. Productos retirados: ${productos.join(', ') || 'varios'}.`,
+          role: 'assistant'
+        };
+      } catch (_) {
+        return { message: 'No pude procesar el historial de salidas en este momento.', role: 'assistant' };
+      }
+    }
+
+    if (intencion.topic === 'historial-decomisos-reciente') {
+      try {
+        const fechaFiltro = intencion.fecha;
+        const decomisos = (db.decomisos || []).filter(e => {
+          if (!itemPerteneceContextoAsistente(e)) return false;
+          if (e.tipo === 'SALIDA') return false;
+          if (fechaFiltro) {
+            return String(e.fecha || '').slice(0, 10) === fechaFiltro;
+          }
+          const hoy = formatearFechaISOAsistente(new Date());
+          return String(e.fecha || '').slice(0, 10) === hoy;
+        });
+        const labelTiempo = intencion.fechaLabel || 'hoy';
+        if (!decomisos.length) {
+          return { message: `No encontré decomisos registrados para ${labelTiempo}.`, role: 'assistant' };
+        }
+        const totalPerdida = decomisos.reduce((sum, e) => sum + Number(e.perdida || 0), 0);
+        return {
+          message: `Se registraron ${decomisos.length} decomiso(s) ${labelTiempo} con una pérdida estimada de ${formatearMontoRespuestaAsistente(totalPerdida)}.`,
+          role: 'assistant'
+        };
+      } catch (_) {
+        return { message: 'No pude procesar el historial de decomisos en este momento.', role: 'assistant' };
+      }
+    }
+
+    if (intencion.topic === 'resumen-operativo-dia') {
+      try {
+        const hoy = formatearFechaISOAsistente(new Date());
+        const entradas = (db.entradas || []).filter(e => itemPerteneceContextoAsistente(e) && String(e.fecha || '').slice(0, 10) === hoy);
+        const decomisos = (db.decomisos || []).filter(e => itemPerteneceContextoAsistente(e) && String(e.fecha || '').slice(0, 10) === hoy && e.tipo !== 'SALIDA');
+        const salidas = (db.decomisos || []).filter(e => itemPerteneceContextoAsistente(e) && String(e.fecha || '').slice(0, 10) === hoy && e.tipo === 'SALIDA');
+        const ventas = (db.ventas || []).filter(e => itemPerteneceContextoAsistente(e) && String(e.fecha || '').slice(0, 10) === hoy);
+        const partes = [];
+        if (entradas.length) partes.push(`${entradas.length} entrada(s) al almacén`);
+        if (salidas.length) partes.push(`${salidas.length} salida(s) de inventario`);
+        if (decomisos.length) partes.push(`${decomisos.length} decomiso(s)`);
+        if (ventas.length) partes.push(`${ventas.length} venta(s)`);
+        if (!partes.length) {
+          return { message: 'No encontré actividad registrada en el sistema para hoy.', role: 'assistant' };
+        }
+        return {
+          message: `Resumen operativo de hoy: ${partes.join(', ')}.`,
+          role: 'assistant'
+        };
+      } catch (_) {
+        return { message: 'No pude generar el resumen operativo en este momento.', role: 'assistant' };
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+
     return null;
   }
 
@@ -15846,6 +16464,191 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
           run: () => ejecutarDecomisoProduccionAsistente(entity.item, datos.quantity, unidad)
         });
       }
+    }
+
+    // ─── VNEXT: ENTRADA DE ALMACÉN CONVERSACIONAL ───────────────────────────
+
+    if (intento.kind === 'entrada-create-incomplete') {
+      return {
+        message: `Entendí que deseas registrar una entrada en Almacén, pero todavía me falta el producto. Puedes decirme algo como: "Compré 20 libras de arroz a RD$50 ayer".`,
+        role: 'assistant'
+      };
+    }
+
+    if (intento.kind === 'entrada-create') {
+      const permisoCheck = validarPermisoOperacionAsistente('entrada-create');
+      if (!permisoCheck.allowed) {
+        return { message: permisoCheck.reason, role: 'assistant' };
+      }
+
+      const referencia = datos.producto;
+      if (!referencia) {
+        return { message: 'Indícame el producto que deseas registrar en Almacén.', role: 'assistant' };
+      }
+
+      const resolucion = resolverCoincidenciaAsistente(obtenerItemsAlmacenAsistente(), referencia, item => item.nombre);
+
+      if (!resolucion.match && !resolucion.matches.length) {
+        return {
+          message: `No encontré el producto "${datos.productoBonito}" en el Almacén. Puedo registrar la entrada si me confirmas que es un producto nuevo, o dime el nombre exacto.`,
+          role: 'assistant'
+        };
+      }
+
+      if (resolucion.ambiguous) {
+        return {
+          message: `Encontré varias coincidencias para "${datos.productoBonito}": ${sugerirCoincidenciasAsistente(resolucion.matches)}. Dime cuál es el correcto.`,
+          role: 'assistant'
+        };
+      }
+
+      const item = resolucion.match;
+      const cantidadTexto = datos.cantidad ? `${formatearNumeroAsistente(datos.cantidad)} ${etiquetaUnidadAsistente(datos.unidad || item.unidad || '')}` : 'cantidad no especificada';
+      const costoTexto = datos.costo ? ` a RD$${formatearNumeroAsistente(datos.costo)}` : '';
+      const fechaTexto = datos.fechaLabel ? ` del ${datos.fechaLabel}` : '';
+
+      recordarEntidadAsistente({
+        intent: 'entrada',
+        module: 'inventario',
+        entityType: 'almacen',
+        product: item.nombre,
+        lastQuantity: datos.cantidad,
+        lastUnit: datos.unidad || item.unidad,
+        lastDate: datos.fecha,
+        lastDateLabel: datos.fechaLabel,
+        lastOperation: 'entrada'
+      });
+
+      return construirPendienteAsistente({
+        summary: `Entrada de ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${costoTexto}${fechaTexto}`,
+        confirmMessage: `Registrando la entrada de ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${costoTexto}${fechaTexto}. Actualizando Almacén.`,
+        message: `Entendí: Entrada de ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${costoTexto}${fechaTexto}.\n\nStock actual: ${formatearNumeroAsistente(item.actual || 0)} ${item.unidad || ''}. ¿Confirmas el registro?`,
+        run: () => ejecutarEntradaAlmacenAsistente(datos, item)
+      });
+    }
+
+    // ─── VNEXT: SALIDA DE ALMACÉN CONVERSACIONAL ────────────────────────────
+
+    if (intento.kind === 'salida-create-incomplete') {
+      return {
+        message: `Entendí que retiraste algo del Almacén, pero me falta el producto. Puedes decirme algo como: "Saqué 15 libras de arroz ayer".`,
+        role: 'assistant'
+      };
+    }
+
+    if (intento.kind === 'salida-create') {
+      const permisoCheck = validarPermisoOperacionAsistente('salida-create');
+      if (!permisoCheck.allowed) {
+        return { message: permisoCheck.reason, role: 'assistant' };
+      }
+
+      const referencia = datos.producto;
+      if (!referencia) {
+        return { message: 'Indícame el producto que retiraste del Almacén.', role: 'assistant' };
+      }
+
+      const resolucion = resolverCoincidenciaAsistente(obtenerItemsAlmacenAsistente(), referencia, item => item.nombre);
+
+      if (!resolucion.match && !resolucion.matches.length) {
+        return {
+          message: `No encontré "${datos.productoBonito}" en el Almacén. Verifica el nombre del producto.`,
+          role: 'assistant'
+        };
+      }
+
+      if (resolucion.ambiguous) {
+        return {
+          message: `Encontré varias coincidencias para "${datos.productoBonito}": ${sugerirCoincidenciasAsistente(resolucion.matches)}. Dime cuál es el correcto.`,
+          role: 'assistant'
+        };
+      }
+
+      const item = resolucion.match;
+      const cantidadSalida = Number(datos.cantidad || 0);
+      const stockActual = Number(item.actual || 0);
+
+      if (cantidadSalida > stockActual) {
+        return {
+          message: `No hay suficiente stock. ${capitalizarTextoAsistente(item.nombre)} tiene ${formatearNumeroAsistente(stockActual)} ${item.unidad || ''} disponibles, pero deseas retirar ${formatearNumeroAsistente(cantidadSalida)} ${etiquetaUnidadAsistente(datos.unidad || item.unidad || '')}.`,
+          role: 'assistant'
+        };
+      }
+
+      const cantidadTexto = datos.cantidad ? `${formatearNumeroAsistente(cantidadSalida)} ${etiquetaUnidadAsistente(datos.unidad || item.unidad || '')}` : 'cantidad no especificada';
+      const fechaTexto = datos.fechaLabel ? ` del ${datos.fechaLabel}` : '';
+
+      recordarEntidadAsistente({
+        intent: 'salida',
+        module: 'inventario',
+        entityType: 'almacen',
+        product: item.nombre,
+        lastQuantity: cantidadSalida,
+        lastUnit: datos.unidad || item.unidad,
+        lastDate: datos.fecha,
+        lastDateLabel: datos.fechaLabel,
+        lastOperation: 'salida'
+      });
+
+      return construirPendienteAsistente({
+        summary: `Salida de ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${fechaTexto}`,
+        confirmMessage: `Registrando la salida de ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${fechaTexto}. Actualizando Almacén.`,
+        message: `Entendí: Salida de ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${fechaTexto}.\n\nStock actual: ${formatearNumeroAsistente(stockActual)} ${item.unidad || ''}. Quedará: ${formatearNumeroAsistente(stockActual - cantidadSalida)} ${item.unidad || ''}. ¿Confirmas?`,
+        run: () => ejecutarSalidaAlmacenAsistente(datos, item)
+      });
+    }
+
+    // ─── VNEXT: PRODUCCIÓN CONVERSACIONAL ───────────────────────────────────
+
+    if (intento.kind === 'produccion-create') {
+      const permisoCheck = validarPermisoOperacionAsistente('produccion-create');
+      if (!permisoCheck.allowed) {
+        return { message: permisoCheck.reason, role: 'assistant' };
+      }
+
+      const referencia = datos.nombre;
+      if (!referencia) {
+        return { message: 'Indícame qué producción registraste. Puedes decir algo como: "Preparé 5 litros de salsa criolla".', role: 'assistant' };
+      }
+
+      const producciones = obtenerProduccionesAsistente ? obtenerProduccionesAsistente() : (db.produccion_stock || []);
+      const resolucion = resolverCoincidenciaAsistente(producciones, referencia, item => item.nombre);
+
+      if (!resolucion.match && !resolucion.matches.length) {
+        return {
+          message: `No encontré "${datos.nombreBonito}" en Producción Interna. Verifica el nombre o crea la producción primero.`,
+          role: 'assistant'
+        };
+      }
+
+      if (resolucion.ambiguous) {
+        return {
+          message: `Encontré varias producciones parecidas para "${datos.nombreBonito}": ${sugerirCoincidenciasAsistente(resolucion.matches)}. Dime cuál es la correcta.`,
+          role: 'assistant'
+        };
+      }
+
+      const item = resolucion.match;
+      const cantidadTexto = datos.cantidad ? `${formatearNumeroAsistente(datos.cantidad)} ${etiquetaUnidadAsistente(datos.unidad || item.unidad || '')}` : 'una tanda';
+      const fechaTexto = datos.fechaLabel ? ` del ${datos.fechaLabel}` : '';
+
+      recordarEntidadAsistente({
+        intent: 'produccion',
+        module: 'produccion-interna',
+        entityType: 'produccion',
+        product: item.nombre,
+        lastQuantity: datos.cantidad,
+        lastUnit: datos.unidad || item.unidad,
+        lastDate: datos.fecha,
+        lastDateLabel: datos.fechaLabel,
+        lastOperation: 'produccion'
+      });
+
+      return construirPendienteAsistente({
+        summary: `Registrar producción de ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${fechaTexto}`,
+        confirmMessage: `Registrando producción de ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${fechaTexto}.`,
+        message: `Entendí: Registrar ${cantidadTexto} de ${capitalizarTextoAsistente(item.nombre)}${fechaTexto}.\n\nStock actual: ${formatearNumeroAsistente(item.actual || 0)} ${item.unidad || ''}. ¿Confirmas el registro?`,
+        run: () => ejecutarProduccionAsistente(datos, item)
+      });
     }
 
     return null;
