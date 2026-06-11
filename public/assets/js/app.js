@@ -3588,61 +3588,6 @@ function ajustarPrecioManual() {
     const MASTER_PASS = "160623";
     const USUARIO_ELIMINADO_FORZOSO = "__forced_removed_user_disabled__";
     const LOCAL_DB_META_KEY = "LURO_CONTROL_DB_META";
-    const ACTIVE_SESSION_STORAGE_KEY = "LURO_ACTIVE_SESSION_STATE";
-    let pendingSessionRestore = null;
-
-function obtenerPaginaActivaSesion() {
-    return String(document.querySelector('.content-section.active')?.id || '').trim();
-}
-
-function obtenerVistaActualSesion() {
-    const login = document.getElementById('login-overlay');
-    const selector = document.getElementById('module-selector');
-    const overlay = document.getElementById('foca-cheria-overlay');
-    const main = document.getElementById('main-content');
-    if (overlay && overlay.style.display !== 'none') return 'overlay';
-    if (main && main.style.display !== 'none') return 'app';
-    if (selector && selector.style.display !== 'none') return 'modules';
-    if (login && login.style.display !== 'none') return 'login';
-    return 'app';
-}
-
-function obtenerCredencialesSesionActiva() {
-    const user = esColaboradorSesion
-        ? String(operadorActual || cuentaLoginActual || '').trim().toLowerCase()
-        : String(sesionUser?.user || sesionUser?.owner || cuentaLoginActual || '').trim().toLowerCase();
-    const pass = String(loginClave || sesionUser?.pass || '').trim();
-    if (!user || !pass) return null;
-    return { user, pass };
-}
-
-function guardarEstadoSesionActivo(extra = {}) {
-    try {
-        const creds = obtenerCredencialesSesionActiva();
-        if (!creds) return false;
-        const payload = {
-            user: String(extra.user || creds.user || '').trim().toLowerCase(),
-            pass: String(extra.pass || creds.pass || '').trim(),
-            view: String(extra.view || obtenerVistaActualSesion() || 'app').trim(),
-            moduloVistaActual: String(extra.moduloVistaActual || moduloVistaActual || 'COCINA').trim() || 'COCINA',
-            moduloAdminObjetivo: String(extra.moduloAdminObjetivo || moduloAdminObjetivo || 'COCINA').trim() || 'COCINA',
-            activePage: String(extra.activePage || obtenerPaginaActivaSesion() || '').trim(),
-            at: Date.now()
-        };
-        if (!payload.user || !payload.pass) return false;
-        sessionStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, JSON.stringify(payload));
-        return true;
-    } catch (_) {
-        return false;
-    }
-}
-
-function limpiarEstadoSesionActivo() {
-    try { sessionStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY); } catch (_) {}
-    pendingSessionRestore = null;
-}
-
-window.persistLuroSessionState = guardarEstadoSesionActivo;
 
 function leerMetaDbLocal() {
     try {
@@ -4447,7 +4392,6 @@ function aplicarRestriccionClientesPuntosUI() {
 }
 
 function cerrarSesionPorRevocacion() {
-    limpiarEstadoSesionActivo();
     sesionUser = null;
     operadorActual = "";
     loginClave = "";
@@ -5631,12 +5575,10 @@ window.sincronizarTodoLocalAhora = async function (opts = {}) {
 window.sincronizarTodoFirebaseAhora = window.sincronizarTodoLocalAhora;
 
 window.addEventListener('pagehide', () => {
-    if (typeof window.persistLuroSessionState === 'function') window.persistLuroSessionState();
     if (typeof window.autoSubirCloudUrgente === 'function') window.autoSubirCloudUrgente();
 });
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return;
-    if (typeof window.persistLuroSessionState === 'function') window.persistLuroSessionState();
     if (typeof window.autoSubirCloudUrgente === 'function') window.autoSubirCloudUrgente();
 });
 
@@ -5967,27 +5909,6 @@ async function intentarLogin() {
             if (typeof window.rememberCloudAuth === 'function' && authUser && passLogin) {
                 window.rememberCloudAuth(authUser, passLogin, { owner: authOwner, role: sesionUser?.role || found.role });
             }
-            guardarEstadoSesionActivo({
-                user: authUser,
-                pass: passLogin,
-                view: 'modules',
-                activePage: ''
-            });
-            const restoreState = pendingSessionRestore;
-            pendingSessionRestore = null;
-            if (restoreState && restoreState.view !== 'modules') {
-                const modRestore = String(restoreState.moduloVistaActual || 'COCINA').trim().toUpperCase();
-                // LA FOCA CHERIA no se restaura automáticamente (requiere acción explícita del usuario)
-                if (modRestore !== 'LA FOCA CHERIA') {
-                    setTimeout(() => {
-                        seleccionarModulo(restoreState.moduloVistaActual || 'COCINA', {
-                            skipAdminPassword: true,
-                            pageId: restoreState.activePage || '',
-                            moduloAdminObjetivo: restoreState.moduloAdminObjetivo || 'COCINA'
-                        });
-                    }, 120);
-                }
-            }
             window.__cloudSyncBootstrapping = true;
             if (typeof window.iniciarListenerCloudTiempoReal === 'function') {
                 window.iniciarListenerCloudTiempoReal(window.usuarioActivoCloud);
@@ -6064,41 +5985,9 @@ window.autologinSaasPendiente = function () {
     }
 };
 
-window.autologinSesionActiva = function () {
-    try {
-        const raw = sessionStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
-        if (!raw) return false;
-        const data = JSON.parse(raw || '{}');
-        const user = String(data?.user || '').trim().toLowerCase();
-        const pass = String(data?.pass || '');
-        const at = Number(data?.at || 0);
-        if (!user || !pass || !at || (Date.now() - at) > 12 * 60 * 60 * 1000) {
-            limpiarEstadoSesionActivo();
-            return false;
-        }
-        const iUser = document.getElementById('log_user');
-        const iPass = document.getElementById('log_pass');
-        if (!iUser || !iPass) return false;
-        pendingSessionRestore = {
-            view: String(data?.view || 'app').trim() || 'app',
-            moduloVistaActual: String(data?.moduloVistaActual || 'COCINA').trim() || 'COCINA',
-            moduloAdminObjetivo: String(data?.moduloAdminObjetivo || 'COCINA').trim() || 'COCINA',
-            activePage: String(data?.activePage || '').trim()
-        };
-        iUser.value = user;
-        iPass.value = pass;
-        setTimeout(() => { intentarLogin(); }, 180);
-        return true;
-    } catch (_) {
-        limpiarEstadoSesionActivo();
-        return false;
-    }
-};
-
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
-        const restored = (typeof window.autologinSesionActiva === 'function') ? window.autologinSesionActiva() : false;
-        if (!restored && typeof window.autologinSaasPendiente === 'function') window.autologinSaasPendiente();
+        if (typeof window.autologinSaasPendiente === 'function') window.autologinSaasPendiente();
     }, 220);
 });
 
@@ -7428,7 +7317,7 @@ function toggleDetallesProduccion(idx) {
         'ventas',
         'autorizaciones'
     ]);
-    const RESERVED_MODULES = new Set(['COCINA', 'ADMINISTRADOR', 'LA FOCA CHERIA']);
+    const RESERVED_MODULES = new Set(['COCINA', 'ADMINISTRADOR']);
 
     function esModuloAdministradorActual() {
         return moduloVistaActual === 'ADMINISTRADOR';
@@ -7443,7 +7332,7 @@ function toggleDetallesProduccion(idx) {
     }
 
     function obtenerModulosDisponibles() {
-        const base = esColaboradorSesion ? ['COCINA'] : ['COCINA', 'ADMINISTRADOR', 'LA FOCA CHERIA'];
+        const base = esColaboradorSesion ? ['COCINA'] : ['COCINA', 'ADMINISTRADOR'];
         const custom = (Array.isArray(db.modulosCustom) ? db.modulosCustom : [])
             .filter(m => m && m.owner === sesionUser?.user && m.nombre)
             .map(m => String(m.nombre).trim().toUpperCase())
@@ -7454,7 +7343,6 @@ function toggleDetallesProduccion(idx) {
     function estilosModulo(nombre) {
         if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️ ', titulo: 'ADMINISTRADOR' };
         if (nombre === 'COCINA') return { color: 'var(--accent)', icono: '👨‍🍳 ', titulo: 'ADMINISTRAR COCINA' };
-        if (nombre === 'LA FOCA CHERIA') return { color: '#A1DFCB', icono: '🦭 ', titulo: 'LA FOCA CHERIA' };
         return { color: 'var(--blue)', icono: '🧩 ', titulo: `MÓDULO ${nombre}` };
     }
 
@@ -7572,34 +7460,10 @@ function toggleDetallesProduccion(idx) {
         alert(`Módulo ${nombre} eliminado.`);
     }
 
-    function cerrarFocaCheria() {
-        const overlay = document.getElementById('foca-cheria-overlay');
-        const iframe  = document.getElementById('foca-cheria-iframe');
-        if (overlay) overlay.style.display = 'none';
-        if (iframe)  iframe.src = '';
-        const sel = document.getElementById('module-selector');
-        if (sel) sel.style.display = 'flex';
-        // Guarda estado como "módulos" para que el próximo reload no restaure el overlay
-        guardarEstadoSesionActivo({ view: 'modules', moduloVistaActual: '', activePage: '' });
-    }
-    window.cerrarFocaCheria = cerrarFocaCheria;
-
     function seleccionarModulo(mod, opts = {}) {
         if (!validarAccesoCuentaActual()) return;
         const moduloNombre = String(mod || '').trim();
         const moduloNormalizado = moduloNombre.toUpperCase();
-
-        if (moduloNormalizado === 'LA FOCA CHERIA') {
-            const overlay = document.getElementById('foca-cheria-overlay');
-            const iframe  = document.getElementById('foca-cheria-iframe');
-            if (overlay && iframe) {
-                iframe.src = 'https://lafocacheria.web.app/admin.html';
-                overlay.style.display = 'flex';
-                const sel = document.getElementById('module-selector');
-                if (sel) sel.style.display = 'none';
-            }
-            return;
-        }
         const esAdminModulo = (moduloNormalizado === 'ADMINISTRADOR');
         if (esColaboradorSesion && esAdminModulo) {
             alert("🚫 Los colaboradores no pueden entrar al módulo ADMINISTRADOR.");
@@ -7616,7 +7480,7 @@ function toggleDetallesProduccion(idx) {
         }
         moduloVistaActual = mod;
         moduloActual = esAdminModulo ? 'COCINA' : mod;
-        if (esAdminModulo) moduloAdminObjetivo = String(opts.moduloAdminObjetivo || 'COCINA').trim() || 'COCINA';
+        if (esAdminModulo) moduloAdminObjetivo = 'COCINA';
         document.getElementById('module-selector').style.display = 'none';
         document.getElementById('sidebar').style.display = 'block';
         document.getElementById('main-content').style.display = 'block';
@@ -7634,21 +7498,12 @@ function toggleDetallesProduccion(idx) {
         selectUnid.innerHTML = '<option value="Lb">Lb (Libras)</option><option value="g">g (Gramos)</option><option value="Oz">Oz (Onzas)</option><option value="Litros">Litros</option><option value="Unidad">Unidad</option>';
         aplicarPermisosSidebar();
         renderAdminModuleLinks();
-        const pageDestino = String(opts.pageId || '').trim();
-        if (pageDestino) {
-            showPage(pageDestino);
-        } else if (esAdminModulo) {
+        if (esAdminModulo) {
             const inicioAdmin = tienePermisoPagina('configuracion') ? 'configuracion' : obtenerPaginaInicialSesion();
             showPage(inicioAdmin);
         } else {
             showPage(obtenerPaginaInicialSesion());
         }
-        guardarEstadoSesionActivo({
-            view: 'app',
-            moduloVistaActual,
-            moduloAdminObjetivo,
-            activePage: pageDestino || obtenerPaginaActivaSesion()
-        });
     }
 
     let githubDeployUiTimer = null;
@@ -7871,7 +7726,7 @@ function toggleDetallesProduccion(idx) {
         });
     }
 
-function showPage(pageId) {
+    function showPage(pageId) {
         if (!validarAccesoCuentaActual()) return;
         if (!tienePermisoPagina(pageId)) {
             alert("🚫 No tiene permisos para acceder a esta sección.");
@@ -7909,7 +7764,6 @@ function showPage(pageId) {
         if(pageId === 'home') renderHomeRegistroInfo();
         if(pageId === 'comandos' && typeof window.renderModuloComandos === 'function') window.renderModuloComandos();
         aplicarModoBasicoInterfaz(pageId);
-        guardarEstadoSesionActivo({ view: 'app', activePage: pageId });
     }
 
 function generarId(prefix = 'id') {
@@ -9458,10 +9312,9 @@ function limpiarFormularioPlato() {
         const p = prompt("Contraseña de seguridad:");
         return (p === sesionUser.pass);
     }
-    function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; guardarEstadoSesionActivo({ view: 'modules', activePage: '' }); }
-    function cambiarUsuario() { limpiarEstadoSesionActivo(); document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
+    function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; }
+    function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
     function cerrarSesion() {
-      limpiarEstadoSesionActivo();
       guardarDatos();
       detenerAutoRefreshBovedaMaster();
       if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva();
@@ -9990,10 +9843,9 @@ function renderDispoTable() {
         const p = prompt("Contraseña de seguridad:");
         return (p === sesionUser.pass);
     }
-    function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; guardarEstadoSesionActivo({ view: 'modules', activePage: '' }); }
-    function cambiarUsuario() { limpiarEstadoSesionActivo(); document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
+    function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; }
+    function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
     function cerrarSesion() {
-      limpiarEstadoSesionActivo();
       guardarDatos();
       detenerAutoRefreshBovedaMaster();
       if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva();
