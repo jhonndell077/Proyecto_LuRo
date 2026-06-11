@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Velvet Admin — Panel de Administración</title>
+  <!-- Prevent indexing -->
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+<!-- ════════════════════ LOGIN SCREEN ════════════════════ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-bg">
+    <div class="login-light l1"></div>
+    <div class="login-light l2"></div>
+  </div>
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="logo-v">VELVET</span>
+      <span class="logo-a">ADMIN</span>
+    </div>
+    <p class="login-sub">Panel de Administración</p>
+    <form id="loginForm">
+      <div class="lf-group">
+        <label>Usuario</label>
+        <input type="text" id="loginUser" placeholder="admin" autocomplete="username" />
+      </div>
+      <div class="lf-group">
+        <label>Contraseña</label>
+        <div class="pw-wrap">
+          <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" />
+          <button type="button" class="pw-toggle" id="pwToggle">👁</button>
+        </div>
+      </div>
+      <div class="login-error" id="loginError">Usuario o contraseña incorrectos</div>
+      <button type="submit" class="login-btn">Entrar al Panel</button>
+    </form>
+    <p class="login-hint">🔒 Acceso restringido — Solo administradores</p>
+  </div>
+</div>
+
+<!-- ════════════════════ ADMIN PANEL ════════════════════ -->
+<div class="admin-panel" id="adminPanel" style="display:none">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <span class="logo-v">VELVET</span>
+      <span class="logo-a">ADMIN</span>
+    </div>
+    <nav class="sb-nav">
+      <button class="sb-item active" data-section="dashboard">
+        <span class="sb-icon">📊</span><span>Dashboard</span>
+      </button>
+      <button class="sb-item" data-section="general">
+        <span class="sb-icon">⚙️</span><span>Información General</span>
+      </button>
+      <button class="sb-item" data-section="hero">
+        <span class="sb-icon">🎯</span><span>Hero / Portada</span>
+      </button>
+      <button class="sb-item" data-section="menu">
+        <span class="sb-icon">🍽</span><span>Menú</span>
+      </button>
+      <button class="sb-item" data-section="services">
+        <span class="sb-icon">✨</span><span>Servicios</span>
+      </button>
+      <button class="sb-item" data-section="testimonials">
+        <span class="sb-icon">⭐</span><span>Testimonios</span>
+      </button>
+      <button class="sb-item" data-section="hours">
+        <span class="sb-icon">🕐</span><span>Horarios</span>
+      </button>
+      <button class="sb-item" data-section="social">
+        <span class="sb-icon">📱</span><span>Redes Sociales</span>
+      </button>
+      <button class="sb-item" data-section="gallery">
+        <span class="sb-icon">🖼</span><span>Galería</span>
+      </button>
+      <button class="sb-item" data-section="colors">
+        <span class="sb-icon">🎨</span><span>Colores & Marca</span>
+      </button>
+      <button class="sb-item" data-section="security">
+        <span class="sb-icon">🔐</span><span>Seguridad</span>
+      </button>
+    </nav>
+    <div class="sb-footer">
+      <a href="/velvet-site/index.html" target="_blank" class="sb-view-web">👁 Ver Sitio Web</a>
+      <button class="sb-logout" id="logoutBtn">🚪 Cerrar Sesión</button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="admin-main">
+
+    <!-- Top bar -->
+    <header class="admin-topbar">
+      <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+      <div class="tb-title" id="tbTitle">Dashboard</div>
+      <div class="tb-actions">
+        <div class="tb-status" id="tbStatus">
+          <span class="status-dot"></span>
+          <span id="statusText">Todos los cambios guardados</span>
+        </div>
+        <button class="tb-save-btn" id="globalSave">💾 Guardar Cambios</button>
+      </div>
+    </header>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ─── SECTION: Dashboard ─── -->
+    <section class="admin-section active" id="sec-dashboard">
+      <div class="dash-welcome">
+        <div class="dw-text">
+          <h1>Bienvenido al Panel <em>Velvet</em></h1>
+          <p>Gestiona todos los contenidos de tu sitio web desde aquí. Los cambios se aplican al instante al guardar.</p>
+        </div>
+      </div>
+      <div class="dash-cards">
+        <div class="dash-card" onclick="switchSection('menu')">
+          <div class="dc-icon">🍽</div>
+          <div class="dc-info">
+            <h3>Menú</h3>
+            <p id="dcMenuCount">Cargando...</p>
+          </div>
+          <span class="dc-arrow">→</span>
+        </div>
+        <div class="dash-card" onclick="switchSection('testimonials')">
+          <div class="dc-icon">⭐</div>
+          <div class="dc-info">
+            <h3>Testimonios</h3>
+            <p id="dcTestiCount">Cargando...</p>
+          </div>
+          <span class="dc-arrow">→</span>
+        </div>
+        <div class="dash-card" onclick="switchSection('services')">
+          <div class="dc-icon">✨</div>
+          <div class="dc-info">
+            <h3>Servicios</h3>
+            <p id="dcSvcCount">Cargando...</p>
+          </div>
+          <span class="dc-arrow">→</span>
+        </div>
+        <div class="dash-card" onclick="switchSection('general')">
+          <div class="dc-icon">⚙️</div>
+          <div class="dc-info">
+            <h3>Info General</h3>
+            <p>Nombre, teléfono, dirección</p>
+          </div>
+          <span class="dc-arrow">→</span>
+        </div>
+      </div>
+      <div class="dash-quicklinks">
+        <h3>Acciones rápidas</h3>
+        <div class="dql-grid">
+          <button onclick="switchSection('hero')" class="dql-btn">🎯 Editar Portada</button>
+          <button onclick="switchSection('hours')" class="dql-btn">🕐 Cambiar Horarios</button>
+          <button onclick="switchSection('social')" class="dql-btn">📱 Redes Sociales</button>
+          <button onclick="switchSection('colors')" class="dql-btn">🎨 Colores</button>
+          <button onclick="window.open('/velvet-site/index.html','_blank')" class="dql-btn primary">👁 Ver Sitio Web</button>
+          <button onclick="exportConfig()" class="dql-btn">📥 Exportar Config</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: General ─── -->
+    <section class="admin-section" id="sec-general">
+      <div class="sec-header">
+        <h2>⚙️ Información General</h2>
+        <p>Datos principales del restaurante que aparecen en todo el sitio.</p>
+      </div>
+      <div class="form-grid">
+        <div class="fg-card">
+          <h3>Identidad</h3>
+          <div class="field-group">
+            <label>Nombre del restaurante</label>
+            <input type="text" id="g_name" placeholder="VELVET" />
+          </div>
+          <div class="field-group">
+            <label>Subtítulo de marca</label>
+            <input type="text" id="g_tagline" placeholder="RESTAURANT & LOUNGE" />
+          </div>
+          <div class="field-group">
+            <label>Eslogan / descripción corta</label>
+            <input type="text" id="g_slogan" placeholder="El Mejor Ambiente Premium..." />
+          </div>
+        </div>
+        <div class="fg-card">
+          <h3>Contacto</h3>
+          <div class="field-group">
+            <label>Teléfono principal</label>
+            <input type="tel" id="g_phone" placeholder="+1 (809) 555-0000" />
+          </div>
+          <div class="field-group">
+            <label>Número de WhatsApp (solo dígitos)</label>
+            <input type="text" id="g_whatsapp" placeholder="18095550000" />
+          </div>
+          <div class="field-group">
+            <label>Correo electrónico</label>
+            <input type="email" id="g_email" placeholder="info@velvetrd.com" />
+          </div>
+        </div>
+        <div class="fg-card fg-full">
+          <h3>Ubicación</h3>
+          <div class="field-group">
+            <label>Dirección completa</label>
+            <input type="text" id="g_address" placeholder="Av. San Vicente de Paúl esq. Calle Las Mercedes..." />
+          </div>
+          <div class="field-group">
+            <label>Link de Google Maps (URL para botón "Cómo llegar")</label>
+            <input type="url" id="g_mapslink" placeholder="https://maps.google.com/..." />
+          </div>
+          <div class="field-group">
+            <label>Embed de Google Maps (código iframe src)</label>
+            <input type="url" id="g_mapembed" placeholder="https://www.google.com/maps/embed?..." />
+          </div>
+        </div>
+        <div class="fg-card fg-full">
+          <h3>Estadísticas (Hero)</h3>
+          <div class="fields-row">
+            <div class="field-group">
+              <label>Rating (ej: 4.5★)</label>
+              <input type="text" id="g_rating" placeholder="4.5★" />
+            </div>
+            <div class="field-group">
+              <label>Total de reseñas</label>
+              <input type="text" id="g_reviews" placeholder="1,265+" />
+            </div>
+            <div class="field-group">
+              <label>% Satisfacción</label>
+              <input type="text" id="g_satisfaction" placeholder="95%" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sec-save">
+        <button class="save-btn" onclick="saveSection('general')">💾 Guardar Información General</button>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Hero ─── -->
+    <section class="admin-section" id="sec-hero">
+      <div class="sec-header">
+        <h2>🎯 Hero / Portada</h2>
+        <p>Texto principal que ven los clientes al entrar al sitio.</p>
+      </div>
+      <div class="form-grid">
+        <div class="fg-card fg-full">
+          <h3>Textos del Hero</h3>
+          <div class="field-group">
+            <label>Badge (texto pequeño superior)</label>
+            <input type="text" id="h_badge" placeholder="Santo Domingo Este · Desde 2018" />
+          </div>
+          <div class="field-group">
+            <label>Título principal (línea 1)</label>
+            <input type="text" id="h_title1" placeholder="El Mejor Ambiente" />
+          </div>
+          <div class="field-group">
+            <label>Título principal (línea 2 — en dorado)</label>
+            <input type="text" id="h_title2" placeholder="Premium" />
+          </div>
+          <div class="field-group">
+            <label>Título principal (línea 3)</label>
+            <input type="text" id="h_title3" placeholder="de Santo Domingo Este" />
+          </div>
+          <div class="field-group">
+            <label>Subtítulo / descripción</label>
+            <textarea id="h_subtitle" rows="2" placeholder="Experiencias gastronómicas, música en vivo..."></textarea>
+          </div>
+          <div class="field-group">
+            <label>Texto botón primario</label>
+            <input type="text" id="h_btn1" placeholder="Reservar Mesa" />
+          </div>
+          <div class="field-group">
+            <label>Texto botón secundario</label>
+            <input type="text" id="h_btn2" placeholder="Ver Menú" />
+          </div>
+        </div>
+      </div>
+      <div class="sec-save">
+        <button class="save-btn" onclick="saveSection('hero')">💾 Guardar Portada</button>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Menu ─── -->
+    <section class="admin-section" id="sec-menu">
+      <div class="sec-header">
+        <h2>🍽 Menú</h2>
+        <p>Gestiona los platos, cócteles, vinos y cervezas de la carta.</p>
+      </div>
+      <div class="menu-tabs-admin">
+        <button class="mta active" data-tab="food">🍽 Comidas</button>
+        <button class="mta" data-tab="cocktails">🍸 Cócteles</button>
+        <button class="mta" data-tab="wines">🍷 Vinos</button>
+        <button class="mta" data-tab="beers">🍺 Cervezas</button>
+      </div>
+      <div id="menuEditor" class="menu-editor"></div>
+      <div class="sec-save">
+        <button class="save-btn" onclick="saveSection('menu')">💾 Guardar Menú</button>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Services ─── -->
+    <section class="admin-section" id="sec-services">
+      <div class="sec-header">
+        <h2>✨ Servicios</h2>
+        <p>Edita las tarjetas de servicios que aparecen en el sitio.</p>
+      </div>
+      <div id="servicesEditor" class="services-editor"></div>
+      <div class="sec-save">
+        <button class="save-btn" onclick="saveSection('services')">💾 Guardar Servicios</button>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Testimonials ─── -->
+    <section class="admin-section" id="sec-testimonials">
+      <div class="sec-header">
+        <h2>⭐ Testimonios</h2>
+        <p>Agrega, edita o elimina reseñas de clientes.</p>
+      </div>
+      <div class="testi-actions">
+        <button class="add-btn" onclick="addTestimonial()">➕ Agregar Testimonio</button>
+      </div>
+      <div id="testiEditor" class="testi-editor"></div>
+      <div class="sec-save">
+        <button class="save-btn" onclick="saveSection('testimonials')">💾 Guardar Testimonios</button>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Hours ─── -->
+    <section class="admin-section" id="sec-hours">
+      <div class="sec-header">
+        <h2>🕐 Horarios</h2>
+        <p>Configura los horarios de apertura del local.</p>
+      </div>
+      <div class="form-grid">
+        <div class="fg-card fg-full">
+          <h3>Horario de Atención</h3>
+          <div id="hoursEditor" class="hours-editor"></div>
+          <button class="add-btn" onclick="addHoursRow()">➕ Agregar Fila</button>
+        </div>
+        <div class="fg-card fg-full">
+          <h3>Mensaje de cierre (opcional)</h3>
+          <div class="field-group">
+            <label>Texto cuando el local está cerrado</label>
+            <input type="text" id="h_closed_msg" placeholder="Actualmente cerrado · Abrimos pronto" />
+          </div>
+        </div>
+      </div>
+      <div class="sec-save">
+        <button class="save-btn" onclick="saveSection('hours')">💾 Guardar Horarios</button>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Social ─── -->
+    <section class="admin-section" id="sec-social">
+      <div class="sec-header">
+        <h2>📱 Redes Sociales</h2>
+        <p>Actualiza los enlaces a tus redes sociales.</p>
+      </div>
+      <div class="form-grid">
+        <div class="fg-card">
+          <h3>Links de Redes</h3>
+          <div class="field-group">
+            <label>📸 Instagram (URL completa)</label>
+            <input type="url" id="s_instagram" placeholder="https://instagram.com/velvetrd" />
+          </div>
+          <div class="field-group">
+            <label>👍 Facebook (URL completa)</label>
+            <input type="url" id="s_facebook" placeholder="https://facebook.com/velvetrd" />
+          </div>
+          <div class="field-group">
+            <label>🎵 TikTok (URL completa)</label>
+            <input type="url" id="s_tiktok" placeholder="https://tiktok.com/@velvetrd" />
+          </div>
+          <div class="field-group">
+            <label>▶️ YouTube (URL completa)</label>
+            <input type="url" id="s_youtube" placeholder="https://youtube.com/@velvetrd" />
+          </div>
+        </div>
+        <div class="fg-card">
+          <h3>Mensaje de WhatsApp</h3>
+          <div class="field-group">
+            <label>Mensaje pre-cargado al abrir WhatsApp</label>
+            <textarea id="s_wa_msg" rows="3" placeholder="Hola, quisiera hacer una reservación en Velvet..."></textarea>
+          </div>
+          <div class="field-group">
+            <label>Mensaje del botón flotante de WhatsApp</label>
+            <input type="text" id="s_wa_tooltip" placeholder="¡Reserva ahora por WhatsApp!" />
+          </div>
+        </div>
+      </div>
+      <div class="sec-save">
+        <button class="save-btn" onclick="saveSection('social')">💾 Guardar Redes Sociales</button>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Gallery ─── -->
+    <section class="admin-section" id="sec-gallery">
+      <div class="sec-header">
+        <h2>🖼 Galería</h2>
+        <p>Edita los títulos y categorías de las fotos de la galería.</p>
+      </div>
+      <div id="galleryEditor" class="gallery-editor-grid"></div>
+      <div class="sec-save">
+        <button class="save-btn" onclick="saveSection('gallery')">💾 Guardar Galería</button>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Colors ─── -->
+    <section class="admin-section" id="sec-colors">
+      <div class="sec-header">
+        <h2>🎨 Colores & Marca</h2>
+        <p>Ajusta la paleta de colores del sitio web.</p>
+      </div>
+      <div class="form-grid">
+        <div class="fg-card">
+          <h3>Colores Principales</h3>
+          <div class="color-field">
+            <label>Color Dorado (acento principal)</label>
+            <div class="cf-row">
+              <input type="color" id="c_gold" value="#c9a84c" />
+              <input type="text" id="c_gold_txt" value="#c9a84c" />
+            </div>
+          </div>
+          <div class="color-field">
+            <label>Color Verde (acento secundario)</label>
+            <div class="cf-row">
+              <input type="color" id="c_green" value="#5db87a" />
+              <input type="text" id="c_green_txt" value="#5db87a" />
+            </div>
+          </div>
+          <div class="color-field">
+            <label>Color Fondo Principal</label>
+            <div class="cf-row">
+              <input type="color" id="c_dark" value="#0a0a0b" />
+              <input type="text" id="c_dark_txt" value="#0a0a0b" />
+            </div>
+          </div>
+          <div class="color-field">
+            <label>Color Rosa / Acento terciario</label>
+            <div class="cf-row">
+              <input type="color" id="c_rose" value="#d4607a" />
+              <input type="text" id="c_rose_txt" value="#d4607a" />
+            </div>
+          </div>
+        </div>
+        <div class="fg-card">
+          <h3>Vista Previa</h3>
+          <div class="color-preview" id="colorPreview">
+            <div class="cp-hero">
+              <div class="cp-badge">● Santo Domingo Este</div>
+              <div class="cp-title">VELVET</div>
+              <div class="cp-title em">Restaurant & Lounge</div>
+              <div class="cp-btns">
+                <div class="cp-btn primary" id="cpBtn1">Reservar Mesa</div>
+                <div class="cp-btn ghost">Ver Menú</div>
+              </div>
+            </div>
+          </div>
+          <button class="save-btn mt16" onclick="applyColors()">🎨 Aplicar Colores</button>
+          <button class="reset-btn mt8" onclick="resetColors()">↺ Restaurar Predeterminados</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── SECTION: Security ─── -->
+    <section class="admin-section" id="sec-security">
+      <div class="sec-header">
+        <h2>🔐 Seguridad</h2>
+        <p>Cambia las credenciales de acceso al panel de administración.</p>
+      </div>
+      <div class="form-grid">
+        <div class="fg-card">
+          <h3>Cambiar Contraseña</h3>
+          <div class="field-group">
+            <label>Contraseña actual</label>
+            <input type="password" id="sec_old" placeholder="••••••••" />
+          </div>
+          <div class="field-group">
+            <label>Nueva contraseña</label>
+            <input type="password" id="sec_new" placeholder="••••••••" />
+          </div>
+          <div class="field-group">
+            <label>Confirmar nueva contraseña</label>
+            <input type="password" id="sec_confirm" placeholder="••••••••" />
+          </div>
+          <div class="sec-pw-msg" id="secPwMsg"></div>
+          <button class="save-btn" onclick="changePassword()">🔐 Cambiar Contraseña</button>
+        </div>
+        <div class="fg-card">
+          <h3>Cambiar Usuario</h3>
+          <div class="field-group">
+            <label>Nuevo nombre de usuario</label>
+            <input type="text" id="sec_user_new" placeholder="admin" />
+          </div>
+          <div class="field-group">
+            <label>Contraseña actual (para confirmar)</label>
+            <input type="password" id="sec_user_pw" placeholder="••••••••" />
+          </div>
+          <button class="save-btn" onclick="changeUsername()">👤 Cambiar Usuario</button>
+        </div>
+        <div class="fg-card fg-full">
+          <h3>Datos & Backup</h3>
+          <div class="backup-actions">
+            <button class="dql-btn" onclick="exportConfig()">📥 Exportar toda la configuración (JSON)</button>
+            <button class="dql-btn" onclick="importConfig()">📤 Importar configuración (JSON)</button>
+            <button class="dql-btn danger" onclick="resetAll()">⚠️ Restaurar configuración de fábrica</button>
+          </div>
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)" />
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>
+
+
+
+
