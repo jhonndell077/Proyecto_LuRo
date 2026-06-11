@@ -1,5 +1,5 @@
 /* -------------------------------------------------------
-   VELVET ADMIN — admin.js  (v2 — corrected)
+   KITCHEN HOUSE - admin.js  (v2 - corrected)
 ------------------------------------------------------- */
 
 /* --------------------------------------------
@@ -66,23 +66,23 @@ const DEFAULTS = {
     ]
   },
   services: [
-    { icon: '??', name: 'Restaurante',      desc: 'Gastronomía premium con ingredientes frescos y chefs especializados.',  link: '#menu',         linkText: 'Ver Menú ?' },
-    { icon: '??', name: 'Wine Bar',         desc: 'Más de 50 etiquetas cuidadosamente seleccionadas de todo el mundo.',    link: '#menu',         linkText: 'Carta de Vinos ?' },
-    { icon: '??', name: 'Cocktails Lounge', desc: 'Mixología artesanal con destilados premium e ingredientes frescos.',    link: '#menu',         linkText: 'Ver Carta ?' },
-    { icon: '??', name: 'Música en Vivo',   desc: 'Artistas nacionales e internacionales todos los fines de semana.',      link: '#reservations', linkText: 'Ver Agenda ?' },
-    { icon: '??', name: 'Deportes',         desc: 'Pantallas gigantes 4K para los mejores eventos deportivos en vivo.',    link: '#',             linkText: 'Próximos Eventos ?' },
-    { icon: '??', name: 'Eventos Privados', desc: 'Celebraciones corporativas, cumpleaños y reuniones exclusivas.',         link: '#reservations', linkText: 'Cotizar ?' },
-    { icon: '??', name: 'Área de Baile',    desc: 'Pista de baile con el mejor DJ y música seleccionada.',                 link: '#reservations', linkText: 'Reservar ?' },
-    { icon: '??', name: 'Valet Parking',    desc: 'Servicio de valet parking gratuito con amplio espacio disponible.',     link: '#location',     linkText: 'Ver Ubicación ?' },
-    { icon: '??', name: 'Terraza Exterior', desc: 'Área al aire libre con decoración natural y ambiente relajado.',        link: '#gallery',      linkText: 'Ver Fotos ?' }
+    { icon: '\uD83C\uDF7D', name: 'Restaurante',      desc: 'Gastronom\u00eda premium con ingredientes frescos y chefs especializados.',  link: '#menu',         linkText: 'Ver Men\u00fa \u2192' },
+    { icon: '\uD83C\uDF77', name: 'Wine Bar',         desc: 'M\u00e1s de 50 etiquetas cuidadosamente seleccionadas de todo el mundo.',    link: '#menu',         linkText: 'Carta de Vinos \u2192' },
+    { icon: '\uD83C\uDF78', name: 'Cocktails Lounge', desc: 'Mixolog\u00eda artesanal con destilados premium e ingredientes frescos.',    link: '#menu',         linkText: 'Ver Carta \u2192' },
+    { icon: '\uD83C\uDFB5', name: 'M\u00fasica en Vivo',   desc: 'Artistas nacionales e internacionales todos los fines de semana.',      link: '#reservations', linkText: 'Ver Agenda \u2192' },
+    { icon: '\uD83C\uDFC6', name: 'Deportes',         desc: 'Pantallas gigantes 4K para los mejores eventos deportivos en vivo.',    link: '#',             linkText: 'Pr\u00f3ximos Eventos \u2192' },
+    { icon: '\uD83C\uDF89', name: 'Eventos Privados', desc: 'Celebraciones corporativas, cumplea\u00f1os y reuniones exclusivas.',         link: '#reservations', linkText: 'Cotizar \u2192' },
+    { icon: '\uD83D\uDC83', name: '\u00c1rea de Baile',    desc: 'Pista de baile con el mejor DJ y m\u00fasica seleccionada.',                 link: '#reservations', linkText: 'Reservar \u2192' },
+    { icon: '\uD83D\uDE97', name: 'Valet Parking',    desc: 'Servicio de valet parking gratuito con amplio espacio disponible.',     link: '#location',     linkText: 'Ver Ubicaci\u00f3n \u2192' },
+    { icon: '\uD83C\uDF3F', name: 'Terraza Exterior', desc: '\u00c1rea al aire libre con decoraci\u00f3n natural y ambiente relajado.',        link: '#gallery',      linkText: 'Ver Fotos \u2192' }
   ],
   testimonials: [
-    { name: 'María González', rating: '?????', text: 'Excelente ambiente y servicios, muy atentas las chicas y muy hermoso el lugar. Sin duda el mejor sitio para salir en Santo Domingo Este.', date: 'Hace 2 días' },
-    { name: 'Carlos Martínez',     rating: '?????', text: 'Lo mejor de Santo Domingo Este. El ambiente es inigualable, la música en vivo es increíble y los cócteles son de otro nivel.', date: 'Hace 1 semana' },
-    { name: 'Paola Jiménez',       rating: '?????', text: 'Excelente lugar para compartir con amistades. Vinimos para una celebración de cumpleaños y la atención fue espectacular.', date: 'Hace 2 semanas' },
-    { name: 'Roberto Pérez',       rating: '?????', text: 'Ambiente exclusivo y trato excepcional. Los platos son exquisitos y los cócteles artesanales son de los mejores que he probado en RD.', date: 'Hace 3 semanas' },
-    { name: 'Ana Rodríguez',       rating: '?????', text: 'Uno de mis lugares favoritos en Santo Domingo Este. La terraza es bellísima y la decoración con las plantas y las luces crea un ambiente mágico.', date: 'Hace 1 mes' },
-    { name: 'Miguel Santos',            rating: '?????', text: '¡Excelente comida, servicio y ambiente! Lo mejor es que siempre hay algo nuevo: música en vivo, eventos especiales.', date: 'Hace 1 mes' }
+    { name: 'Mar\u00eda Gonz\u00e1lez', rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'Excelente ambiente y servicios, muy atentas las chicas y muy hermoso el lugar. Sin duda el mejor sitio para salir en Santo Domingo Este.', date: 'Hace 2 d\u00edas' },
+    { name: 'Carlos Mart\u00ednez',     rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'Lo mejor de Santo Domingo Este. El ambiente es inigualable, la m\u00fasica en vivo es incre\u00edble y los c\u00f3cteles son de otro nivel.', date: 'Hace 1 semana' },
+    { name: 'Paola Jim\u00e9nez',       rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'Excelente lugar para compartir con amistades. Vinimos para una celebraci\u00f3n de cumplea\u00f1os y la atenci\u00f3n fue espectacular.', date: 'Hace 2 semanas' },
+    { name: 'Roberto P\u00e9rez',       rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'Ambiente exclusivo y trato excepcional. Los platos son exquisitos y los c\u00f3cteles artesanales son de los mejores que he probado en RD.', date: 'Hace 3 semanas' },
+    { name: 'Ana Rodr\u00edguez',       rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'Uno de mis lugares favoritos en Santo Domingo Este. La terraza es bell\u00edsima y la decoraci\u00f3n con las plantas y las luces crea un ambiente m\u00e1gico.', date: 'Hace 1 mes' },
+    { name: 'Miguel Santos',            rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: '\u00a1Excelente comida, servicio y ambiente! Lo mejor es que siempre hay algo nuevo: m\u00fasica en vivo, eventos especiales.', date: 'Hace 1 mes' }
   ],
   gallery: [
     { cat: 'Ambiente',        title: 'Lounge Principal' },
@@ -117,6 +117,78 @@ function cfgSave(key, value) {
   localStorage.setItem('velvet_' + key, JSON.stringify(value));
 }
 
+function notifyParentCloudStatus(text, color, state) {
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'velvet_cloud_status',
+        text: text,
+        color: color,
+        state: state || ''
+      }, '*');
+    }
+  } catch (e) {}
+}
+
+function handleExternalSaveRequest(event) {
+  var allowedOrigins = [
+    'https://luro-control.web.app',
+    window.location.origin
+  ];
+  if (event && event.origin && allowedOrigins.indexOf(event.origin) === -1) return;
+  if (!event || !event.data || event.data.type !== 'velvet_save_all') return;
+  runGlobalSaveFlow();
+}
+
+function deriveHeroTitlesFromSlogan(slogan) {
+  var raw = String(slogan || '').trim();
+  if (!raw) return null;
+
+  var premiumMatch = raw.match(/premium/i);
+  if (premiumMatch) {
+    var idx = premiumMatch.index || 0;
+    var word = raw.slice(idx, idx + premiumMatch[0].length);
+    var before = raw.slice(0, idx).trim();
+    var after = raw.slice(idx + premiumMatch[0].length).trim();
+    return {
+      title1: before || DEFAULTS.hero.title1,
+      title2: word || DEFAULTS.hero.title2,
+      title3: after || DEFAULTS.hero.title3
+    };
+  }
+
+  var words = raw.split(/\s+/).filter(Boolean);
+  if (words.length <= 2) {
+    return {
+      title1: words[0] || DEFAULTS.hero.title1,
+      title2: words[1] || '',
+      title3: ''
+    };
+  }
+
+  var pivot = Math.ceil(words.length / 2);
+  return {
+    title1: words.slice(0, pivot - 1).join(' ') || DEFAULTS.hero.title1,
+    title2: words[pivot - 1] || DEFAULTS.hero.title2,
+    title3: words.slice(pivot).join(' ')
+  };
+}
+
+function syncHeroTitlesFromGeneralSlogan() {
+  var derived = deriveHeroTitlesFromSlogan(getVal('g_slogan'));
+  if (!derived) return;
+
+  var heroData = cfgLoad('hero', DEFAULTS.hero);
+  heroData.title1 = derived.title1;
+  heroData.title2 = derived.title2;
+  heroData.title3 = derived.title3;
+  cfgSave('hero', heroData);
+
+  setVal('h_title1', heroData.title1);
+  setVal('h_title2', heroData.title2);
+  setVal('h_title3', heroData.title3);
+}
+
 /* --------------------------------------------
    SINCRONIZACIÓN EN LA NUBE (Firebase RTDB)
    Publica TODOS los cambios a lafocacheria.web.app
@@ -147,7 +219,8 @@ function syncToCloud() {
 
   var statusEl = document.getElementById('cloudStatus');
   var saveBtn  = document.getElementById('globalSave');
-  if (statusEl) { statusEl.textContent = '? Publicando...'; statusEl.style.color = '#f0c040'; }
+  if (statusEl) { statusEl.textContent = '\u23F3 Publicando...'; statusEl.style.color = '#f0c040'; }
+  notifyParentCloudStatus('\u23F3 Publicando...', '#f0c040', 'publishing');
 
   fetch(RTDB + '.json?ts=' + Date.now(), {
     method: 'PUT',
@@ -158,25 +231,25 @@ function syncToCloud() {
   .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
   .then(function() {
     /* ? Éxito: feedback visual */
-    if (statusEl) { statusEl.textContent = '? Sitio actualizado'; statusEl.style.color = '#A1DFCB'; }
+    if (statusEl) { statusEl.textContent = '\u2705 Sitio actualizado'; statusEl.style.color = '#A1DFCB'; }
     if (saveBtn) {
-      saveBtn.textContent = '? Publicado';
+      saveBtn.textContent = '\u2705 Publicado';
       saveBtn.style.background = '#A1DFCB';
       saveBtn.style.color = '#0a0a0b';
       setTimeout(function() {
-        saveBtn.textContent = '?? Guardar Cambios';
+        saveBtn.textContent = '\uD83D\uDCBE Guardar Cambios';
         saveBtn.style.background = '';
         saveBtn.style.color = '';
-        if (statusEl) { statusEl.textContent = '?? En línea'; statusEl.style.color = '#A1DFCB'; }
+        if (statusEl) { statusEl.textContent = '\u2601\uFE0F En l\u00ednea'; statusEl.style.color = '#A1DFCB'; }
       }, 3000);
     }
-    showToast('? Cambios en vivo en lafocacheria.web.app');
+    showToast('\u2705 Cambios en vivo en lafocacheria.web.app');
   })
   .catch(function(err) {
     console.warn('Cloud sync error:', err);
-    if (statusEl) { statusEl.textContent = '?? Sin conexión'; statusEl.style.color = '#f08060'; }
-    if (saveBtn) { saveBtn.textContent = '?? Guardar Cambios'; saveBtn.style.background = ''; saveBtn.style.color = ''; }
-    showToast('?? Error al publicar. Revisa la conexión.', true);
+    if (statusEl) { statusEl.textContent = '\u26A0\uFE0F Sin conexi\u00f3n'; statusEl.style.color = '#f08060'; }
+    if (saveBtn) { saveBtn.textContent = '\uD83D\uDCBE Guardar Cambios'; saveBtn.style.background = ''; saveBtn.style.color = ''; }
+    showToast('\u274C Error al publicar. Revisa la conexi\u00f3n.', true);
   });
 }
 window.syncToCloud = syncToCloud;
@@ -269,6 +342,7 @@ function saveSection(name) {
         address: getVal('g_address'), mapslink: getVal('g_mapslink'), mapembed: getVal('g_mapembed'),
         rating: getVal('g_rating'), reviews: getVal('g_reviews'), satisfaction: getVal('g_satisfaction')
       });
+      syncHeroTitlesFromGeneralSlogan();
       break;
     }
     case 'hero': {
@@ -368,14 +442,14 @@ function saveSection(name) {
       break;
     }
     case 'dashboard':
-      showToast('? Dashboard no tiene cambios que guardar');
+      showToast('\u2139\uFE0F Dashboard no tiene cambios que guardar');
       return;
     default:
       return;
   }
-  showToast('? ' + (name.charAt(0).toUpperCase() + name.slice(1)) + ' guardado correctamente');
+  showToast('\u2705 ' + (name.charAt(0).toUpperCase() + name.slice(1)) + ' guardado correctamente');
   flashStatus();
-  syncToCloud(); // ? Publica automáticamente al sitio
+  syncToCloud(); // Publica automaticamente al sitio
 }
 window.saveSection = saveSection;
 
@@ -388,7 +462,9 @@ function saveSectionSilent(name) {
         phone: getVal('g_phone'), whatsapp: getVal('g_whatsapp'), email: getVal('g_email'),
         address: getVal('g_address'), mapslink: getVal('g_mapslink'), mapembed: getVal('g_mapembed'),
         rating: getVal('g_rating'), reviews: getVal('g_reviews'), satisfaction: getVal('g_satisfaction')
-      }); break;
+      });
+      syncHeroTitlesFromGeneralSlogan();
+      break;
     case 'hero':
       cfgSave('hero', {
         badge: getVal('h_badge'), title1: getVal('h_title1'), title2: getVal('h_title2'),
@@ -482,6 +558,42 @@ function saveSectionSilent(name) {
     default: break;
   }
 }
+
+function runGlobalSaveFlow() {
+  var globalSave = document.getElementById('globalSave');
+
+  /* 1. Guarda la sección activa normalmente */
+  var active = document.querySelector('.admin-section.active');
+  var activeName = active ? active.id.replace('sec-', '') : '';
+  if (activeName && activeName !== 'dashboard') {
+    saveSection(activeName);
+  }
+
+  /* 2. Recorre y guarda TODAS las demás secciones con datos en el DOM */
+  var allSections = ['general','hero','menu','services','testimonials',
+                     'hours','social','gallery','colors','amenities',
+                     'experience','whyus'];
+  allSections.forEach(function(name) {
+    if (name === activeName) return;
+    var el = document.getElementById('sec-' + name);
+    if (el) saveSectionSilent(name);
+  });
+
+  /* 3. Publica inmediatamente en lafocacheria.web.app */
+  syncToCloud();
+
+  /* 4. Feedback visual en el botón */
+  if (globalSave) {
+    globalSave.textContent = '\u2705 Publicado';
+    globalSave.style.background = '#A1DFCB';
+    globalSave.style.color = '#0a0a0b';
+    setTimeout(function() {
+      globalSave.textContent = '\uD83D\uDCBE Guardar Cambios';
+      globalSave.style.background = '';
+      globalSave.style.color = '';
+    }, 2500);
+  }
+}
 window.saveSectionSilent = saveSectionSilent;
 
 /* --------------------------------------------
@@ -500,10 +612,10 @@ function renderMenuEditor() {
       + '<div class="field-group"><label>Nombre</label><input type="text" data-field="name" value="' + esc(item.name) + '" placeholder="Nombre" /></div>'
       + '<div class="field-group"><label>Descripción</label><input type="text" data-field="desc" value="' + esc(item.desc) + '" placeholder="Descripción" /></div>'
       + '<div class="field-group"><label>Precio</label><input type="text" data-field="price" value="' + esc(item.price) + '" placeholder="RD$ 0" /></div>'
-      + '<button class="delete-btn" onclick="deleteMenuItem(' + i + ')" type="button" title="Eliminar">?</button>'
+      + '<button class="delete-btn" onclick="deleteMenuItem(' + i + ')" type="button" title="Eliminar">\u2715</button>'
       + '</div>';
   });
-  html += '<button class="add-btn" onclick="addMenuItem()" type="button" style="margin-top:8px">? Agregar ' + (labelMap[currentMenuTab] || 'Elemento') + '</button>';
+  html += '<button class="add-btn" onclick="addMenuItem()" type="button" style="margin-top:8px">\u2795 Agregar ' + (labelMap[currentMenuTab] || 'Elemento') + '</button>';
   container.innerHTML = html;
 }
 
@@ -522,7 +634,7 @@ function deleteMenuItem(idx) {
   menuData[currentMenuTab].splice(idx, 1);
   cfgSave('menu', menuData);
   renderMenuEditor();
-  showToast('? Elemento eliminado');
+  showToast('\uD83D\uDDD1\uFE0F Elemento eliminado');
 }
 window.deleteMenuItem = deleteMenuItem;
 
@@ -537,11 +649,11 @@ function renderServicesEditor() {
   svcs.forEach(function(s, i) {
     html += '<div class="svc-row">'
       + '<div class="svc-row-header"><span class="svc-row-icon">' + s.icon + '</span><span class="svc-row-title">Servicio ' + (i + 1) + '</span>'
-      + '<button class="delete-btn" onclick="deleteService(' + i + ')" type="button" title="Eliminar">?</button></div>'
-      + '<div class="field-group"><label>Ícono (emoji)</label><input type="text" data-field="icon" value="' + esc(s.icon) + '" placeholder="??" /></div>'
+      + '<button class="delete-btn" onclick="deleteService(' + i + ')" type="button" title="Eliminar">\u2715</button></div>'
+      + '<div class="field-group"><label>\u00cdcono (emoji)</label><input type="text" data-field="icon" value="' + esc(s.icon) + '" placeholder="\u2728" /></div>'
       + '<div class="field-group"><label>Nombre</label><input type="text" data-field="name" value="' + esc(s.name) + '" placeholder="Nombre del servicio" /></div>'
       + '<div class="field-group"><label>Descripción</label><textarea data-field="desc" rows="2" placeholder="Descripción...">' + esc(s.desc) + '</textarea></div>'
-      + '<div class="field-group"><label>Texto del botón</label><input type="text" data-field="linkText" value="' + esc(s.linkText || 'Ver más ?') + '" placeholder="Ver más ?" /></div>'
+      + '<div class="field-group"><label>Texto del bot\u00f3n</label><input type="text" data-field="linkText" value="' + esc(s.linkText || 'Ver m\u00e1s \u2192') + '" placeholder="Ver m\u00e1s \u2192" /></div>'
       + '<div class="field-group"><label>Enlace del botón (# para ancla)</label><input type="text" data-field="link" value="' + esc(s.link || '#') + '" placeholder="#menu" /></div>'
       + '</div>';
   });
@@ -555,7 +667,7 @@ function deleteService(idx) {
   cfgSave('services', svcs);
   renderServicesEditor();
   updateDashboardCounts();
-  showToast('? Servicio eliminado');
+  showToast('\uD83D\uDDD1\uFE0F Servicio eliminado');
 }
 window.deleteService = deleteService;
 
@@ -570,10 +682,10 @@ function renderTestimonialsEditor() {
   testis.forEach(function(t, i) {
     html += '<div class="testi-row">'
       + '<div class="testi-row-header"><span class="testi-row-num">Testimonio #' + (i + 1) + '</span>'
-      + '<button class="delete-btn" onclick="deleteTestimonial(' + i + ')" type="button" title="Eliminar">?</button></div>'
+      + '<button class="delete-btn" onclick="deleteTestimonial(' + i + ')" type="button" title="Eliminar">\u2715</button></div>'
       + '<div class="testi-fields">'
       + '<div class="field-group"><label>Nombre del cliente</label><input type="text" data-field="name" value="' + esc(t.name) + '" placeholder="Nombre" /></div>'
-      + '<div class="field-group"><label>Calificación</label><input type="text" data-field="rating" value="' + esc(t.rating) + '" placeholder="?????" /></div>'
+      + '<div class="field-group"><label>Calificaci\u00f3n</label><input type="text" data-field="rating" value="' + esc(t.rating) + '" placeholder="\u2B50\u2B50\u2B50\u2B50\u2B50" /></div>'
       + '<div class="field-group"><label>Fecha</label><input type="text" data-field="date" value="' + esc(t.date) + '" placeholder="Hace 2 días" /></div>'
       + '<div class="field-group" style="grid-column:span 2"><label>Comentario</label><textarea data-field="text" rows="3" placeholder="Comentario del cliente...">' + esc(t.text) + '</textarea></div>'
       + '</div></div>';
@@ -583,10 +695,10 @@ function renderTestimonialsEditor() {
 
 function addTestimonial() {
   var testis = cfgLoad('testimonials', DEFAULTS.testimonials);
-  testis.push({ name: '', rating: '?????', text: '', date: 'Reciente' });
+  testis.push({ name: '', rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: '', date: 'Reciente' });
   cfgSave('testimonials', testis);
   renderTestimonialsEditor();
-  showToast('? Nuevo testimonio agregado');
+  showToast('\u2795 Nuevo testimonio agregado');
 }
 window.addTestimonial = addTestimonial;
 
@@ -597,7 +709,7 @@ function deleteTestimonial(idx) {
   cfgSave('testimonials', testis);
   renderTestimonialsEditor();
   updateDashboardCounts();
-  showToast('? Testimonio eliminado');
+  showToast('\uD83D\uDDD1\uFE0F Testimonio eliminado');
 }
 window.deleteTestimonial = deleteTestimonial;
 
@@ -614,7 +726,7 @@ function renderHoursEditor() {
       + '<div class="field-group"><label>Días</label><input type="text" data-field="days" value="' + esc(h.days) + '" placeholder="Lunes – Viernes" /></div>'
       + '<div class="field-group"><label>Apertura</label><input type="text" data-field="open" value="' + esc(h.open) + '" placeholder="12:00 PM" /></div>'
       + '<div class="field-group"><label>Cierre</label><input type="text" data-field="close" value="' + esc(h.close) + '" placeholder="12:00 AM" /></div>'
-      + '<button class="delete-btn" onclick="deleteHoursRow(' + i + ')" type="button" title="Eliminar" style="margin-bottom:1px">?</button>'
+      + '<button class="delete-btn" onclick="deleteHoursRow(' + i + ')" type="button" title="Eliminar" style="margin-bottom:1px">\u2715</button>'
       + '</div>';
   });
   container.innerHTML = html;
@@ -653,6 +765,7 @@ function renderGalleryEditor() {
     var hasImg = !!storedImg;
 
     html += '<div class="gallery-edit-item">'
+      + '<button class="delete-btn gallery-delete-btn" onclick="deleteGalleryItem(' + i + ')" type="button" title="Eliminar tarjeta">\u2715</button>'
 
       /* -- Columna izquierda: preview + controles -- */
       + '<div class="gei-left">'
@@ -664,9 +777,9 @@ function renderGalleryEditor() {
 
         /* botones de acción */
         + '<div class="gei-img-actions">'
-          + '<label for="gei-file-' + i + '" class="gei-upload-btn" title="Subir imagen desde tu computadora">?? Subir imagen</label>'
+          + '<label for="gei-file-' + i + '" class="gei-upload-btn" title="Subir imagen desde tu computadora">\uD83D\uDCE4 Subir imagen</label>'
           + (hasImg
-              ? '<button type="button" class="gei-clear-btn" onclick="clearGalleryImage(' + i + ')" title="Eliminar imagen">?? Quitar</button>'
+              ? '<button type="button" class="gei-clear-btn" onclick="clearGalleryImage(' + i + ')" title="Eliminar imagen">\uD83D\uDDD1\uFE0F Quitar</button>'
               : '')
         + '</div>'
 
@@ -689,7 +802,7 @@ function renderGalleryEditor() {
           + '<input type="text" data-field="title" value="' + esc(item.title) + '" placeholder="Lounge Principal" /></div>'
         + (hasImg
             ? '<div class="gei-img-info" id="gei-info-' + i + '">'
-                + '<span class="gei-img-badge">? Imagen cargada</span>'
+                + '<span class="gei-img-badge">\u2705 Imagen cargada</span>'
               + '</div>'
             : '<div class="gei-img-info" id="gei-info-' + i + '">'
                 + '<span class="gei-img-badge empty">Sin imagen — se usará fondo degradado</span>'
@@ -702,6 +815,35 @@ function renderGalleryEditor() {
   container.innerHTML = html;
 }
 
+function deleteGalleryItem(idx) {
+  if (!confirm('¿Eliminar esta tarjeta de galería?')) return;
+
+  var items = cfgLoad('gallery', DEFAULTS.gallery);
+  items.splice(idx, 1);
+  cfgSave('gallery', items);
+
+  var previousImgs = {};
+  for (var i = 0; i < 24; i++) {
+    var img = localStorage.getItem('velvet_gallery_img_' + i);
+    if (img) previousImgs[i] = img;
+    localStorage.removeItem('velvet_gallery_img_' + i);
+  }
+
+  var nextIndex = 0;
+  Object.keys(previousImgs)
+    .map(function(key) { return Number(key); })
+    .sort(function(a, b) { return a - b; })
+    .forEach(function(oldIndex) {
+      if (oldIndex === idx) return;
+      localStorage.setItem('velvet_gallery_img_' + nextIndex, previousImgs[oldIndex]);
+      nextIndex++;
+    });
+
+  renderGalleryEditor();
+  showToast('\uD83D\uDDD1\uFE0F Tarjeta de galería eliminada');
+}
+window.deleteGalleryItem = deleteGalleryItem;
+
 /* -- Manejar selección de archivo -- */
 function handleGalleryImage(event, idx) {
   var file = event.target.files[0];
@@ -709,7 +851,7 @@ function handleGalleryImage(event, idx) {
 
   /* Validar tipo */
   if (!file.type.startsWith('image/')) {
-    showToast('? Solo se aceptan imágenes (JPG, PNG, WebP, GIF)', true);
+    showToast('\u274C Solo se aceptan im\u00e1genes (JPG, PNG, WebP, GIF)', true);
     return;
   }
 
@@ -750,21 +892,21 @@ function handleGalleryImage(event, idx) {
         localStorage.setItem('velvet_gallery_img_' + idx, dataUrl);
         if (progress) progress.style.display = 'none';
         renderGalleryEditor();
-        showToast('? Imagen ' + (idx + 1) + ' cargada correctamente');
+        showToast('\u2705 Imagen ' + (idx + 1) + ' cargada correctamente');
       } catch (storageErr) {
         if (progress) progress.style.display = 'none';
-        showToast('? Imagen muy grande para guardar. Usa una imagen más pequeña.', true);
+        showToast('\u274C Imagen muy grande para guardar. Usa una imagen m\u00e1s peque\u00f1a.', true);
       }
     };
     img.onerror = function() {
       if (progress) progress.style.display = 'none';
-      showToast('? No se pudo leer la imagen', true);
+      showToast('\u274C No se pudo leer la imagen', true);
     };
     img.src = e.target.result;
   };
   reader.onerror = function() {
     if (progress) progress.style.display = 'none';
-    showToast('? Error al leer el archivo', true);
+    showToast('\u274C Error al leer el archivo', true);
   };
   reader.readAsDataURL(file);
 
@@ -778,7 +920,7 @@ function clearGalleryImage(idx) {
   if (!confirm('¿Quitar la imagen del espacio ' + (idx + 1) + '? Se usará el fondo degradado.')) return;
   localStorage.removeItem('velvet_gallery_img_' + idx);
   renderGalleryEditor();
-  showToast('? Imagen eliminada — se restauró el fondo por defecto');
+  showToast('\uD83D\uDDD1\uFE0F Imagen eliminada - se restaur\u00f3 el fondo por defecto');
 }
 window.clearGalleryImage = clearGalleryImage;
 
@@ -848,7 +990,7 @@ function applyColors() {
     rose:  (document.getElementById('c_rose')  || {}).value  || DEFAULTS.colors.rose
   };
   cfgSave('colors', c);
-  showToast('? Colores guardados — Se aplicarán al recargar el sitio');
+  showToast('\uD83C\uDFA8 Colores guardados - Se aplicar\u00e1n al recargar el sitio');
 }
 window.applyColors = applyColors;
 
@@ -856,7 +998,7 @@ function resetColors() {
   if (!confirm('¿Restaurar colores predeterminados?')) return;
   cfgSave('colors', DEFAULTS.colors);
   loadColorsPanel();
-  showToast('? Colores restaurados');
+  showToast('\u267B\uFE0F Colores restaurados');
 }
 window.resetColors = resetColors;
 
@@ -864,10 +1006,10 @@ window.resetColors = resetColors;
    AMENIDADES EDITOR
 -------------------------------------------- */
 var DEFAULTS_AMENITIES = [
-  { icon: '?', title: 'Accesibilidad', items: ['Sanitarios accesibles', 'Acceso para sillas de ruedas', 'Estacionamiento accesible'] },
-  { icon: '??', title: 'Servicios',     items: ['Entrega a domicilio', 'Para llevar', 'Consumo en el lugar', 'Servicio a la mesa', 'Reservaciones'] },
-  { icon: '??', title: 'Métodos de Pago', items: ['Tarjetas de crédito', 'Tarjetas de débito', 'Efectivo', 'NFC / Pagos digitales'] },
-  { icon: '??',  title: 'Estacionamiento', items: ['Gratuito', 'Amplio espacio', 'Valet Parking', 'Vigilancia 24/7'] }
+  { icon: '\u267F', title: 'Accesibilidad', items: ['Sanitarios accesibles', 'Acceso para sillas de ruedas', 'Estacionamiento accesible'] },
+  { icon: '\uD83D\uDECE\uFE0F', title: 'Servicios',     items: ['Entrega a domicilio', 'Para llevar', 'Consumo en el lugar', 'Servicio a la mesa', 'Reservaciones'] },
+  { icon: '\uD83D\uDCB3', title: 'M\u00e9todos de Pago', items: ['Tarjetas de cr\u00e9dito', 'Tarjetas de d\u00e9bito', 'Efectivo', 'NFC / Pagos digitales'] },
+  { icon: '\uD83D\uDE97',  title: 'Estacionamiento', items: ['Gratuito', 'Amplio espacio', 'Valet Parking', 'Vigilancia 24/7'] }
 ];
 
 function renderAmenitiesEditor() {
@@ -877,9 +1019,9 @@ function renderAmenitiesEditor() {
   container.innerHTML = data.map(function(card, ci) {
     return '<div class="svc-row" style="flex-direction:column; gap:10px;" data-ci="' + ci + '">' +
       '<div style="display:flex; gap:10px; align-items:center;">' +
-        '<input style="width:60px; text-align:center; font-size:1.4rem;" data-field="icon" value="' + (card.icon || '') + '" placeholder="??" />' +
+        '<input style="width:60px; text-align:center; font-size:1.4rem;" data-field="icon" value="' + (card.icon || '') + '" placeholder="\u2728" />' +
         '<input style="flex:1;" data-field="title" value="' + (card.title || '') + '" placeholder="Título de la tarjeta" />' +
-        '<button class="svc-del-btn" onclick="deleteAmenityCard(' + ci + ')" title="Eliminar tarjeta">???</button>' +
+        '<button class="svc-del-btn" onclick="deleteAmenityCard(' + ci + ')" title="Eliminar tarjeta">\u2715</button>' +
       '</div>' +
       '<textarea data-field="items" rows="4" placeholder="Un ítem por línea" style="width:100%; resize:vertical; background:var(--dark-3); color:var(--white); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:10px; font-size:.85rem;">' +
         (Array.isArray(card.items) ? card.items.join('\n') : '') +
@@ -891,7 +1033,7 @@ window.renderAmenitiesEditor = renderAmenitiesEditor;
 
 function addAmenityCard() {
   var data = cfgLoad('amenities', DEFAULTS_AMENITIES);
-  data.push({ icon: '?', title: 'Nueva tarjeta', items: ['Ítem 1', 'Ítem 2'] });
+  data.push({ icon: '\uD83D\uDCDD', title: 'Nueva tarjeta', items: ['\u00cdtem 1', '\u00cdtem 2'] });
   cfgSave('amenities', data);
   renderAmenitiesEditor();
 }
@@ -910,18 +1052,18 @@ window.deleteAmenityCard = deleteAmenityCard;
    EXPERIENCIA EDITOR
 -------------------------------------------- */
 var DEFAULTS_EXPERIENCE = [
-  { icon: '??', title: 'Música en Vivo',       desc: 'Artistas en vivo todos los fines de semana' },
-  { icon: '??', title: 'Buenos Cócteles',       desc: 'Mixología artesanal con ingredientes premium' },
-  { icon: '??', title: 'Vinos Premium',          desc: 'Selección curada de las mejores bodegas' },
-  { icon: '??', title: 'Cervezas Exclusivas',    desc: 'Nacionales e importadas de alta calidad' },
-  { icon: '??', title: 'Deportes en Pantalla',   desc: 'Pantallas gigantes para los mejores eventos' },
-  { icon: '??', title: 'Eventos Especiales',      desc: 'Celebraciones privadas y corporativas' },
-  { icon: '??',  title: 'Área Lounge',            desc: 'Sofás y espacios cómodos para relajarte' },
-  { icon: '??', title: 'Terraza',                 desc: 'Ambiente al aire libre con decoración tropical' },
-  { icon: '??', title: 'Comedor Privado',         desc: 'Sala exclusiva para grupos y reuniones' },
-  { icon: '??', title: 'Lugar para Bailar',       desc: 'Pista de baile con la mejor música' },
-  { icon: '?', title: 'Servicio Exclusivo',      desc: 'Atención personalizada y profesional' },
-  { icon: '?', title: 'Ambiente Premium',         desc: 'Decoración de lujo e iluminación ambiental' }
+  { icon: '\uD83C\uDFB5', title: 'M\u00fasica en Vivo',       desc: 'Artistas en vivo todos los fines de semana' },
+  { icon: '\uD83C\uDF78', title: 'Buenos C\u00f3cteles',       desc: 'Mixolog\u00eda artesanal con ingredientes premium' },
+  { icon: '\uD83C\uDF77', title: 'Vinos Premium',          desc: 'Selecci\u00f3n curada de las mejores bodegas' },
+  { icon: '\uD83C\uDF7A', title: 'Cervezas Exclusivas',    desc: 'Nacionales e importadas de alta calidad' },
+  { icon: '\uD83C\uDFC6', title: 'Deportes en Pantalla',   desc: 'Pantallas gigantes para los mejores eventos' },
+  { icon: '\uD83C\uDF89', title: 'Eventos Especiales',      desc: 'Celebraciones privadas y corporativas' },
+  { icon: '\uD83D\uDECB\uFE0F',  title: '\u00c1rea Lounge',            desc: 'Sof\u00e1s y espacios c\u00f3modos para relajarte' },
+  { icon: '\uD83C\uDF3F', title: 'Terraza',                 desc: 'Ambiente al aire libre con decoraci\u00f3n tropical' },
+  { icon: '\uD83D\uDEAA', title: 'Comedor Privado',         desc: 'Sala exclusiva para grupos y reuniones' },
+  { icon: '\uD83D\uDC83', title: 'Lugar para Bailar',       desc: 'Pista de baile con la mejor m\u00fasica' },
+  { icon: '\uD83E\uDD35', title: 'Servicio Exclusivo',      desc: 'Atenci\u00f3n personalizada y profesional' },
+  { icon: '\u2728', title: 'Ambiente Premium',         desc: 'Decoraci\u00f3n de lujo e iluminaci\u00f3n ambiental' }
 ];
 
 function renderExperienceEditor() {
@@ -930,10 +1072,10 @@ function renderExperienceEditor() {
   if (!container) return;
   container.innerHTML = data.map(function(item, i) {
     return '<div class="exp-edit-row svc-row" style="align-items:center; gap:10px;" data-i="' + i + '">' +
-      '<input style="width:56px; text-align:center; font-size:1.3rem;" data-field="icon" value="' + (item.icon || '') + '" placeholder="??" />' +
+      '<input style="width:56px; text-align:center; font-size:1.3rem;" data-field="icon" value="' + (item.icon || '') + '" placeholder="\u2728" />' +
       '<input style="width:180px;" data-field="title" value="' + (item.title || '') + '" placeholder="Título" />' +
       '<input style="flex:1;" data-field="desc" value="' + (item.desc || '') + '" placeholder="Descripción corta" />' +
-      '<button class="svc-del-btn" onclick="deleteExperienceItem(' + i + ')" title="Eliminar">???</button>' +
+      '<button class="svc-del-btn" onclick="deleteExperienceItem(' + i + ')" title="Eliminar">\u2715</button>' +
     '</div>';
   }).join('');
 }
@@ -941,7 +1083,7 @@ window.renderExperienceEditor = renderExperienceEditor;
 
 function addExperienceItem() {
   var data = cfgLoad('experience', DEFAULTS_EXPERIENCE);
-  data.push({ icon: '?', title: 'Nuevo ítem', desc: 'Descripción del ítem' });
+  data.push({ icon: '\u2728', title: 'Nuevo \u00edtem', desc: 'Descripci\u00f3n del \u00edtem' });
   cfgSave('experience', data);
   renderExperienceEditor();
 }
@@ -975,7 +1117,7 @@ function renderWhyUsEditor() {
     return '<div class="why-edit-row svc-row" style="align-items:center; gap:10px;" data-i="' + i + '">' +
       '<input style="flex:1;" data-field="title" value="' + (item.title || '') + '" placeholder="Característica" />' +
       '<input style="flex:2;" data-field="desc" value="' + (item.desc || '') + '" placeholder="Descripción" />' +
-      '<button class="svc-del-btn" onclick="deleteWhyUsItem(' + i + ')" title="Eliminar">???</button>' +
+      '<button class="svc-del-btn" onclick="deleteWhyUsItem(' + i + ')" title="Eliminar">\u2715</button>' +
     '</div>';
   }).join('');
 }
@@ -1008,15 +1150,15 @@ function changePassword() {
   var cfm    = getVal('sec_confirm');
   var msg    = document.getElementById('secPwMsg');
   if (!msg) return;
-  if (oldPw !== creds.pass)  { msg.className = 'sec-pw-msg err'; msg.textContent = '? La contraseña actual no es correcta'; return; }
-  if (newPw.length < 6)      { msg.className = 'sec-pw-msg err'; msg.textContent = '? La nueva contraseña debe tener al menos 6 caracteres'; return; }
-  if (newPw !== cfm)         { msg.className = 'sec-pw-msg err'; msg.textContent = '? Las contraseñas nuevas no coinciden'; return; }
+  if (oldPw !== creds.pass)  { msg.className = 'sec-pw-msg err'; msg.textContent = '\u274C La contrase\u00f1a actual no es correcta'; return; }
+  if (newPw.length < 6)      { msg.className = 'sec-pw-msg err'; msg.textContent = '\u274C La nueva contrase\u00f1a debe tener al menos 6 caracteres'; return; }
+  if (newPw !== cfm)         { msg.className = 'sec-pw-msg err'; msg.textContent = '\u274C Las contrase\u00f1as nuevas no coinciden'; return; }
   creds.pass = newPw;
   cfgSave('credentials', creds);
   ['sec_old','sec_new','sec_confirm'].forEach(function(id){ setVal(id, ''); });
   msg.className = 'sec-pw-msg ok';
-  msg.textContent = '? Contraseña actualizada correctamente';
-  showToast('? Contraseña cambiada');
+  msg.textContent = '\u2705 Contrase\u00f1a actualizada correctamente';
+  showToast('\u2705 Contrase\u00f1a cambiada');
 }
 window.changePassword = changePassword;
 
@@ -1024,12 +1166,12 @@ function changeUsername() {
   var creds = cfgLoad('credentials', DEFAULTS.credentials);
   var newU  = getVal('sec_user_new').trim();
   var pw    = getVal('sec_user_pw');
-  if (pw !== creds.pass) { showToast('? Contraseña incorrecta', true); return; }
-  if (!newU)             { showToast('? El usuario no puede estar vacío', true); return; }
+  if (pw !== creds.pass) { showToast('\u274C Contrase\u00f1a incorrecta', true); return; }
+  if (!newU)             { showToast('\u274C El usuario no puede estar vac\u00edo', true); return; }
   creds.user = newU;
   cfgSave('credentials', creds);
   setVal('sec_user_new', ''); setVal('sec_user_pw', '');
-  showToast('? Usuario actualizado: ' + newU);
+  showToast('\u2705 Usuario actualizado: ' + newU);
 }
 window.changeUsername = changeUsername;
 
@@ -1044,9 +1186,9 @@ function exportConfig() {
   var blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'velvet-config-' + new Date().toISOString().split('T')[0] + '.json';
+  a.download = 'yatincy-admin-config-' + new Date().toISOString().split('T')[0] + '.json';
   a.click();
-  showToast('? Configuración exportada');
+  showToast('\uD83D\uDCE4 Configuraci\u00f3n exportada');
 }
 window.exportConfig = exportConfig;
 
@@ -1064,10 +1206,10 @@ function handleImport(e) {
     try {
       var config = JSON.parse(ev.target.result);
       Object.keys(config).forEach(function(k){ cfgSave(k, config[k]); });
-      showToast('? Configuración importada — Recargando...');
+      showToast('\uD83D\uDCE5 Configuraci\u00f3n importada - Recargando...');
       setTimeout(function(){ location.reload(); }, 1500);
     } catch(err) {
-      showToast('? Archivo inválido', true);
+      showToast('\u274C Archivo inv\u00e1lido', true);
     }
   };
   reader.readAsText(file);
@@ -1076,12 +1218,12 @@ function handleImport(e) {
 window.handleImport = handleImport;
 
 function resetAll() {
-  if (!confirm('?? Esto restaurará TODA la configuración. ¿Continuar?')) return;
+  if (!confirm('\u26A0\uFE0F Esto restaurar\u00e1 TODA la configuraci\u00f3n. \u00bfContinuar?')) return;
   if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
   ['general','hero','menu','services','testimonials','hours','closedMsg','social','gallery','colors'].forEach(function(k){
     localStorage.removeItem('velvet_' + k);
   });
-  showToast('? Configuración restaurada — Recargando...');
+  showToast('\u267B\uFE0F Configuraci\u00f3n restaurada - Recargando...');
   setTimeout(function(){ location.reload(); }, 1500);
 }
 window.resetAll = resetAll;
@@ -1144,7 +1286,7 @@ function initDOM() {
   $adminPanel  = document.getElementById('adminPanel');
 
   if (!$loginScreen || !$adminPanel) {
-    console.error('Velvet Admin: elementos del DOM no encontrados.');
+    console.error('Kitchen House: elementos del DOM no encontrados.');
     return;
   }
 
@@ -1162,16 +1304,16 @@ function initDOM() {
       var u = (document.getElementById('loginUser') || {}).value.trim();
       var p = (document.getElementById('loginPass') || {}).value;
       var err = document.getElementById('loginError');
-      if (u === creds.user && p === creds.pass) {
+    if (u === creds.user && p === creds.pass) {
         sessionStorage.setItem('velvet_admin_auth', 'true');
         if (err) err.classList.remove('show');
         $loginScreen.style.transition = 'opacity .35s, transform .35s';
         $loginScreen.style.opacity    = '0';
         $loginScreen.style.transform  = 'scale(.98)';
-        setTimeout(function(){
-          $loginScreen.style.display = 'none';
-          showAdmin();
-        }, 380);
+          setTimeout(function(){
+            $loginScreen.style.display = 'none';
+            showAdmin();
+          }, 380);
       } else {
         if (err) err.classList.add('show');
         var pass = document.getElementById('loginPass');
@@ -1187,7 +1329,7 @@ function initDOM() {
       var inp = document.getElementById('loginPass');
       if (!inp) return;
       inp.type = inp.type === 'password' ? 'text' : 'password';
-      this.textContent = inp.type === 'password' ? '??' : '??';
+      this.textContent = inp.type === 'password' ? '\uD83D\uDC41' : '\uD83D\uDE48';
     });
   }
 
@@ -1221,35 +1363,7 @@ function initDOM() {
   var globalSave = document.getElementById('globalSave');
   if (globalSave) {
     globalSave.addEventListener('click', function() {
-      /* 1. Guarda la sección activa normalmente */
-      var active = document.querySelector('.admin-section.active');
-      var activeName = active ? active.id.replace('sec-', '') : '';
-      if (activeName && activeName !== 'dashboard') {
-        saveSection(activeName);
-      }
-
-      /* 2. Recorre y guarda TODAS las demás secciones con datos en el DOM */
-      var allSections = ['general','hero','menu','services','testimonials',
-                         'hours','social','gallery','colors','amenities',
-                         'experience','whyus'];
-      allSections.forEach(function(name) {
-        if (name === activeName) return; // ya fue guardada arriba
-        var el = document.getElementById('sec-' + name);
-        if (el) saveSectionSilent(name);
-      });
-
-      /* 3. Publica inmediatamente en lafocacheria.web.app */
-      syncToCloud();
-
-      /* 4. Feedback visual en el botón */
-      globalSave.textContent = '? Publicado';
-      globalSave.style.background = '#A1DFCB';
-      globalSave.style.color = '#0a0a0b';
-      setTimeout(function() {
-        globalSave.textContent = '?? Guardar Cambios';
-        globalSave.style.background = '';
-        globalSave.style.color = '';
-      }, 2500);
+      runGlobalSaveFlow();
     });
   }
 
@@ -1286,4 +1400,6 @@ if (document.readyState === 'loading') {
 } else {
   initDOM();
 }
+
+window.addEventListener('message', handleExternalSaveRequest);
 

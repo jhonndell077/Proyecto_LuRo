@@ -1,5 +1,5 @@
 /* -----------------------------------------------
-   VELVET ADMIN — admin.css
+   KITCHEN HOUSE — admin.css
 ----------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -157,12 +157,15 @@ a { color: inherit; text-decoration: none; }
 
 /* -- Top bar -- */
 .admin-topbar {
-  height: var(--topbar-h);
+  min-height: var(--topbar-h);
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 16px;
   padding: 0 24px;
-  position: sticky; top: 0; z-index: 50;
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 80;
 }
 .sidebar-toggle {
   background: none; border: none; color: var(--gray-l);
@@ -211,12 +214,12 @@ a { color: inherit; text-decoration: none; }
 .toast.error { border-color: rgba(224,85,85,.3); color: var(--red); }
 
 /* --- Sections --- */
-.admin-section { display: none; padding: 32px; max-width: 1000px; width: 100%; }
+.admin-section { display: none; padding: 32px 40px; max-width: 1320px; width: 100%; }
 .admin-section.active { display: block; }
 
 /* Extra: ensure nothing blocks interactions inside main */
 .admin-main > * { position: relative; z-index: 1; }
-.admin-topbar    { z-index: 50 !important; }
+.admin-topbar    { z-index: 80 !important; }
 
 .sec-header { margin-bottom: 32px; }
 .sec-header h2 { font-size: 1.3rem; font-weight: 700; color: var(--white); margin-bottom: 6px; }
@@ -381,9 +384,17 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg3); border: 1px solid var(--border);
   border-radius: 12px; padding: 20px;
   display: flex; gap: 18px; align-items: flex-start;
+  position: relative;
   transition: border-color .2s;
 }
 .gallery-edit-item:hover { border-color: rgba(161,223,203,.2); }
+
+.gallery-delete-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+}
 
 /* -- Columna izquierda -- */
 .gei-left {
@@ -544,6 +555,7 @@ a { color: inherit; text-decoration: none; }
   .gallery-editor-grid { grid-template-columns: 1fr; }
   .gei-left { width: 110px; min-width: 110px; }
   .gei-preview-box { width: 110px; height: 85px; }
+  .gallery-delete-btn { top: 12px; right: 12px; }
   .menu-item-row { grid-template-columns: 1fr 1fr; }
   .fields-row { grid-template-columns: 1fr; }
   .testi-fields { grid-template-columns: 1fr; }
@@ -551,7 +563,32 @@ a { color: inherit; text-decoration: none; }
   .hours-row { grid-template-columns: 1fr 1fr auto; }
 }
 @media (max-width: 600px) {
-  .admin-topbar { padding: 0 14px; }
+  .admin-topbar {
+    min-height: var(--topbar-h);
+    height: auto;
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .tb-title {
+    flex: 1 1 calc(100% - 44px);
+    min-width: 0;
+  }
+  .tb-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tb-status {
+    flex: 1 1 100%;
+  }
+  #cloudStatus {
+    margin-right: 0 !important;
+  }
+  .tb-save-btn {
+    margin-left: auto;
+  }
   .admin-section { padding: 20px 14px; }
   .dash-cards { grid-template-columns: 1fr; }
   .dql-grid { grid-template-columns: 1fr; }

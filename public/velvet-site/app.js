@@ -226,7 +226,7 @@ function applySiteConfig() {
         <div class="amen-card">
           <h3>${card.icon || ''} ${card.title || ''}</h3>
           <ul>
-            ${(Array.isArray(card.items) ? card.items : []).map(item => `<li>? ${item}</li>`).join('')}
+            ${(Array.isArray(card.items) ? card.items : []).map(item => `<li>&#10003; ${item}</li>`).join('')}
           </ul>
         </div>
       `).join('');

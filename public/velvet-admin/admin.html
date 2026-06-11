@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Velvet Admin — Panel de Administración</title>
+  <title>Kitchen House &mdash; Panel de Administraci&oacute;n</title>
   <!-- Prevent indexing -->
   <meta name="robots" content="noindex, nofollow" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="admin.css?v=20260611-syncfix-3" />
+  <link rel="stylesheet" href="admin.css?v=20260611-adminfix-1" />
 </head>
 <body>
 
@@ -20,7 +20,7 @@
   </div>
   <div class="login-card">
     <div class="login-logo">
-      <span class="logo-v">VELVET</span>
+      <span class="logo-v">KITCHEN HOUSE</span>
       <span class="logo-a">ADMIN</span>
     </div>
     <p class="login-sub">Panel de Administración</p>
@@ -33,13 +33,13 @@
         <label>Contraseña</label>
         <div class="pw-wrap">
           <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" />
-          <button type="button" class="pw-toggle" id="pwToggle">??</button>
+          <button type="button" class="pw-toggle" id="pwToggle">&#128065;</button>
         </div>
       </div>
       <div class="login-error" id="loginError">Usuario o contraseña incorrectos</div>
       <button type="submit" class="login-btn">Entrar al Panel</button>
     </form>
-    <p class="login-hint">?? Acceso restringido — Solo administradores</p>
+    <p class="login-hint">&#128274; Acceso restringido &mdash; Solo administradores</p>
   </div>
 </div>
 
@@ -49,56 +49,56 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-logo">
-      <span class="logo-v">VELVET</span>
+      <span class="logo-v">KITCHEN HOUSE</span>
       <span class="logo-a">ADMIN</span>
     </div>
     <nav class="sb-nav">
       <button class="sb-item active" data-section="dashboard">
-        <span class="sb-icon">??</span><span>Dashboard</span>
+        <span class="sb-icon">&#128202;</span><span>Dashboard</span>
       </button>
       <button class="sb-item" data-section="general">
-        <span class="sb-icon">??</span><span>Información General</span>
+        <span class="sb-icon">&#9881;&#65039;</span><span>Informaci&oacute;n General</span>
       </button>
       <button class="sb-item" data-section="hero">
-        <span class="sb-icon">??</span><span>Hero / Portada</span>
+        <span class="sb-icon">&#127919;</span><span>Hero / Portada</span>
       </button>
       <button class="sb-item" data-section="menu">
-        <span class="sb-icon">??</span><span>Menú</span>
+        <span class="sb-icon">&#127869;</span><span>Men&uacute;</span>
       </button>
       <button class="sb-item" data-section="services">
-        <span class="sb-icon">?</span><span>Servicios</span>
+        <span class="sb-icon">&#10024;</span><span>Servicios</span>
       </button>
       <button class="sb-item" data-section="testimonials">
-        <span class="sb-icon">?</span><span>Testimonios</span>
+        <span class="sb-icon">&#11088;</span><span>Testimonios</span>
       </button>
       <button class="sb-item" data-section="hours">
-        <span class="sb-icon">??</span><span>Horarios</span>
+        <span class="sb-icon">&#128336;</span><span>Horarios</span>
       </button>
       <button class="sb-item" data-section="social">
-        <span class="sb-icon">??</span><span>Redes Sociales</span>
+        <span class="sb-icon">&#128241;</span><span>Redes Sociales</span>
       </button>
       <button class="sb-item" data-section="gallery">
-        <span class="sb-icon">??</span><span>Galería</span>
+        <span class="sb-icon">&#128444;</span><span>Galer&iacute;a</span>
       </button>
       <button class="sb-item" data-section="amenities">
-        <span class="sb-icon">??</span><span>Comodidades</span>
+        <span class="sb-icon">&#128718;&#65039;</span><span>Comodidades</span>
       </button>
       <button class="sb-item" data-section="experience">
-        <span class="sb-icon">??</span><span>Experiencia</span>
+        <span class="sb-icon">&#127775;</span><span>Experiencia</span>
       </button>
       <button class="sb-item" data-section="whyus">
-        <span class="sb-icon">??</span><span>¿Por qué nosotros?</span>
+        <span class="sb-icon">&#128161;</span><span>&iquest;Por qu&eacute; nosotros?</span>
       </button>
       <button class="sb-item" data-section="colors">
-        <span class="sb-icon">??</span><span>Colores & Marca</span>
+        <span class="sb-icon">&#127912;</span><span>Colores &amp; Marca</span>
       </button>
       <button class="sb-item" data-section="security">
-        <span class="sb-icon">??</span><span>Seguridad</span>
+        <span class="sb-icon">&#128272;</span><span>Seguridad</span>
       </button>
     </nav>
     <div class="sb-footer">
-      <a href="index.html" target="_blank" class="sb-view-web">?? Ver Sitio Web</a>
-      <button class="sb-logout" id="logoutBtn">?? Cerrar Sesión</button>
+      <a href="index.html" target="_blank" class="sb-view-web">&#128065; Ver Sitio Web</a>
+      <button class="sb-logout" id="logoutBtn">&#128682; Cerrar Sesi&oacute;n</button>
     </div>
   </aside>
 
@@ -107,15 +107,15 @@
 
     <!-- Top bar -->
     <header class="admin-topbar">
-      <button class="sidebar-toggle" id="sidebarToggle">?</button>
+      <button class="sidebar-toggle" id="sidebarToggle">&#9776;</button>
       <div class="tb-title" id="tbTitle">Dashboard</div>
       <div class="tb-actions">
         <div class="tb-status" id="tbStatus">
           <span class="status-dot"></span>
           <span id="statusText">Todos los cambios guardados</span>
         </div>
-        <span id="cloudStatus" style="font-size:12px; color:#A1DFCB; margin-right:10px; font-weight:500;">?? En línea</span>
-        <button class="tb-save-btn" id="globalSave">?? Guardar Cambios</button>
+        <span id="cloudStatus" style="font-size:12px; color:#A1DFCB; margin-right:10px; font-weight:500;">&#9729;&#65039; En l&iacute;nea</span>
+        <button class="tb-save-btn" id="globalSave">&#128190; Guardar Cambios</button>
       </div>
     </header>
 
@@ -126,53 +126,53 @@
     <section class="admin-section active" id="sec-dashboard">
       <div class="dash-welcome">
         <div class="dw-text">
-          <h1>Bienvenido al Panel <em>Velvet</em></h1>
+          <h1>Bienvenido al Panel <em>Kitchen House</em></h1>
           <p>Gestiona todos los contenidos de tu sitio web desde aquí. Los cambios se aplican al instante al guardar.</p>
         </div>
       </div>
       <div class="dash-cards">
         <div class="dash-card" onclick="switchSection('menu')">
-          <div class="dc-icon">??</div>
+          <div class="dc-icon">&#127869;</div>
           <div class="dc-info">
             <h3>Menú</h3>
             <p id="dcMenuCount">Cargando...</p>
           </div>
-          <span class="dc-arrow">?</span>
+          <span class="dc-arrow">&rarr;</span>
         </div>
         <div class="dash-card" onclick="switchSection('testimonials')">
-          <div class="dc-icon">?</div>
+          <div class="dc-icon">&#11088;</div>
           <div class="dc-info">
             <h3>Testimonios</h3>
             <p id="dcTestiCount">Cargando...</p>
           </div>
-          <span class="dc-arrow">?</span>
+          <span class="dc-arrow">&rarr;</span>
         </div>
         <div class="dash-card" onclick="switchSection('services')">
-          <div class="dc-icon">?</div>
+          <div class="dc-icon">&#10024;</div>
           <div class="dc-info">
             <h3>Servicios</h3>
             <p id="dcSvcCount">Cargando...</p>
           </div>
-          <span class="dc-arrow">?</span>
+          <span class="dc-arrow">&rarr;</span>
         </div>
         <div class="dash-card" onclick="switchSection('general')">
-          <div class="dc-icon">??</div>
+          <div class="dc-icon">&#9881;&#65039;</div>
           <div class="dc-info">
             <h3>Info General</h3>
             <p>Nombre, teléfono, dirección</p>
           </div>
-          <span class="dc-arrow">?</span>
+          <span class="dc-arrow">&rarr;</span>
         </div>
       </div>
       <div class="dash-quicklinks">
         <h3>Acciones rápidas</h3>
         <div class="dql-grid">
-          <button onclick="switchSection('hero')" class="dql-btn">?? Editar Portada</button>
-          <button onclick="switchSection('hours')" class="dql-btn">?? Cambiar Horarios</button>
-          <button onclick="switchSection('social')" class="dql-btn">?? Redes Sociales</button>
-          <button onclick="switchSection('colors')" class="dql-btn">?? Colores</button>
-          <button onclick="window.open('index.html','_blank')" class="dql-btn primary">?? Ver Sitio Web</button>
-          <button onclick="exportConfig()" class="dql-btn">?? Exportar Config</button>
+          <button onclick="switchSection('hero')" class="dql-btn">&#127919; Editar Portada</button>
+          <button onclick="switchSection('hours')" class="dql-btn">&#128336; Cambiar Horarios</button>
+          <button onclick="switchSection('social')" class="dql-btn">&#128241; Redes Sociales</button>
+          <button onclick="switchSection('colors')" class="dql-btn">&#127912; Colores</button>
+          <button onclick="window.open('index.html','_blank')" class="dql-btn primary">&#128065; Ver Sitio Web</button>
+          <button onclick="exportConfig()" class="dql-btn">&#128229; Exportar Config</button>
         </div>
       </div>
     </section>
@@ -180,7 +180,7 @@
     <!-- --- SECTION: General --- -->
     <section class="admin-section" id="sec-general">
       <div class="sec-header">
-        <h2>?? Información General</h2>
+        <h2>&#9881;&#65039; Informaci&oacute;n General</h2>
         <p>Datos principales del restaurante que aparecen en todo el sitio.</p>
       </div>
       <div class="form-grid">
@@ -248,14 +248,14 @@
         </div>
       </div>
       <div class="sec-save">
-        <button class="save-btn" onclick="saveSection('general')">?? Guardar Información General</button>
+        <button class="save-btn" onclick="saveSection('general')">&#128190; Guardar Informaci&oacute;n General</button>
       </div>
     </section>
 
     <!-- --- SECTION: Hero --- -->
     <section class="admin-section" id="sec-hero">
       <div class="sec-header">
-        <h2>?? Hero / Portada</h2>
+        <h2>&#127919; Hero / Portada</h2>
         <p>Texto principal que ven los clientes al entrar al sitio.</p>
       </div>
       <div class="form-grid">
@@ -292,66 +292,66 @@
         </div>
       </div>
       <div class="sec-save">
-        <button class="save-btn" onclick="saveSection('hero')">?? Guardar Portada</button>
+        <button class="save-btn" onclick="saveSection('hero')">&#128190; Guardar Portada</button>
       </div>
     </section>
 
     <!-- --- SECTION: Menu --- -->
     <section class="admin-section" id="sec-menu">
       <div class="sec-header">
-        <h2>?? Menú</h2>
+        <h2>&#127869; Men&uacute;</h2>
         <p>Gestiona los platos, cócteles, vinos y cervezas de la carta.</p>
       </div>
       <div class="menu-tabs-admin">
-        <button class="mta active" data-tab="food">?? Comidas</button>
-        <button class="mta" data-tab="cocktails">?? Cócteles</button>
-        <button class="mta" data-tab="wines">?? Vinos</button>
-        <button class="mta" data-tab="beers">?? Cervezas</button>
+        <button class="mta active" data-tab="food">&#127869; Comidas</button>
+        <button class="mta" data-tab="cocktails">&#127864; C&oacute;cteles</button>
+        <button class="mta" data-tab="wines">&#127863; Vinos</button>
+        <button class="mta" data-tab="beers">&#127866; Cervezas</button>
       </div>
       <div id="menuEditor" class="menu-editor"></div>
       <div class="sec-save">
-        <button class="save-btn" onclick="saveSection('menu')">?? Guardar Menú</button>
+        <button class="save-btn" onclick="saveSection('menu')">&#128190; Guardar Men&uacute;</button>
       </div>
     </section>
 
     <!-- --- SECTION: Services --- -->
     <section class="admin-section" id="sec-services">
       <div class="sec-header">
-        <h2>? Servicios</h2>
+        <h2>&#10024; Servicios</h2>
         <p>Edita las tarjetas de servicios que aparecen en el sitio.</p>
       </div>
       <div id="servicesEditor" class="services-editor"></div>
       <div class="sec-save">
-        <button class="save-btn" onclick="saveSection('services')">?? Guardar Servicios</button>
+        <button class="save-btn" onclick="saveSection('services')">&#128190; Guardar Servicios</button>
       </div>
     </section>
 
     <!-- --- SECTION: Testimonials --- -->
     <section class="admin-section" id="sec-testimonials">
       <div class="sec-header">
-        <h2>? Testimonios</h2>
+        <h2>&#11088; Testimonios</h2>
         <p>Agrega, edita o elimina reseñas de clientes.</p>
       </div>
       <div class="testi-actions">
-        <button class="add-btn" onclick="addTestimonial()">? Agregar Testimonio</button>
+        <button class="add-btn" onclick="addTestimonial()">&#10133; Agregar Testimonio</button>
       </div>
       <div id="testiEditor" class="testi-editor"></div>
       <div class="sec-save">
-        <button class="save-btn" onclick="saveSection('testimonials')">?? Guardar Testimonios</button>
+        <button class="save-btn" onclick="saveSection('testimonials')">&#128190; Guardar Testimonios</button>
       </div>
     </section>
 
     <!-- --- SECTION: Hours --- -->
     <section class="admin-section" id="sec-hours">
       <div class="sec-header">
-        <h2>?? Horarios</h2>
+        <h2>&#128336; Horarios</h2>
         <p>Configura los horarios de apertura del local.</p>
       </div>
       <div class="form-grid">
         <div class="fg-card fg-full">
           <h3>Horario de Atención</h3>
           <div id="hoursEditor" class="hours-editor"></div>
-          <button class="add-btn" onclick="addHoursRow()">? Agregar Fila</button>
+          <button class="add-btn" onclick="addHoursRow()">&#10133; Agregar Fila</button>
         </div>
         <div class="fg-card fg-full">
           <h3>Mensaje de cierre (opcional)</h3>
@@ -362,33 +362,33 @@
         </div>
       </div>
       <div class="sec-save">
-        <button class="save-btn" onclick="saveSection('hours')">?? Guardar Horarios</button>
+        <button class="save-btn" onclick="saveSection('hours')">&#128190; Guardar Horarios</button>
       </div>
     </section>
 
     <!-- --- SECTION: Social --- -->
     <section class="admin-section" id="sec-social">
       <div class="sec-header">
-        <h2>?? Redes Sociales</h2>
+        <h2>&#128241; Redes Sociales</h2>
         <p>Actualiza los enlaces a tus redes sociales.</p>
       </div>
       <div class="form-grid">
         <div class="fg-card">
           <h3>Links de Redes</h3>
           <div class="field-group">
-            <label>?? Instagram (URL completa)</label>
+            <label>&#128248; Instagram (URL completa)</label>
             <input type="url" id="s_instagram" placeholder="https://instagram.com/velvetrd" />
           </div>
           <div class="field-group">
-            <label>?? Facebook (URL completa)</label>
+            <label>&#128216; Facebook (URL completa)</label>
             <input type="url" id="s_facebook" placeholder="https://facebook.com/velvetrd" />
           </div>
           <div class="field-group">
-            <label>?? TikTok (URL completa)</label>
+            <label>&#127925; TikTok (URL completa)</label>
             <input type="url" id="s_tiktok" placeholder="https://tiktok.com/@velvetrd" />
           </div>
           <div class="field-group">
-            <label>?? YouTube (URL completa)</label>
+            <label>&#9654;&#65039; YouTube (URL completa)</label>
             <input type="url" id="s_youtube" placeholder="https://youtube.com/@velvetrd" />
           </div>
         </div>
@@ -405,26 +405,26 @@
         </div>
       </div>
       <div class="sec-save">
-        <button class="save-btn" onclick="saveSection('social')">?? Guardar Redes Sociales</button>
+        <button class="save-btn" onclick="saveSection('social')">&#128190; Guardar Redes Sociales</button>
       </div>
     </section>
 
     <!-- --- SECTION: Gallery --- -->
     <section class="admin-section" id="sec-gallery">
       <div class="sec-header">
-        <h2>?? Galería</h2>
+        <h2>&#128444; Galer&iacute;a</h2>
         <p>Edita los títulos y categorías de las fotos de la galería.</p>
       </div>
       <div id="galleryEditor" class="gallery-editor-grid"></div>
       <div class="sec-save">
-        <button class="save-btn" onclick="saveSection('gallery')">?? Guardar Galería</button>
+        <button class="save-btn" onclick="saveSection('gallery')">&#128190; Guardar Galer&iacute;a</button>
       </div>
     </section>
 
     <!-- --- SECTION: Amenidades --- -->
     <section class="admin-section" id="sec-amenities">
       <div class="sec-header">
-        <h2>?? Comodidades</h2>
+        <h2>&#128718;&#65039; Comodidades</h2>
         <p>Edita las tarjetas de comodidades que aparecen en la sección "Todo pensado para tu comodidad".</p>
       </div>
       <div id="amenitiesEditor" style="display:flex; flex-direction:column; gap:16px;"></div>
@@ -434,7 +434,7 @@
     <!-- --- SECTION: Experiencia --- -->
     <section class="admin-section" id="sec-experience">
       <div class="sec-header">
-        <h2>?? Experiencia</h2>
+        <h2>&#127775; Experiencia</h2>
         <p>Edita los íconos, títulos y descripciones de la sección "Todo lo que necesitas en un solo lugar".</p>
       </div>
       <div id="experienceEditor" style="display:flex; flex-direction:column; gap:12px;"></div>
@@ -444,7 +444,7 @@
     <!-- --- SECTION: ¿Por qué nosotros? --- -->
     <section class="admin-section" id="sec-whyus">
       <div class="sec-header">
-        <h2>?? ¿Por qué nosotros?</h2>
+        <h2>&#128161; &iquest;Por qu&eacute; nosotros?</h2>
         <p>Edita las características que aparecen en la sección "Lo que dicen nuestros clientes".</p>
       </div>
       <div id="whyusEditor" style="display:flex; flex-direction:column; gap:12px;"></div>
@@ -454,7 +454,7 @@
     <!-- --- SECTION: Colors --- -->
     <section class="admin-section" id="sec-colors">
       <div class="sec-header">
-        <h2>?? Colores & Marca</h2>
+        <h2>&#127912; Colores &amp; Marca</h2>
         <p>Ajusta la paleta de colores del sitio web.</p>
       </div>
       <div class="form-grid">
@@ -493,7 +493,7 @@
           <h3>Vista Previa</h3>
           <div class="color-preview" id="colorPreview">
             <div class="cp-hero">
-              <div class="cp-badge">? Santo Domingo Este</div>
+              <div class="cp-badge">&#128205; Santo Domingo Este</div>
               <div class="cp-title">VELVET</div>
               <div class="cp-title em">Restaurant & Lounge</div>
               <div class="cp-btns">
@@ -502,8 +502,8 @@
               </div>
             </div>
           </div>
-          <button class="save-btn mt16" onclick="applyColors()">?? Aplicar Colores</button>
-          <button class="reset-btn mt8" onclick="resetColors()">? Restaurar Predeterminados</button>
+          <button class="save-btn mt16" onclick="applyColors()">&#127912; Aplicar Colores</button>
+          <button class="reset-btn mt8" onclick="resetColors()">&#9851;&#65039; Restaurar Predeterminados</button>
         </div>
       </div>
     </section>
@@ -511,7 +511,7 @@
     <!-- --- SECTION: Security --- -->
     <section class="admin-section" id="sec-security">
       <div class="sec-header">
-        <h2>?? Seguridad</h2>
+        <h2>&#128272; Seguridad</h2>
         <p>Cambia las credenciales de acceso al panel de administración.</p>
       </div>
       <div class="form-grid">
@@ -530,7 +530,7 @@
             <input type="password" id="sec_confirm" placeholder="••••••••" />
           </div>
           <div class="sec-pw-msg" id="secPwMsg"></div>
-          <button class="save-btn" onclick="changePassword()">?? Cambiar Contraseña</button>
+          <button class="save-btn" onclick="changePassword()">&#128272; Cambiar Contrase&ntilde;a</button>
         </div>
         <div class="fg-card">
           <h3>Cambiar Usuario</h3>
@@ -542,14 +542,14 @@
             <label>Contraseña actual (para confirmar)</label>
             <input type="password" id="sec_user_pw" placeholder="••••••••" />
           </div>
-          <button class="save-btn" onclick="changeUsername()">?? Cambiar Usuario</button>
+          <button class="save-btn" onclick="changeUsername()">&#128100; Cambiar Usuario</button>
         </div>
         <div class="fg-card fg-full">
           <h3>Datos & Backup</h3>
           <div class="backup-actions">
-            <button class="dql-btn" onclick="exportConfig()">?? Exportar toda la configuración (JSON)</button>
-            <button class="dql-btn" onclick="importConfig()">?? Importar configuración (JSON)</button>
-            <button class="dql-btn danger" onclick="resetAll()">?? Restaurar configuración de fábrica</button>
+            <button class="dql-btn" onclick="exportConfig()">&#128228; Exportar toda la configuraci&oacute;n (JSON)</button>
+            <button class="dql-btn" onclick="importConfig()">&#128229; Importar configuraci&oacute;n (JSON)</button>
+            <button class="dql-btn danger" onclick="resetAll()">&#9851;&#65039; Restaurar configuraci&oacute;n de f&aacute;brica</button>
           </div>
           <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)" />
         </div>
@@ -559,7 +559,7 @@
   </main>
 </div>
 
-<script src="admin.js?v=20260611-syncfix-3"></script>
+<script src="admin.js?v=20260611-adminfix-1"></script>
 </body>
 </html>
 

@@ -16566,15 +16566,45 @@ function guardarFocaCheria() {
     const iframe = document.getElementById('foca-cheria-iframe');
     const btn    = document.getElementById('focaSaveBtn');
     if (!iframe || !iframe.contentWindow) return;
-    iframe.contentWindow.postMessage({ type: 'velvet_save_all' }, '*');
     if (btn) {
-        btn.textContent = '✅ Guardado';
-        btn.style.background = '#A1DFCB';
-        setTimeout(function() {
-            btn.textContent = '💾 Guardar';
-            btn.style.background = '#c9a84c';
-        }, 2500);
+        btn.textContent = '⏳ Publicando...';
+        btn.style.background = '#f0c040';
+        btn.style.color = '#0a0a0b';
     }
+    iframe.contentWindow.postMessage({ type: 'velvet_save_all' }, '*');
 }
 window.guardarFocaCheria = guardarFocaCheria;
+
+window.addEventListener('message', function(event) {
+    if (!event || !event.data || event.data.type !== 'velvet_cloud_status') return;
+    if (event.origin !== 'https://lafocacheria.web.app') return;
+
+    const btn = document.getElementById('focaSaveBtn');
+    if (!btn) return;
+
+    const state = String(event.data.state || '');
+    if (state === 'publishing') {
+        btn.textContent = '⏳ Publicando...';
+        btn.style.background = '#f0c040';
+        btn.style.color = '#0a0a0b';
+        return;
+    }
+    if (state === 'success') {
+        btn.textContent = '✅ Sitio actualizado';
+        btn.style.background = '#A1DFCB';
+        btn.style.color = '#0a0a0b';
+        return;
+    }
+    if (state === 'online') {
+        btn.textContent = '💾 Guardar';
+        btn.style.background = '#c9a84c';
+        btn.style.color = '#0a0a0b';
+        return;
+    }
+    if (state === 'offline') {
+        btn.textContent = '⚠️ Sin conexión';
+        btn.style.background = '#f08060';
+        btn.style.color = '#0a0a0b';
+    }
+});
 
