@@ -1149,11 +1149,7 @@ if (document.readyState === 'loading') {
 /* ── Listener para guardar desde LuRo Control (postMessage cross-origin) ── */
 window.addEventListener('message', function(e) {
   if (!e.data || e.data.type !== 'velvet_save_all') return;
-  var allSections = ['general','hero','menu','services','testimonials','hours','social','gallery','colors','amenities'];
-  allSections.forEach(function(name) {
-    var el = document.getElementById('sec-' + name);
-    if (el) saveSectionSilent(name);
-  });
-  syncToCloud();
-  showToast('💾 Cambios guardados y publicados');
+  /* Dispara exactamente el mismo flujo que hacer click en globalSave */
+  var btn = document.getElementById('globalSave');
+  if (btn) btn.click();
 });
