@@ -1145,3 +1145,15 @@ if (document.readyState === 'loading') {
 } else {
   initDOM();
 }
+
+/* ── Listener para guardar desde LuRo Control (postMessage cross-origin) ── */
+window.addEventListener('message', function(e) {
+  if (!e.data || e.data.type !== 'velvet_save_all') return;
+  var allSections = ['general','hero','menu','services','testimonials','hours','social','gallery','colors','amenities'];
+  allSections.forEach(function(name) {
+    var el = document.getElementById('sec-' + name);
+    if (el) saveSectionSilent(name);
+  });
+  syncToCloud();
+  showToast('💾 Cambios guardados y publicados');
+});

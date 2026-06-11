@@ -16562,3 +16562,19 @@ function cerrarFocaCheria() {
 }
 window.cerrarFocaCheria = cerrarFocaCheria;
 
+function guardarFocaCheria() {
+    const iframe = document.getElementById('foca-cheria-iframe');
+    const btn    = document.getElementById('focaSaveBtn');
+    if (!iframe || !iframe.contentWindow) return;
+    iframe.contentWindow.postMessage({ type: 'velvet_save_all' }, '*');
+    if (btn) {
+        btn.textContent = '✅ Guardado';
+        btn.style.background = '#A1DFCB';
+        setTimeout(function() {
+            btn.textContent = '💾 Guardar';
+            btn.style.background = '#c9a84c';
+        }, 2500);
+    }
+}
+window.guardarFocaCheria = guardarFocaCheria;
+
