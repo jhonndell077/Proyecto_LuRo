@@ -249,11 +249,12 @@ applySiteConfig();
 
 /* ══════════════════════════════════════════════════════
    SINCRONIZACIÓN EN TIEMPO REAL — Firebase Realtime DB
-   Lee la config publicada desde el admin y aplica cambios
-   automáticamente SIN recargar la página.
+   SSE con reconexión automática + polling cada 4s como fallback.
+   El sitio se actualiza en segundos tras "Guardar Cambios" en admin.
 ══════════════════════════════════════════════════════ */
 (function initCloudSync() {
   var RTDB = 'https://lafocacheria-default-rtdb.firebaseio.com/velvet';
+  var lastHash = null;
 
   /* Aplica config de la nube al DOM y localStorage */
   function applyFromCloud(data) {
@@ -267,27 +268,42 @@ applySiteConfig();
     applySiteConfig();
   }
 
-  /* Carga inicial desde la nube (sobreescribe localStorage con datos del admin) */
-  fetch(RTDB + '.json')
-    .then(function(r) { return r.ok ? r.json() : null; })
-    .then(function(data) { if (data) applyFromCloud(data); })
-    .catch(function() { /* Sin conexión: usa localStorage */ });
+  /* Fetch puntual desde la nube */
+  function fetchCloud() {
+    fetch(RTDB + '.json')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data) return;
+        var h = JSON.stringify(data).length; // hash ligero por tamaño
+        if (h !== lastHash) { lastHash = h; applyFromCloud(data); }
+      })
+      .catch(function() {});
+  }
 
-  /* Escucha cambios en tiempo real vía Server-Sent Events */
-  try {
-    var es = new EventSource(RTDB + '.json');
-    es.addEventListener('put', function(e) {
-      try {
-        var payload = JSON.parse(e.data);
-        /* 'put' con path '/' trae todo el objeto en payload.data */
-        var cfg = (payload.path === '/') ? payload.data : null;
-        if (cfg) applyFromCloud(cfg);
-      } catch(err) {}
-    });
-    es.onerror = function() { es.close(); }; /* Cierra si falla, evita bucle */
-  } catch(err) {}
+  /* Carga inicial inmediata */
+  fetchCloud();
 
-  /* Fallback: localStorage storage event (misma pestaña del admin) */
+  /* Polling cada 4 segundos — garantiza actualización aunque SSE falle */
+  setInterval(fetchCloud, 4000);
+
+  /* SSE — actualización instantánea (< 1 s) cuando el admin guarda */
+  function connectSSE() {
+    try {
+      var es = new EventSource(RTDB + '.json');
+      es.addEventListener('put', function(e) {
+        try {
+          var payload = JSON.parse(e.data);
+          var cfg = (payload.path === '/') ? payload.data : null;
+          if (cfg) { lastHash = JSON.stringify(cfg).length; applyFromCloud(cfg); }
+        } catch(err) {}
+      });
+      /* Reconecta automáticamente en lugar de morir */
+      es.onerror = function() { es.close(); setTimeout(connectSSE, 3000); };
+    } catch(err) { setTimeout(connectSSE, 5000); }
+  }
+  connectSSE();
+
+  /* Fallback: mismo dispositivo cuando admin y sitio están en el mismo navegador */
   window.addEventListener('storage', function(e) {
     if (!e.key || e.key.startsWith('velvet_')) applySiteConfig();
   });
