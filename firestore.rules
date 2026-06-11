@@ -15,9 +15,9 @@ service cloud.firestore {
       return signedIn() && request.auth.token.superMaster == true;
     }
 
-    // Usuarios maestros: lectura solo para super master o dueño.
+    // Usuarios maestros: solo el propio dueño o super master puede leer su documento.
     match /owners/{ownerId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (isSuperMaster() || ownerClaim() == ownerId);
       allow create, update, delete: if false;
     }
 
