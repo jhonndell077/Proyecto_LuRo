@@ -7341,10 +7341,10 @@ function toggleDetallesProduccion(idx) {
     }
 
     function estilosModulo(nombre) {
-        if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️ ', titulo: 'ADMINISTRADOR' };
-        if (nombre === 'COCINA') return { color: 'var(--accent)', icono: '👨‍🍳 ', titulo: 'ADMINISTRAR COCINA' };
-        if (nombre === 'LA FOCA CHERIA') return { color: '#A1DFCB', icono: '🦭 ', titulo: 'LA FOCA CHERIA' };
-        return { color: 'var(--blue)', icono: '🧩 ', titulo: `MÓDULO ${nombre}` };
+        if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️', titulo: 'ADMINISTRADOR', descripcion: 'Configuración, usuarios y gestión global del sistema' };
+        if (nombre === 'COCINA') return { color: 'var(--accent)', icono: '👨‍🍳', titulo: 'COCINA', descripcion: 'Platos, almacén, ventas, producción y asistencia' };
+        if (nombre === 'LA FOCA CHERIA') return { color: '#A1DFCB', icono: '🦭', titulo: 'LA FOCA CHERIA', descripcion: 'Administrador del sitio web lafocacheria.web.app' };
+        return { color: 'var(--blue)', icono: '🧩', titulo: nombre, descripcion: 'Módulo personalizado' };
     }
 
     function obtenerModuloEtiquetaActivo() {
@@ -7371,19 +7371,44 @@ function toggleDetallesProduccion(idx) {
         const btnNuevo = document.querySelector('#module-selector .btn-add-module-float');
         if (!grid) return;
         if (btnNuevo) btnNuevo.style.display = esColaboradorSesion ? 'none' : 'inline-block';
+
         const modulos = obtenerModulosDisponibles();
-        grid.innerHTML = modulos.map(mod => {
+        const reservados = modulos.filter(m => RESERVED_MODULES.has(m));
+        const custom     = modulos.filter(m => !RESERVED_MODULES.has(m));
+
+        function cardHTML(mod) {
             const est = estilosModulo(mod);
             const esCustom = !RESERVED_MODULES.has(mod);
-            const btnEliminar = (!esColaboradorSesion && esCustom)
-                ? `<button class="module-delete-btn" onclick="event.stopPropagation(); eliminarModuloCustom('${mod.replace(/'/g, "\\'")}')">🗑️ ELIMINAR MÓDULO</button>`
+            const badge = mod === 'LA FOCA CHERIA'
+                ? `<span class="module-badge" style="background:${est.color}; color:#0a0a0b;">SITIO WEB</span>`
+                : mod === 'ADMINISTRADOR'
+                ? `<span class="module-badge" style="background:var(--purple);">SISTEMA</span>`
+                : esCustom
+                ? `<span class="module-badge" style="background:var(--blue);">CUSTOM</span>`
                 : '';
-            return `<div class="module-card" onclick="seleccionarModulo('${mod.replace(/'/g, "\\'")}')" style="border-color:${est.color};">
-              <span style="font-size:60px;">${est.icono}</span>
-              <h3 style="margin-top:20px; text-align:center;">${est.titulo}</h3>
+            const btnEliminar = (!esColaboradorSesion && esCustom)
+                ? `<button class="module-delete-btn" onclick="event.stopPropagation(); eliminarModuloCustom('${mod.replace(/'/g, "\\'")}')">🗑️ ELIMINAR</button>`
+                : '';
+            return `<div class="module-card" onclick="seleccionarModulo('${mod.replace(/'/g, "\\'")}')"
+                      style="--mod-color:${est.color}; border-color:${est.color};">
+              <div class="module-card-icon">${est.icono}</div>
+              <h3 class="module-card-title">${est.titulo}</h3>
+              <p class="module-card-desc">${est.descripcion}</p>
+              ${badge}
               ${btnEliminar}
             </div>`;
-        }).join('');
+        }
+
+        let html = reservados.map(cardHTML).join('');
+
+        if (custom.length) {
+            html += `<div class="module-section-divider">
+              <span>MIS MÓDULOS</span>
+            </div>`;
+            html += custom.map(cardHTML).join('');
+        }
+
+        grid.innerHTML = html;
     }
 
     function renderAdminModuleLinks() {
