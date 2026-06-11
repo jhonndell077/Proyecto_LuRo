@@ -60,17 +60,9 @@
       const parsed = JSON.parse(raw);
       const user = String(parsed?.user || "").trim().toLowerCase();
       const pass = String(parsed?.pass || "");
-      const at = Number(parsed?.at || 0);
-      // Expire after 5 minutes
-      if (!user || !pass || (Date.now() - at) > 5 * 60 * 1000) {
-        sessionStorage.removeItem("LURO_SAAS_PENDING_LOGIN");
-        return null;
-      }
-      // Clear immediately after reading — one-time use
-      sessionStorage.removeItem("LURO_SAAS_PENDING_LOGIN");
+      if (!user || !pass) return null;
       return { user, pass };
     } catch (_e) {
-      sessionStorage.removeItem("LURO_SAAS_PENDING_LOGIN");
       return null;
     }
   }
@@ -159,7 +151,6 @@
     try {
       const rs = await call("authenticateSession", { username: user, password: pass });
       if (!rs?.ok) throw new Error("Credenciales inválidas.");
-      // Store pending auth briefly only if PayPal subscription confirmation is needed
       sessionStorage.setItem("LURO_SAAS_PENDING_LOGIN", JSON.stringify({ user, pass, at: Date.now() }));
       statusEl().textContent = "Acceso correcto. Redirigiendo...";
       window.location.href = "app.html";

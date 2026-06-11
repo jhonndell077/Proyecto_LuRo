@@ -316,17 +316,6 @@
     (function () {
       if (!('serviceWorker' in navigator)) return;
       var swVersion = '20260414-cachefix-2';
-      var swReloadRequestedByUser = false;
-
-      function solicitarActualizacionSW(worker) {
-        if (!worker || window.__swUpdatePromptShown) return;
-        window.__swUpdatePromptShown = true;
-        var aceptar = window.confirm('Hay una nueva actualización disponible. ¿Deseas aplicarla ahora?');
-        if (!aceptar) return;
-        swReloadRequestedByUser = true;
-        worker.postMessage({ type: 'SKIP_WAITING' });
-      }
-
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'

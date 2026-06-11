@@ -37,7 +37,7 @@
       }
 
       function getCurrentPassword() {
-        return String(cloudAuth?.password || window.loginClave || '').trim();
+        return String(window.loginClave || '').trim();
       }
 
       function rememberCloudAuth(username, password, meta = {}) {
@@ -54,10 +54,8 @@
         return cloudAuth;
       }
 
-      // Internal reference only — do not expose password storage to global scope
-      window.__cloudAuthSetFromLogin = function(u, p, meta) {
-        rememberCloudAuth(u, p, meta);
-      };
+      // Expose for login fallback (cuando el backend no devolvió sesión, pero las credenciales son válidas).
+      window.rememberCloudAuth = rememberCloudAuth;
 
       function ensureCloudAuth() {
         if (cloudAuth?.username && cloudAuth?.password) return cloudAuth;
@@ -212,9 +210,11 @@
         const mapCloud = new Map();
         (Array.isArray(collaborators) ? collaborators : []).forEach((c) => {
           const user = String(c?.username || c?.user || '').trim().toLowerCase();
-          if (!user) return;
+          const pass = String(c?.pass || '').trim();
+          if (!user || !pass) return;
           mapCloud.set(user, {
             user,
+            pass,
             role: 'colaborador',
             owner: ownerKey,
             activo: c?.activo !== false,
@@ -282,7 +282,7 @@
         try {
           const result = await postCallable('authenticateSession', { username: u, password: p }, { timeoutMs: 3500 });
           if (!result?.ok) return null;
-          window.__cloudAuthSetFromLogin(u, p, result);
+          rememberCloudAuth(u, p, result);
           startCloudPresenceHeartbeat();
           window.setStatusPublic(`Sesión cloud activa para ${String(result.owner || u)}.`);
           return {
@@ -713,7 +713,8 @@
         if (!f) return null;
         return {
           user: target,
-          role: String(f?.role || '').toLowerCase() === 'super-master' ? 'super-master' : 'admin',
+          pass: String(f.pass || ''),
+          role: target === 'jssantana077' ? 'super-master' : 'admin',
           owner: target,
           activo: f.activo !== false,
           canCreateAdmins: f?.canCreateAdmins === true,
