@@ -249,61 +249,88 @@ applySiteConfig();
 
 /* ══════════════════════════════════════════════════════
    SINCRONIZACIÓN EN TIEMPO REAL — Firebase Realtime DB
-   SSE con reconexión automática + polling cada 4s como fallback.
-   El sitio se actualiza en segundos tras "Guardar Cambios" en admin.
+   4 mecanismos en paralelo para actualización sin F5:
+   1. Carga inicial al abrir la página
+   2. Server-Sent Events (instantáneo cuando admin guarda)
+   3. Polling cada 2.5s con cache-bust (respaldo garantizado)
+   4. pageshow + visibilitychange (al volver a la pestaña)
 ══════════════════════════════════════════════════════ */
 (function initCloudSync() {
   var RTDB = 'https://lafocacheria-default-rtdb.firebaseio.com/velvet';
-  var lastHash = null;
+  var lastVersion = null;
+  var cloudApplied = false;
+  var fallbackTimer = setTimeout(function() {
+    if (!cloudApplied) applySiteConfig();
+  }, 1200);
 
-  /* Aplica config de la nube al DOM y localStorage */
+  /* Aplica config de la nube al DOM */
   function applyFromCloud(data) {
     if (!data || typeof data !== 'object') return;
-    var keys = ['general','hero','menu','services','testimonials','hours','social','gallery','colors','closedMsg'];
+    var incomingVersion = data._updated || JSON.stringify(data).length;
+    if (incomingVersion === lastVersion) return;
+    lastVersion = incomingVersion;
+    cloudApplied = true;
+    clearTimeout(fallbackTimer);
+
+    var keys = ['general','hero','menu','services','testimonials',
+                'hours','social','gallery','colors','closedMsg','amenities'];
     keys.forEach(function(key) {
-      if (data[key] !== undefined) {
+      if (data[key] !== undefined)
         localStorage.setItem('velvet_' + key, JSON.stringify(data[key]));
-      }
     });
+
+    /* Imágenes de galería (base64 desde admin) */
+    if (data._gallery_imgs && typeof data._gallery_imgs === 'object') {
+      Object.keys(data._gallery_imgs).forEach(function(k) {
+        if (data._gallery_imgs[k])
+          localStorage.setItem('velvet_gallery_img_' + k, data._gallery_imgs[k]);
+      });
+    }
+
     applySiteConfig();
   }
 
-  /* Fetch puntual desde la nube */
-  function fetchCloud() {
-    fetch(RTDB + '.json')
+  /* Fetch con cache-bust — evita que el navegador devuelva datos viejos */
+  function fetchConfig() {
+    return fetch(RTDB + '.json?ts=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    })
       .then(function(r) { return r.ok ? r.json() : null; })
-      .then(function(data) {
-        if (!data) return;
-        var h = JSON.stringify(data).length; // hash ligero por tamaño
-        if (h !== lastHash) { lastHash = h; applyFromCloud(data); }
-      })
+      .then(function(data) { if (data) applyFromCloud(data); })
       .catch(function() {});
   }
 
-  /* Carga inicial inmediata */
-  fetchCloud();
+  /* Carga inicial */
+  fetchConfig();
 
-  /* Polling cada 4 segundos — garantiza actualización aunque SSE falle */
-  setInterval(fetchCloud, 4000);
-
-  /* SSE — actualización instantánea (< 1 s) cuando el admin guarda */
+  /* SSE — actualización instantánea cuando admin hace PUT */
   function connectSSE() {
     try {
       var es = new EventSource(RTDB + '.json');
       es.addEventListener('put', function(e) {
         try {
           var payload = JSON.parse(e.data);
-          var cfg = (payload.path === '/') ? payload.data : null;
-          if (cfg) { lastHash = JSON.stringify(cfg).length; applyFromCloud(cfg); }
+          var cfg = payload.path === '/' ? payload.data : null;
+          if (cfg) applyFromCloud(cfg);
         } catch(err) {}
       });
-      /* Reconecta automáticamente en lugar de morir */
-      es.onerror = function() { es.close(); setTimeout(connectSSE, 3000); };
+      /* Reconecta automáticamente si cae la conexión */
+      es.onerror = function() { try { es.close(); } catch(e) {} setTimeout(connectSSE, 3000); };
     } catch(err) { setTimeout(connectSSE, 5000); }
   }
   connectSSE();
 
-  /* Fallback: mismo dispositivo cuando admin y sitio están en el mismo navegador */
+  /* Polling cada 2.5s — garantía absoluta */
+  setInterval(fetchConfig, 2500);
+
+  /* Al volver a la pestaña o navegar back/forward */
+  window.addEventListener('pageshow', fetchConfig);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) fetchConfig();
+  });
+
+  /* Mismo navegador, otra pestaña */
   window.addEventListener('storage', function(e) {
     if (!e.key || e.key.startsWith('velvet_')) applySiteConfig();
   });
