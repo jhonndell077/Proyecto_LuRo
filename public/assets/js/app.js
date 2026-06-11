@@ -7317,7 +7317,7 @@ function toggleDetallesProduccion(idx) {
         'ventas',
         'autorizaciones'
     ]);
-    const RESERVED_MODULES = new Set(['COCINA', 'ADMINISTRADOR']);
+    const RESERVED_MODULES = new Set(['COCINA', 'ADMINISTRADOR', 'LA FOCA CHERIA']);
 
     function esModuloAdministradorActual() {
         return moduloVistaActual === 'ADMINISTRADOR';
@@ -7332,7 +7332,7 @@ function toggleDetallesProduccion(idx) {
     }
 
     function obtenerModulosDisponibles() {
-        const base = esColaboradorSesion ? ['COCINA'] : ['COCINA', 'ADMINISTRADOR'];
+        const base = esColaboradorSesion ? ['COCINA'] : ['COCINA', 'ADMINISTRADOR', 'LA FOCA CHERIA'];
         const custom = (Array.isArray(db.modulosCustom) ? db.modulosCustom : [])
             .filter(m => m && m.owner === sesionUser?.user && m.nombre)
             .map(m => String(m.nombre).trim().toUpperCase())
@@ -7343,6 +7343,7 @@ function toggleDetallesProduccion(idx) {
     function estilosModulo(nombre) {
         if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️ ', titulo: 'ADMINISTRADOR' };
         if (nombre === 'COCINA') return { color: 'var(--accent)', icono: '👨‍🍳 ', titulo: 'ADMINISTRAR COCINA' };
+        if (nombre === 'LA FOCA CHERIA') return { color: '#A1DFCB', icono: '🦭 ', titulo: 'LA FOCA CHERIA' };
         return { color: 'var(--blue)', icono: '🧩 ', titulo: `MÓDULO ${nombre}` };
     }
 
@@ -7464,6 +7465,20 @@ function toggleDetallesProduccion(idx) {
         if (!validarAccesoCuentaActual()) return;
         const moduloNombre = String(mod || '').trim();
         const moduloNormalizado = moduloNombre.toUpperCase();
+
+        /* ── LA FOCA CHERIA: abre el admin de lafocacheria.web.app en overlay ── */
+        if (moduloNormalizado === 'LA FOCA CHERIA') {
+            const overlay = document.getElementById('foca-cheria-overlay');
+            const iframe  = document.getElementById('foca-cheria-iframe');
+            if (overlay && iframe) {
+                iframe.src = 'https://lafocacheria.web.app/admin.html?v=' + Date.now();
+                overlay.style.display = 'flex';
+                const sel = document.getElementById('module-selector');
+                if (sel) sel.style.display = 'none';
+            }
+            return;
+        }
+
         const esAdminModulo = (moduloNormalizado === 'ADMINISTRADOR');
         if (esColaboradorSesion && esAdminModulo) {
             alert("🚫 Los colaboradores no pueden entrar al módulo ADMINISTRADOR.");
@@ -16508,5 +16523,17 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   });
 })();
 
-
+/* ══════════════════════════════════════════════════
+   MÓDULO LA FOCA CHERIA — overlay full-screen
+   Admin de lafocacheria.web.app embebido en LuRo
+══════════════════════════════════════════════════ */
+function cerrarFocaCheria() {
+    const overlay = document.getElementById('foca-cheria-overlay');
+    const iframe  = document.getElementById('foca-cheria-iframe');
+    if (overlay) overlay.style.display = 'none';
+    if (iframe)  iframe.src = '';
+    const sel = document.getElementById('module-selector');
+    if (sel) sel.style.display = 'flex';
+}
+window.cerrarFocaCheria = cerrarFocaCheria;
 
