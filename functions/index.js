@@ -2870,5 +2870,63 @@ exports.triggerGithubDeploy = onCall(GITHUB_DEPLOY_RUNTIME_OPTS, async (request)
   };
 });
 
+// ============================
+// Proxy del Asistente IA (Groq) — la API key vive como secreto del backend,
+// nunca en el cliente. El front llama a estas funciones en vez de api.groq.com.
+// Configurar la clave una vez:  firebase functions:secrets:set GROQ_API_KEY
+// ============================
+const GROQ_CHAT_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_AUDIO_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions";
+
+exports.groqChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
+  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
+  const key = String(process.env.GROQ_API_KEY || "").trim();
+  if (!key) { res.status(503).json({ ok: false, error: "GROQ_API_KEY no configurada en el backend" }); return; }
+  try {
+    const body = (req.body && typeof req.body === "object") ? req.body : {};
+    const payload = {
+      model: String(body.model || "llama-3.3-70b-versatile"),
+      messages: Array.isArray(body.messages) ? body.messages : [],
+      temperature: typeof body.temperature === "number" ? body.temperature : 0.65,
+      max_tokens: typeof body.max_tokens === "number" ? body.max_tokens : 350
+    };
+    const r = await fetch(GROQ_CHAT_ENDPOINT, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const text = await r.text();
+    res.status(r.status).set("Content-Type", "application/json").send(text);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: String((e && e.message) || e) });
+  }
+});
+
+exports.groqTranscribe = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
+  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
+  const key = String(process.env.GROQ_API_KEY || "").trim();
+  if (!key) { res.status(503).json({ ok: false, error: "GROQ_API_KEY no configurada en el backend" }); return; }
+  try {
+    const buf = req.rawBody;
+    if (!buf || !buf.length) { res.status(400).json({ ok: false, error: "Audio vacío" }); return; }
+    const contentType = String(req.get("content-type") || "audio/webm");
+    const ext = contentType.includes("mp4") ? "mp4" : contentType.includes("ogg") ? "ogg" : "webm";
+    const form = new FormData();
+    form.append("file", new Blob([buf], { type: contentType }), `audio.${ext}`);
+    form.append("model", "whisper-large-v3-turbo");
+    form.append("language", "es");
+    form.append("response_format", "json");
+    const r = await fetch(GROQ_AUDIO_ENDPOINT, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${key}` },
+      body: form
+    });
+    const text = await r.text();
+    res.status(r.status).set("Content-Type", "application/json").send(text);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: String((e && e.message) || e) });
+  }
+});
+
 
 

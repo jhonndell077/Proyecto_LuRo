@@ -1,6 +1,6 @@
-/* ═══════════════════════════════════════════════
-   VELVET ADMIN — admin.css
-═══════════════════════════════════════════════ */
+/* -----------------------------------------------
+   KITCHEN HOUSE � admin.css
+----------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -29,7 +29,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--beige); ove
 input, textarea, select, button { font-family: var(--font); }
 a { color: inherit; text-decoration: none; }
 
-/* ════════════════ LOGIN ════════════════ */
+/* ---------------- LOGIN ---------------- */
 .login-screen {
   min-height: 100vh;
   display: flex;
@@ -100,10 +100,10 @@ a { color: inherit; text-decoration: none; }
 .login-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(161,223,203,.4); }
 .login-hint { text-align: center; font-size: .72rem; color: var(--gray); margin-top: 20px; }
 
-/* ════════════════ LAYOUT ════════════════ */
+/* ---------------- LAYOUT ---------------- */
 .admin-panel { display: flex; min-height: 100vh; }
 
-/* ── Sidebar ── */
+/* -- Sidebar -- */
 .sidebar {
   width: var(--sidebar-w); min-height: 100vh;
   background: var(--bg2);
@@ -147,23 +147,25 @@ a { color: inherit; text-decoration: none; }
 .sb-logout { color: var(--gray-l); background: none; }
 .sb-logout:hover { background: rgba(224,85,85,.1); color: var(--red); }
 
-/* ── Main ── */
+/* -- Main -- */
 .admin-main {
   flex: 1; margin-left: var(--sidebar-w);
-  height: 100vh; overflow-y: auto; display: flex; flex-direction: column;
+  min-height: 100vh; display: flex; flex-direction: column;
   transition: margin-left var(--t);
 }
 .admin-main.expanded { margin-left: 0; }
 
-/* ── Top bar ── */
+/* -- Top bar -- */
 .admin-topbar {
-  height: var(--topbar-h);
+  min-height: var(--topbar-h);
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 16px;
   padding: 0 24px;
-  position: sticky; top: 0; z-index: 50;
-  flex-shrink: 0;
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 80;
 }
 .sidebar-toggle {
   background: none; border: none; color: var(--gray-l);
@@ -195,7 +197,7 @@ a { color: inherit; text-decoration: none; }
 }
 .tb-save-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(161,223,203,.4); }
 
-/* ── Toast ── */
+/* -- Toast -- */
 .toast {
   position: fixed; bottom: 28px; right: 28px; z-index: 9999;
   padding: 14px 22px;
@@ -211,19 +213,19 @@ a { color: inherit; text-decoration: none; }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast.error { border-color: rgba(224,85,85,.3); color: var(--red); }
 
-/* ─── Sections ─── */
-.admin-section { display: none; padding: 32px; max-width: 1000px; width: 100%; }
+/* --- Sections --- */
+.admin-section { display: none; padding: 32px 40px; max-width: 1320px; width: 100%; }
 .admin-section.active { display: block; }
 
 /* Extra: ensure nothing blocks interactions inside main */
 .admin-main > * { position: relative; z-index: 1; }
-.admin-topbar    { z-index: 50 !important; }
+.admin-topbar    { z-index: 80 !important; }
 
 .sec-header { margin-bottom: 32px; }
 .sec-header h2 { font-size: 1.3rem; font-weight: 700; color: var(--white); margin-bottom: 6px; }
 .sec-header p  { font-size: .85rem; color: var(--gray-l); }
 
-/* ─── Cards & Forms ─── */
+/* --- Cards & Forms --- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 .fg-card {
   background: var(--bg3); border: 1px solid var(--border);
@@ -280,7 +282,7 @@ a { color: inherit; text-decoration: none; }
 }
 .add-btn:hover { background: rgba(93,184,122,.18); transform: translateY(-1px); }
 
-/* ─── Dashboard ─── */
+/* --- Dashboard --- */
 .dash-welcome {
   padding: 28px 32px;
   background: linear-gradient(135deg, rgba(161,223,203,.08) 0%, rgba(93,184,122,.05) 100%);
@@ -318,7 +320,7 @@ a { color: inherit; text-decoration: none; }
 .dql-btn.danger { background: rgba(224,85,85,.06); border-color: rgba(224,85,85,.2); color: var(--red); }
 .dql-btn.danger:hover { background: rgba(224,85,85,.12); }
 
-/* ─── Menu Editor ─── */
+/* --- Menu Editor --- */
 .menu-tabs-admin { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
 .mta {
   padding: 9px 20px;
@@ -345,7 +347,7 @@ a { color: inherit; text-decoration: none; }
 }
 .delete-btn:hover { background: rgba(224,85,85,.18); }
 
-/* ─── Services Editor ─── */
+/* --- Services Editor --- */
 .services-editor { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .svc-row {
   background: var(--bg3); border: 1px solid var(--border);
@@ -355,7 +357,7 @@ a { color: inherit; text-decoration: none; }
 .svc-row-icon { font-size: 1.3rem; }
 .svc-row-title { font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-l); }
 
-/* ─── Testimonials Editor ─── */
+/* --- Testimonials Editor --- */
 .testi-actions { margin-bottom: 20px; }
 .testi-editor { display: flex; flex-direction: column; gap: 16px; }
 .testi-row {
@@ -367,7 +369,7 @@ a { color: inherit; text-decoration: none; }
 .testi-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .testi-fields .field-group:last-child { grid-column: span 2; }
 
-/* ─── Hours Editor ─── */
+/* --- Hours Editor --- */
 .hours-editor { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
 .hours-row {
   display: grid; grid-template-columns: 2fr 1fr 1fr auto;
@@ -375,18 +377,26 @@ a { color: inherit; text-decoration: none; }
 }
 .hours-row .field-group { margin: 0; }
 
-/* ─── Gallery Editor ─── */
+/* --- Gallery Editor --- */
 .gallery-editor-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 
 .gallery-edit-item {
   background: var(--bg3); border: 1px solid var(--border);
   border-radius: 12px; padding: 20px;
   display: flex; gap: 18px; align-items: flex-start;
+  position: relative;
   transition: border-color .2s;
 }
 .gallery-edit-item:hover { border-color: rgba(161,223,203,.2); }
 
-/* ── Columna izquierda ── */
+.gallery-delete-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+}
+
+/* -- Columna izquierda -- */
 .gei-left {
   display: flex; flex-direction: column; gap: 10px;
   min-width: 130px; width: 130px;
@@ -497,7 +507,7 @@ a { color: inherit; text-decoration: none; }
 /* Columna derecha */
 .gei-fields { flex: 1; min-width: 0; }
 
-/* ─── Colors ─── */
+/* --- Colors --- */
 .color-field { margin-bottom: 18px; }
 .color-field label { display: block; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-l); margin-bottom: 7px; }
 .cf-row { display: flex; gap: 10px; align-items: center; }
@@ -525,13 +535,13 @@ a { color: inherit; text-decoration: none; }
 .cp-btn.primary { background: linear-gradient(135deg, var(--gold), var(--gold-l)); color: #0a0a0b; transition: background .3s; }
 .cp-btn.ghost  { background: rgba(255,255,255,.06); color: #fff; border: 1px solid rgba(255,255,255,.15); }
 
-/* ─── Security ─── */
+/* --- Security --- */
 .sec-pw-msg { font-size: .8rem; margin: -8px 0 14px; min-height: 18px; }
 .sec-pw-msg.ok  { color: var(--green); }
 .sec-pw-msg.err { color: var(--red); }
 .backup-actions { display: flex; flex-direction: column; gap: 10px; }
 
-/* ═══ RESPONSIVE ═══ */
+/* --- RESPONSIVE --- */
 @media (max-width: 900px) {
   :root { --sidebar-w: 0px; }
   .sidebar { transform: translateX(-100%); width: 240px; }
@@ -545,6 +555,7 @@ a { color: inherit; text-decoration: none; }
   .gallery-editor-grid { grid-template-columns: 1fr; }
   .gei-left { width: 110px; min-width: 110px; }
   .gei-preview-box { width: 110px; height: 85px; }
+  .gallery-delete-btn { top: 12px; right: 12px; }
   .menu-item-row { grid-template-columns: 1fr 1fr; }
   .fields-row { grid-template-columns: 1fr; }
   .testi-fields { grid-template-columns: 1fr; }
@@ -552,7 +563,32 @@ a { color: inherit; text-decoration: none; }
   .hours-row { grid-template-columns: 1fr 1fr auto; }
 }
 @media (max-width: 600px) {
-  .admin-topbar { padding: 0 14px; }
+  .admin-topbar {
+    min-height: var(--topbar-h);
+    height: auto;
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .tb-title {
+    flex: 1 1 calc(100% - 44px);
+    min-width: 0;
+  }
+  .tb-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tb-status {
+    flex: 1 1 100%;
+  }
+  #cloudStatus {
+    margin-right: 0 !important;
+  }
+  .tb-save-btn {
+    margin-left: auto;
+  }
   .admin-section { padding: 20px 14px; }
   .dash-cards { grid-template-columns: 1fr; }
   .dql-grid { grid-template-columns: 1fr; }
@@ -570,3 +606,4 @@ a { color: inherit; text-decoration: none; }
 /* Scrollable main area */
 .admin-main { overflow-y: auto; }
 .admin-section { min-height: 200px; }
+

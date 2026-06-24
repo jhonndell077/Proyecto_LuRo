@@ -1769,7 +1769,8 @@
       </div>
 
       <div class="luro-assistant-compose">
-        <input id="luro-assistant-input" type="text" placeholder="Escribe un comando real. Ej.: abre distribuidores, cuánto he ganado, busca tomate..." onkeydown="handleLuroAssistantKeydown(event)">
+        <input id="luro-assistant-input" type="text" placeholder="Escribe un comando o di 'Hola Luro'..." onkeydown="handleLuroAssistantKeydown(event)">
+        <button type="button" id="luro-mic-btn-pub" class="btn" onclick="luroVozToggle()" title="Hablar" style="background:#2d3436;color:#fff;padding:8px 12px;font-size:16px;">🎙️</button>
         <button type="button" class="btn btn-save" onclick="enviarMensajeAsistente()">EJECUTAR</button>
       </div>
     </div>
@@ -1822,6 +1823,596 @@
       ← LuRo
     </button>
   </div>
+
+<!-- ===== LURO ASISTENTE INTELIGENTE v9 — MANOS LIBRES ===== -->
+<style>
+#luro-estado-badge {
+  position: fixed; bottom: 82px; right: 20px; z-index: 10000;
+  display: none; align-items: center; gap: 7px;
+  background: rgba(15,15,20,0.88); color: #fff;
+  padding: 6px 14px; border-radius: 22px; font-size: 12px; font-weight: 600;
+  backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  pointer-events: none; transition: opacity 0.3s;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+#luro-estado-badge .ld { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.ld-pulse { animation: ldPulse 1.1s ease-in-out infinite; }
+@keyframes ldPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(0.65)} }
+#luro-confirmar-barra {
+  display: none; position: fixed; bottom: 118px; right: 20px; z-index: 10001;
+  background: #1e272e; color: #fff; border-radius: 14px; padding: 14px 16px;
+  font-size: 13px; max-width: 310px; box-shadow: 0 4px 24px rgba(0,0,0,0.55);
+  border: 1px solid #e17055; line-height: 1.45;
+}
+#luro-confirmar-barra .lcb-btns { display:flex; gap:8px; margin-top:10px; }
+#luro-confirmar-barra button { flex:1; padding:8px; border:none; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; }
+#lcb-si { background:#00b894; color:#fff; }
+#lcb-no { background:#d63031; color:#fff; }
+</style>
+<script>
+(function() {
+  /* ── CONFIG ── */
+  // La API key de Groq vive como secreto en functions/ (GROQ_API_KEY). El cliente
+  // llama a estos proxys del backend, nunca a api.groq.com directo (no se exponen claves).
+  const CLOUD_FN_BASE  = 'https://us-central1-luro-control.cloudfunctions.net';
+  const GROQ_CHAT_URL  = `${CLOUD_FN_BASE}/groqChat`;
+  const GROQ_AUDIO_URL = `${CLOUD_FN_BASE}/groqTranscribe`;
+  const GROQ_MODEL     = 'llama-3.3-70b-versatile';
+  const GROQ_FAST      = 'llama-3.1-8b-instant';   // fallback en 429
+  const WHISPER_MODEL  = 'whisper-large-v3-turbo';
+  const MASTER_PASS    = '160623';
+  const MEM_KEY        = 'LURO_MEMORIA_OPERATIVA';
+  const WAKE_WORDS     = ['luro','hola luro','hey luro','oye luro','estás ahí luro'];
+  const CRITICAL_TAGS  = ['LIMPIAR','ELIMINAR_DIST','ELIMINAR_ALMACEN','ELIMINAR_PLATO'];
+  const AFIRMAR        = ['sí','si','ok','okay','confirma','confirmo','correcto','adelante','hazlo','dale','claro','venga'];
+  const NEGAR          = ['no','cancela','cancelar','cancel','stop','para'];
+  const TAG_RE         = /\[(NAV|MODULO|LIMPIAR|ELIMINAR_DIST|ELIMINAR_ALMACEN|ELIMINAR_PLATO|ENTRADA|DIST_NUEVO|CLIENTE_NUEVO):[^\]]*\]/g;
+
+  // (Sin API key en el cliente: la autenticación contra Groq la hace el backend.)
+
+  /* ── ESTADO ── */
+  // estado: 'idle' | 'wake' | 'voz_grab' | 'voz_proc' | 'voz_tts' | 'txt_proc' | 'confirming'
+  let estado        = 'idle';
+  let modoVoz       = false;   // ← true SOLO cuando la sesión fue iniciada por voz
+  let historial     = [];
+  let micPermiso    = false;
+  let mediaStream   = null;
+  let mediaRecorder = null;
+  let audioChunks   = [];
+  let audioCtx      = null;
+  let wakeRec       = null;
+  let wakeActivo    = false;
+  let accionPend    = null;    // tag crítico esperando confirmación
+  let watchT        = null;
+  let vozLoopT      = null;
+  const synth       = window.speechSynthesis;
+
+  const $          = id => document.getElementById(id);
+  const panelOpen  = () => { const p=$('luro-assistant-panel'); return !!(p&&p.classList.contains('is-open')); };
+
+  /* ── BADGE ── */
+  let badge = null;
+  const BCFG = {
+    idle:      { d:'none',  col:'#636e72', txt:'' },
+    wake:      { d:'flex',  col:'#00b894', txt:'👂 Escuchando wake word...' },
+    voz_grab:  { d:'flex',  col:'#e17055', txt:'⏺ Grabando...' },
+    voz_proc:  { d:'flex',  col:'#6c5ce7', txt:'⋯ Procesando...' },
+    voz_tts:   { d:'flex',  col:'#0984e3', txt:'🔊 Respondiendo...' },
+    txt_proc:  { d:'flex',  col:'#6c5ce7', txt:'⋯ Procesando...' },
+    confirming:{ d:'flex',  col:'#fdcb6e', txt:'⚠ Confirma la acción' },
+  };
+  function setE(s) {
+    estado = s;
+    const c = BCFG[s] || BCFG.idle;
+    if (badge) {
+      badge.style.display = c.d;
+      badge.innerHTML = c.txt
+        ? `<span class="ld ld-pulse" style="background:${c.col}"></span>${c.txt}` : '';
+    }
+    // Botón mic
+    const b = $('luro-mic-btn-pub');
+    if (b) {
+      const icn = { idle:'🎙', wake:'👂', voz_grab:'⏹', voz_proc:'⋯', voz_tts:'🔊', txt_proc:'⋯', confirming:'⚠' };
+      const bg  = { idle:'#2d3436', wake:'#00b894', voz_grab:'#e84118', voz_proc:'#6c5ce7', voz_tts:'#0984e3', txt_proc:'#6c5ce7', confirming:'#fdcb6e' };
+      b.textContent = icn[s]||'🎙'; b.style.background = bg[s]||'#2d3436';
+    }
+  }
+
+  /* ── BARRA CONFIRMACIÓN ── */
+  let barraC = null;
+  function initConfirmBar() {
+    barraC = document.createElement('div'); barraC.id = 'luro-confirmar-barra';
+    barraC.innerHTML = `<div id="lcb-txt">¿Confirmas esta acción?</div>
+      <div class="lcb-btns"><button id="lcb-si" onclick="window.__luroOK(true)">✓ Sí, ejecutar</button>
+      <button id="lcb-no" onclick="window.__luroOK(false)">✗ Cancelar</button></div>`;
+    document.body.appendChild(barraC);
+  }
+  function mostrarConfirm(txt) {
+    if (!barraC) return; const t=$('lcb-txt'); if(t)t.textContent=txt;
+    barraC.style.display='block'; setE('confirming');
+  }
+  function ocultarConfirm() { if(barraC) barraC.style.display='none'; }
+
+  window.__luroOK = function(ok) {
+    ocultarConfirm();
+    const pending = accionPend; accionPend = null;
+    if (ok && pending) {
+      sinDialogos(()=>ejecutarTag(pending));
+      burbuja('assistant','Listo, acción ejecutada.');
+      hablarY('Listo, ejecutado.', ()=>{ modoVoz ? vozLoop() : wakeStart(); });
+    } else {
+      burbuja('assistant','Acción cancelada.');
+      hablarY('Cancelado.', ()=>{ modoVoz ? vozLoop() : wakeStart(); });
+    }
+  };
+
+  /* ── MEMORIA / DB ── */
+  function getDB() { try{return JSON.parse(localStorage.getItem('LURO_CONTROL_DB')||'null')||{};}catch(e){return{};} }
+  function getMem(){ try{return JSON.parse(localStorage.getItem(MEM_KEY)||'{}');}catch(e){return{};} }
+  function pushMem(u,l){ const m=getMem(); if(!Array.isArray(m.r))m.r=[]; m.r.unshift({t:Date.now(),u,l:l.replace(TAG_RE,'').trim()}); m.r=m.r.slice(0,30); try{localStorage.setItem(MEM_KEY,JSON.stringify(m));}catch(e){} }
+
+  /* ── CONTEXTO ── */
+  function ctx() {
+    try {
+      const db=getDB(),L=[];
+      if(Array.isArray(db.ventas)&&db.ventas.length){
+        const tv=db.ventas.reduce((s,v)=>s+(Number(v.total)||0),0);
+        const tg=db.ventas.reduce((s,v)=>s+(Number(v.ganancia)||0),0);
+        const hoy=new Date().toDateString();
+        const vh=db.ventas.filter(v=>new Date(v.fecha).toDateString()===hoy);
+        const fr={};db.ventas.forEach(v=>{const n=v.nombre||v.item||'';if(n)fr[n]=(fr[n]||0)+1;});
+        const top=Object.entries(fr).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>`${e[0]}(${e[1]})`).join(', ');
+        L.push(`Ventas: ${db.ventas.length}, RD$${tv.toFixed(0)}, ganancia RD$${tg.toFixed(0)}.`);
+        if(vh.length)L.push(`Hoy: ${vh.length} ventas RD$${vh.reduce((s,v)=>s+(Number(v.total)||0),0).toFixed(0)}.`);
+        if(top)L.push(`Top: ${top}.`);
+      }
+      if(Array.isArray(db.almacen)&&db.almacen.length){
+        const bajos=db.almacen.filter(p=>Number(p.disponible)<Number(p.ideal));
+        // Limitar a 20 productos para no exceder tokens
+        const lista=db.almacen.slice(0,20).map(p=>`${p.nombre} ${p.disponible||0}${p.unidad||''}`).join(', ');
+        L.push(`Almacen(${db.almacen.length}): ${lista}.`);
+        if(bajos.length)L.push(`Stock bajo: ${bajos.slice(0,10).map(p=>`${p.nombre}(${p.disponible}/${p.ideal})`).join(', ')}.`);
+      }
+      if(Array.isArray(db.platos)&&db.platos.length)
+        L.push(`Menu(${db.platos.length}): ${db.platos.slice(0,15).map(p=>`${p.nombre} RD$${p.precio||0}`).join(', ')}.`);
+      if(Array.isArray(db.distribuidores)&&db.distribuidores.length)
+        L.push(`Distrib(${db.distribuidores.length}): ${db.distribuidores.slice(0,10).map(d=>d.nombre).join(', ')}.`);
+      if(Array.isArray(db.clientes)&&db.clientes.length)
+        L.push(`Clientes(${db.clientes.length}): ${db.clientes.slice(0,6).map(c=>c.nombre).join(', ')}.`);
+      const mem=getMem();
+      if(Array.isArray(mem.r)&&mem.r.length)
+        L.push(`Memoria: ${mem.r.slice(0,3).map(r=>`"${r.u}"→"${r.l}"`).join(' | ')}.`);
+      // Limitar total a ~1500 chars para no exceder tokens del modelo
+      const raw=L.join('\n');
+      return raw?'\nDATA:\n'+(raw.length>1500?raw.slice(0,1500)+'…':raw):'';
+    } catch(e) { return ''; }
+  }
+
+  /* ── PROMPT ── */
+  function prompt_() {
+    const pag=document.querySelector('.content-section.active')?.id||'home';
+    const mod=$('current-module-display')?.textContent||'';
+    return `Eres LuRo, núcleo IA de LuRo Control. Sesión ADMINISTRADOR.
+Responde en español, breve (máx 2 oraciones), SIN markdown — texto para leer en voz alta.
+
+ACCIONES (tag exacto AL FINAL de tu respuesta):
+[NAV:id] navegar — IDs: home,agregar,inventario,distribuidores,produccion-interna,disponibilidad,salida,asistencia,procedimientos,clientes-puntos,historial-produccion,entradas-almacen,ventas,reporte-compras-distribuidor,rnc-dgii,comandas,autorizaciones,historial-decomiso,decomiso,produccion,diagnostico,comandos,configuracion,entrenamientos
+[MODULO:NOMBRE] abrir módulo (ADMINISTRADOR,COCINA,CAJERO...)
+[LIMPIAR:tipo] borrar historial (entradas,ventas,produccion,decomisos,autorizaciones,rnc) — CRÍTICO
+[ELIMINAR_DIST:nombre] eliminar distribuidor — CRÍTICO
+[ELIMINAR_ALMACEN:nombre] eliminar producto almacén — CRÍTICO
+[ELIMINAR_PLATO:nombre] eliminar plato menú — CRÍTICO
+[ENTRADA:producto:cantidad:unidad] registrar entrada almacén (Lb,g,Oz,Litros,Unidad)
+[DIST_NUEVO:nombre:contacto:telefono] crear distribuidor
+[CLIENTE_NUEVO:nombre:telefono:puntos] registrar cliente
+
+CRÍTICAS: antes de ejecutar LIMPIAR o ELIMINAR_*, di "Voy a [acción]. ¿Confirmas?" — incluye el tag igualmente, el sistema intercepta.
+REGLAS: Habla en presente/futuro. NUNCA confirmes en pasado. Sin asteriscos. Sin listas.
+Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
+  }
+
+  /* ── TTS ── */
+  function hablarY(txt, onFin) {
+    synth.cancel();
+    const clean = txt.replace(TAG_RE,'').replace(/[*_#`>~]/g,'').replace(/\n+/g,' ').trim();
+    if (!clean) { if(onFin) onFin(); return; }
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.lang='es-ES'; utt.rate=1.05;
+    const voz = synth.getVoices().find(v=>v.lang.startsWith('es')&&v.name.toLowerCase().includes('google'))
+             || synth.getVoices().find(v=>v.lang.startsWith('es')) || null;
+    if (voz) utt.voice = voz;
+    setE('voz_tts');
+    let done=false;
+    const fin=()=>{if(!done){done=true; if(onFin) onFin();}};
+    utt.onend=fin; utt.onerror=fin;
+    synth.speak(utt);
+    setTimeout(fin, 12000); // fallback 12s
+  }
+
+  /* ── BURBUJAS ── */
+  function burbuja(role, txt) {
+    const cont=$('luro-assistant-messages'); if(!cont) return null;
+    const w=document.createElement('div');
+    w.className='luro-assistant-msg '+(role==='user'?'is-user':'is-assistant');
+    const m=document.createElement('span'); m.className='luro-assistant-msg-meta';
+    m.textContent=role==='user'?'Tú':'LuRo';
+    const b=document.createElement('div'); b.className='luro-assistant-bubble';
+    b.textContent=txt.replace(TAG_RE,'').trim();
+    w.appendChild(m); w.appendChild(b); cont.appendChild(w);
+    cont.scrollTop=cont.scrollHeight; return b;
+  }
+
+  /* ── sinDialogos ── */
+  function sinDialogos(fn) {
+    const _p=window.prompt,_c=window.confirm,_a=window.alert;
+    window.prompt=()=>MASTER_PASS; window.confirm=()=>true; window.alert=()=>{};
+    try{fn();}finally{setTimeout(()=>{window.prompt=_p;window.confirm=_c;window.alert=_a;},100);}
+  }
+
+  /* ── EJECUTAR TAG ── */
+  function ejecutarTag(tag) {
+    const nav=tag.match(/\[NAV:([^\]]+)\]/);
+    if(nav&&typeof window.showPage==='function'){setTimeout(()=>window.showPage(nav[1].trim()),250);return;}
+    const mod=tag.match(/\[MODULO:([^:\]]+)\]/);
+    if(mod){sinDialogos(()=>{const n=mod[1].trim().toUpperCase();document.querySelectorAll('[onclick*="seleccionarModulo"]').forEach(el=>{if(el.textContent.toUpperCase().includes(n))el.click();});});return;}
+    const limp=tag.match(/\[LIMPIAR:([^\]]+)\]/);
+    if(limp){sinDialogos(()=>{const btn=document.querySelector(`button[onclick*="limpiarHistorial('${limp[1].trim()}')"]`);if(btn)btn.click();});return;}
+    const dist=tag.match(/\[ELIMINAR_DIST:([^\]]+)\]/);
+    if(dist){sinDialogos(()=>{const n=dist[1].trim().toUpperCase();[...document.querySelectorAll('button[onclick*="eliminarDistribuidor"]')].find(b=>b.closest('tr')?.textContent.toUpperCase().includes(n))?.click();});return;}
+    const alm=tag.match(/\[ELIMINAR_ALMACEN:([^\]]+)\]/);
+    if(alm){sinDialogos(()=>{const n=alm[1].trim().toUpperCase();[...document.querySelectorAll('[onclick*="eliminarAlmacen"]')].find(b=>(b.getAttribute('onclick')||'').toUpperCase().includes(n)||b.closest('tr')?.textContent.toUpperCase().includes(n))?.click();});return;}
+    const plato=tag.match(/\[ELIMINAR_PLATO:([^\]]+)\]/);
+    if(plato){sinDialogos(()=>{const n=plato[1].trim().toUpperCase();document.querySelectorAll('button[onclick*="eliminar"]').forEach(b=>{if(b.closest('tr')?.textContent.toUpperCase().includes(n))b.click();});});return;}
+    const ent=tag.match(/\[ENTRADA:([^:]+):([^:]+):([^\]]+)\]/);
+    if(ent){if(typeof window.showPage==='function')window.showPage('inventario');setTimeout(()=>{const set=(id,v)=>{const el=$(id);if(el){el.value=v.trim();el.dispatchEvent(new Event('input'));}};set('inv_nombre',ent[1]);set('inv_actual',ent[2]);const sel=$('inv_unidad');if(sel){const o=[...sel.options].find(o=>o.value.toLowerCase()===ent[3].trim().toLowerCase());if(o)sel.value=o.value;}sinDialogos(()=>{document.querySelector('button[onclick="agregarAlmacen()"]')?.click();});},700);return;}
+    const dN=tag.match(/\[DIST_NUEVO:([^:]+):([^:]*):([^\]]*)\]/);
+    if(dN){if(typeof window.showPage==='function')window.showPage('distribuidores');setTimeout(()=>{const set=(id,v)=>{const el=$(id);if(el){el.value=v.trim();el.dispatchEvent(new Event('input'));}};set('dist_nombre',dN[1]);if(dN[2])set('dist_contacto',dN[2]);if(dN[3])set('dist_telefono',dN[3]);sinDialogos(()=>{document.querySelector('button[onclick="guardarDistribuidor()"]')?.click();});},700);return;}
+    const cN=tag.match(/\[CLIENTE_NUEVO:([^:]+):([^:]*):([^\]]*)\]/);
+    if(cN){if(typeof window.showPage==='function')window.showPage('clientes-puntos');setTimeout(()=>{const set=(id,v)=>{const el=$(id);if(el){el.value=v.trim();el.dispatchEvent(new Event('input'));}};set('cli_nombre',cN[1]);if(cN[2])set('cli_telefono',cN[2]);if(cN[3])set('cli_puntos',cN[3]);sinDialogos(()=>{document.querySelector('button[onclick="registrarClientePuntos()"]')?.click();});},700);}
+  }
+
+  function ejecutar(resp) {
+    let hayCritica=false;
+    (resp.match(/\[[A-Z_]+:[^\]]*\]/g)||[]).forEach(tag=>{
+      const tipo=tag.match(/\[([A-Z_]+):/)?.[1]||'';
+      if(CRITICAL_TAGS.includes(tipo)){
+        hayCritica=true; accionPend=tag;
+        mostrarConfirm(resp.replace(TAG_RE,'').trim()||'¿Confirmas esta acción?');
+        if(modoVoz) escucharConfirm();
+      } else { ejecutarTag(tag); }
+    });
+    return hayCritica;
+  }
+
+  /* ── GROQ CHAT ── */
+  async function groqCall(model, sysPrompt, msgs) {
+    const res = await fetch(GROQ_CHAT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model, messages:[{role:'system',content:sysPrompt},...msgs], temperature:0.65, max_tokens:350})
+    });
+    return res;
+  }
+
+  async function groq(msg) {
+    const snapLen = historial.length;
+    historial.push({role:'user', content:msg});
+    if(historial.length > 16) historial = historial.slice(-16);
+
+    let sysPrompt;
+    try { sysPrompt = prompt_(); } catch(e) {
+      sysPrompt = `Eres LuRo, asistente de LuRo Control. Sesión ADMINISTRADOR. Responde en español, breve, sin markdown.`;
+    }
+
+    let res;
+    try {
+      // Intentar con modelo principal
+      res = await groqCall(GROQ_MODEL, sysPrompt, historial);
+    } catch(netErr) {
+      historial = historial.slice(0, snapLen);
+      throw new Error('Sin conexión a internet');
+    }
+
+    if (res.status === 429) {
+      // Rate limit → esperar 3s y reintentar con modelo rápido
+      burbuja('assistant','⏳ Límite de velocidad, reintentando...');
+      await new Promise(r => setTimeout(r, 3000));
+      try {
+        // Usar prompt reducido para ahorrar tokens
+        const shortPrompt = sysPrompt.split('\nDATA:')[0]; // sin contexto de DB
+        res = await groqCall(GROQ_FAST, shortPrompt, historial);
+      } catch(e2) {
+        historial = historial.slice(0, snapLen);
+        throw new Error('Sin conexión a internet');
+      }
+    }
+
+    if (!res.ok) {
+      historial = historial.slice(0, snapLen);
+      let detail = '';
+      try { const d=await res.json(); detail=d.error?.message||''; } catch(e){}
+      throw new Error(`Error ${res.status}${detail?' — '+detail.slice(0,80):''}`);
+    }
+
+    const d = await res.json();
+    const r = (d.choices?.[0]?.message?.content||'').trim();
+    if (!r) { historial = historial.slice(0, snapLen); throw new Error('Respuesta vacía'); }
+    historial.push({role:'assistant', content:r});
+    return r;
+  }
+
+  /* ── WHISPER ── */
+  async function whisper(blob,ext) {
+    // Enviamos el audio crudo al proxy; el backend arma el multipart y agrega la API key.
+    const res=await fetch(GROQ_AUDIO_URL,{method:'POST',headers:{'Content-Type':blob.type||'audio/webm'},body:blob});
+    if(!res.ok)throw new Error('Whisper '+res.status);
+    return((await res.json()).text||'').trim();
+  }
+
+  /* ── MediaRecorder ── */
+  function getMime(){return['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t))||'';}
+
+  function silencio(stream, onQ) {
+    try {
+      audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      const src=audioCtx.createMediaStreamSource(stream);
+      const anl=audioCtx.createAnalyser(); anl.fftSize=512;
+      src.connect(anl);
+      const buf=new Float32Array(anl.fftSize);
+      let quietSince=null,habló=false;
+      const tick=()=>{
+        if(estado!=='voz_grab'){try{audioCtx.close();}catch(e){}audioCtx=null;return;}
+        anl.getFloatTimeDomainData(buf);
+        const rms=Math.sqrt(buf.reduce((s,v)=>s+v*v,0)/buf.length);
+        if(rms>0.015)habló=true;
+        if(habló){
+          if(rms<0.013){if(!quietSince)quietSince=Date.now();else if(Date.now()-quietSince>1800){onQ();return;}}
+          else quietSince=null;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }catch(e){}
+  }
+
+  async function grabar(maxMs=10000) {
+    // Reusar stream si sigue vivo
+    if(!mediaStream||mediaStream.getTracks().every(t=>t.readyState==='ended')){
+      try{mediaStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});}
+      catch(e){return null;}
+    }
+    return new Promise(resolve=>{
+      audioChunks=[];
+      const mime=getMime();
+      let mr;
+      try{mr=new MediaRecorder(mediaStream,mime?{mimeType:mime}:{});}
+      catch(e){mr=new MediaRecorder(mediaStream);}
+      mr.ondataavailable=e=>{if(e.data&&e.data.size>0)audioChunks.push(e.data);};
+      mr.onstop=async()=>{
+        if(!audioChunks.length){resolve(null);return;}
+        const bType=mime||audioChunks[0]?.type||'audio/webm';
+        const ext=bType.includes('mp4')?'audio.mp4':bType.includes('ogg')?'audio.ogg':'audio.webm';
+        const blob=new Blob(audioChunks,{type:bType}); audioChunks=[];
+        try{resolve(await whisper(blob,ext));}catch(e){resolve(null);}
+      };
+      setE('voz_grab'); mr.start(200); mediaRecorder=mr;
+      silencio(mediaStream,()=>{if(mr.state!=='inactive')mr.stop();});
+      setTimeout(()=>{if(mr.state!=='inactive')mr.stop();},maxMs);
+    });
+  }
+
+  function stopGrab(){if(mediaRecorder&&mediaRecorder.state!=='inactive')try{mediaRecorder.stop();}catch(e){}}
+
+  /* ═══════════════════════════════════════
+     WAKE WORD ENGINE (SpeechRecognition)
+  ═══════════════════════════════════════ */
+  function esWake(t){ const lc=t.toLowerCase(); return WAKE_WORDS.some(w=>lc.includes(w)); }
+
+  function wakeStart() {
+    if(wakeActivo||!micPermiso||modoVoz)return;
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR)return; // sin SR, solo funciona botón
+    wakeActivo=true;
+    wakeRec=new SR();
+    wakeRec.lang='es-ES'; wakeRec.continuous=true; wakeRec.interimResults=true;
+    wakeRec.onresult=e=>{
+      if(estado!=='wake')return;
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        if(esWake(e.results[i][0].transcript)){activarPorVoz();return;}
+      }
+    };
+    wakeRec.onerror=e=>{wakeActivo=false;if(e.error!=='not-allowed')setTimeout(wakeStart,2000);};
+    wakeRec.onend=()=>{wakeActivo=false;if(estado==='wake')setTimeout(wakeStart,800);};
+    try{wakeRec.start();setE('wake');}catch(e){wakeActivo=false;}
+  }
+
+  function wakeStop(){wakeActivo=false;if(wakeRec){try{wakeRec.stop();}catch(e){}wakeRec=null;}}
+
+  /* ═══════════════════════════════════════
+     MODO VOZ — loop de conversación
+  ═══════════════════════════════════════ */
+  async function activarPorVoz() {
+    if(modoVoz||estado==='voz_grab'||estado==='voz_proc')return;
+    wakeStop(); modoVoz=true;
+    // Abrir panel
+    if(!panelOpen()&&typeof window.toggleLuroAssistant==='function')
+      window.toggleLuroAssistant(true);
+    await hablarYP('Dime, ¿en qué te puedo ayudar?');
+    vozLoop();
+  }
+
+  async function vozLoop() {
+    if(!modoVoz)return;
+    clearTimeout(vozLoopT);
+
+    const txt=await grabar(11000);
+
+    if(!txt||!txt.trim()){
+      // Silencio/error → preguntar una vez más
+      await hablarYP('¿Sigues ahí?');
+      const txt2=await grabar(8000);
+      if(!txt2||!txt2.trim()){
+        // Salir de modo voz
+        modoVoz=false;
+        burbuja('assistant','Sesión de voz cerrada. Dime "Hola LuRo" para volver.');
+        hablarY('Hasta luego.', wakeStart);
+        return;
+      }
+      procesarVoz(txt2); return;
+    }
+    procesarVoz(txt);
+  }
+
+  async function procesarVoz(txt) {
+    if(!modoVoz)return;
+
+    // Detectar si/no si hay acción pendiente
+    if(accionPend){
+      const lc=txt.toLowerCase().trim();
+      if(AFIRMAR.some(a=>lc.includes(a))){ window.__luroOK(true); return; }
+      if(NEGAR.some(n=>lc.includes(n))){ window.__luroOK(false); return; }
+    }
+
+    burbuja('user',txt);
+    setE('voz_proc');
+    try{
+      const resp=await groq(txt);
+      burbuja('assistant',resp);
+      pushMem(txt,resp);
+      const hayCritica=ejecutar(resp);
+      if(hayCritica){
+        // Esperar confirmación verbal o botón
+        escucharConfirm();
+      } else {
+        await hablarYP(resp);
+        vozLoopT=setTimeout(vozLoop,400);
+      }
+    }catch(e){
+      console.error('[LuRo voz]',e);
+      const msg='Error: '+(e.message||'desconocido');
+      burbuja('assistant',msg);
+      hablarY('Hubo un error, intenta de nuevo.',()=>{ vozLoopT=setTimeout(vozLoop,1500); });
+    }
+  }
+
+  function escucharConfirm() {
+    // Graba brevemente para capturar "sí" o "no"
+    setTimeout(async()=>{
+      if(estado==='confirming'||accionPend){
+        const txt=await grabar(6000);
+        if(!txt)return;
+        const lc=txt.toLowerCase().trim();
+        if(AFIRMAR.some(a=>lc.includes(a)))window.__luroOK(true);
+        else if(NEGAR.some(n=>lc.includes(n)))window.__luroOK(false);
+      }
+    },400);
+  }
+
+  function hablarYP(txt){ return new Promise(r=>hablarY(txt,r)); }
+
+  /* ═══════════════════════════════════════
+     MOTOR TEXTO (escrito) — independiente
+  ═══════════════════════════════════════ */
+  function initMotor() {
+    window.enviarMensajeAsistente = async function() {
+      const inp=$('luro-assistant-input'); if(!inp)return;
+      const txt=inp.value.trim(); if(!txt)return;
+      inp.value='';
+
+      clearTimeout(watchT);
+      burbuja('user',txt);
+      const ph=burbuja('assistant','...');
+      setE('txt_proc');
+
+      try{
+        const resp=await groq(txt);
+        if(ph)ph.textContent=resp.replace(TAG_RE,'').trim();
+        pushMem(txt,resp);
+        const hayCritica=ejecutar(resp);
+        watchT=setTimeout(()=>{ if(!modoVoz)setE('wake'); },1000);
+        if(!hayCritica){
+          // TTS la respuesta pero NO iniciar loop de voz
+          hablarY(resp, ()=>{ if(!modoVoz){ setE('wake'); } });
+        }
+      }catch(e){
+        console.error('[LuRo txt]',e);
+        if(ph)ph.textContent='Error: '+(e.message||'desconocido');
+        setE('wake');
+      }
+    };
+  }
+
+  /* ── BOTÓN MIC (respaldo y activador manual) ── */
+  window.luroVozToggle = async function() {
+    if(estado==='voz_grab'){stopGrab();return;}
+    if(estado==='voz_proc'||estado==='voz_tts')return;
+    if(estado==='confirming'){return;}
+
+    accionPend=null; ocultarConfirm();
+    clearTimeout(watchT); clearTimeout(vozLoopT);
+    wakeStop();
+
+    if(!micPermiso){
+      // Primer uso — pedir permiso
+      const ok=await pedirMic();
+      if(!ok){burbuja('assistant','Necesito permiso de micrófono para escucharte.');return;}
+      localStorage.setItem('LURO_MIC_AUTORIZADO','1');
+    }
+    await activarPorVoz();
+  };
+
+  /* ── PERMISO MIC ── */
+  async function pedirMic() {
+    try{
+      mediaStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+      micPermiso=true; return true;
+    }catch(e){ micPermiso=false; return false; }
+  }
+
+  function mostrarBotonActivar(){
+    if($('luro-activar-mic-btn'))return;
+    const btn=document.createElement('button');
+    btn.id='luro-activar-mic-btn';
+    btn.innerHTML='🎙 Activar voz de LuRo';
+    btn.style.cssText='position:fixed;bottom:138px;right:20px;z-index:10000;background:linear-gradient(135deg,#6c5ce7,#00b894);color:#fff;border:none;border-radius:24px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(108,92,231,0.4);animation:ldPulse 2s ease-in-out infinite;';
+    btn.onclick=async()=>{
+      btn.textContent='⏳ Solicitando permiso...';
+      const ok=await pedirMic();
+      if(ok){btn.remove();localStorage.setItem('LURO_MIC_AUTORIZADO','1');wakeStart();}
+      else btn.textContent='❌ Permiso denegado — reintenta';
+    };
+    document.body.appendChild(btn);
+  }
+
+  /* ── ARRANQUE ── */
+  window.addEventListener('load',async function(){
+    // Badge de estado
+    badge=document.createElement('div'); badge.id='luro-estado-badge';
+    document.body.appendChild(badge);
+    initConfirmBar();
+    initMotor();
+
+    // Interceptar toggleLuroAssistant
+    const _orig=window.toggleLuroAssistant;
+    window.toggleLuroAssistant=function(forceOpen){if(_orig)_orig(forceOpen);};
+
+    const yaAuth=localStorage.getItem('LURO_MIC_AUTORIZADO')==='1';
+    if(yaAuth){
+      const ok=await pedirMic().catch(()=>false);
+      if(ok)wakeStart();
+      else{localStorage.removeItem('LURO_MIC_AUTORIZADO');mostrarBotonActivar();}
+    }else{
+      mostrarBotonActivar();
+    }
+  });
+
+})();
+</script>
+<!-- ===== FIN LURO ASISTENTE INTELIGENTE v9 ===== -->
+
+
+
+
 </body>
 </html>
 

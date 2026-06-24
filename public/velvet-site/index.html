@@ -997,6 +997,58 @@
   </div>
 </footer>
 
+<button class="lafo-fab" id="lafoFab" aria-label="Abrir asistente Lafo">
+  <span class="lafo-fab-mascot">🦭</span>
+  <span class="lafo-fab-copy">
+    <strong>Lafo</strong>
+    <small>Te ayudo a elegir</small>
+  </span>
+</button>
+
+<aside class="lafo-panel" id="lafoPanel" aria-hidden="true">
+  <div class="lafo-panel-shell">
+    <div class="lafo-panel-head">
+      <div class="lafo-head-id">
+        <div class="lafo-mascot">🦭</div>
+        <div>
+          <p>Asistente Lafo</p>
+          <span id="lafoStatus">Revisando cocina en vivo...</span>
+        </div>
+      </div>
+      <button class="lafo-close" id="lafoClose" aria-label="Cerrar Lafo">×</button>
+    </div>
+
+    <div class="lafo-operational" id="lafoOperational">
+      <div class="lafo-operational-card">
+        <span>Disponibles</span>
+        <strong id="lafoCountAvailable">--</strong>
+      </div>
+      <div class="lafo-operational-card">
+        <span>Limitados</span>
+        <strong id="lafoCountLimited">--</strong>
+      </div>
+      <div class="lafo-operational-card">
+        <span>Agotados</span>
+        <strong id="lafoCountSoldOut">--</strong>
+      </div>
+    </div>
+
+    <div class="lafo-quick" id="lafoQuick">
+      <button type="button" data-lafo-prompt="Que me recomiendas hoy">Recomendame algo</button>
+      <button type="button" data-lafo-prompt="Quiero mariscos">Quiero mariscos</button>
+      <button type="button" data-lafo-prompt="Busco algo para compartir">Para compartir</button>
+      <button type="button" data-lafo-prompt="Que platos quedan limitados">Stock limitado</button>
+    </div>
+
+    <div class="lafo-messages" id="lafoMessages"></div>
+
+    <form class="lafo-inputbar" id="lafoForm">
+      <input type="text" id="lafoInput" placeholder="Ej: quiero algo ligero, con mariscos o para compartir" />
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
+</aside>
+
 <!-- WhatsApp Float -->
 <a href="https://wa.me/18095550000?text=Hola%2C%20quisiera%20hacer%20una%20reservaci%C3%B3n" class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp">
   <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.004 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.985-1.31A9.945 9.945 0 0012.004 22C17.531 22 22 17.523 22 12S17.531 2 12.004 2zm0 18a7.945 7.945 0 01-4.046-1.107l-.29-.172-3.002.789.8-2.931-.19-.301A7.944 7.944 0 014.01 12c0-4.411 3.589-8 8-8s8 3.589 8 8c-.006 4.411-3.595 8-8.006 8z"/></svg>

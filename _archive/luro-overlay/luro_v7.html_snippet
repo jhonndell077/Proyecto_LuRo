@@ -1,0 +1,529 @@
+<!-- ===== LURO ASISTENTE INTELIGENTE v7 — NÚCLEO OPERATIVO CENTRAL ===== -->
+<script>
+(function() {
+  /* ═══════════════════════════════════════════════════════
+     CONFIGURACIÓN CENTRAL
+  ═══════════════════════════════════════════════════════ */
+  const GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
+  const GROQ_MODEL  = 'llama-3.3-70b-versatile';
+  const GROQ_KEY    = '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';
+  const WAKE_WORD   = 'hola luro';
+  const MASTER_PASS = '160623';
+  const MEM_KEY     = 'LURO_MEMORIA_OPERATIVA';
+
+  if (!localStorage.getItem('LURO_ASISTENTE_KEY'))
+    localStorage.setItem('LURO_ASISTENTE_KEY', GROQ_KEY);
+  const getKey = () => localStorage.getItem('LURO_ASISTENTE_KEY') || GROQ_KEY;
+
+  /* ═══════════════════════════════════════════════════════
+     ESTADO INTERNO
+  ═══════════════════════════════════════════════════════ */
+  let historial   = [];        // turno actual
+  let rec         = null;      // SpeechRecognition (único)
+  let recActivo   = false;
+  let procesando  = false;
+  let watchdogT   = null;      // watchdog que resetea procesando si se cuelga
+  const synth     = window.speechSynthesis;
+
+  /* ═══════════════════════════════════════════════════════
+     HELPERS UI
+  ═══════════════════════════════════════════════════════ */
+  const $  = id => document.getElementById(id);
+  const getPanel     = () => $('luro-assistant-panel');
+  const panelAbierto = () => { const p = getPanel(); return !!(p && p.classList.contains('is-open')); };
+
+  function setBtn(emoji, bg, fs) {
+    const btn = $('luro-mic-btn-pub'); if (!btn) return;
+    btn.textContent = emoji; btn.style.background = bg; btn.style.fontSize = fs || '16px';
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     MEMORIA OPERATIVA (localStorage)
+  ═══════════════════════════════════════════════════════ */
+  function cargarMemoria() {
+    try { return JSON.parse(localStorage.getItem(MEM_KEY) || '{}'); } catch(e) { return {}; }
+  }
+  function guardarMemoria(mem) {
+    try { localStorage.setItem(MEM_KEY, JSON.stringify(mem)); } catch(e) {}
+  }
+  function registrarEnMemoria(usuario, luro) {
+    const mem = cargarMemoria();
+    if (!Array.isArray(mem.recientes)) mem.recientes = [];
+    mem.recientes.unshift({ t: Date.now(), u: usuario, l: luro.replace(/\[[^\]]*\]/g,'').trim() });
+    mem.recientes = mem.recientes.slice(0, 30);
+    guardarMemoria(mem);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     LECTURA DE DB REAL
+  ═══════════════════════════════════════════════════════ */
+  function getDB() {
+    try { return JSON.parse(localStorage.getItem('LURO_CONTROL_DB') || 'null') || {}; } catch(e) { return {}; }
+  }
+
+  function contextoCompleto() {
+    const db = getDB();
+    const L  = [];
+    const pagina = document.querySelector('.content-section.active')?.id || 'home';
+
+    // Ventas
+    if (Array.isArray(db.ventas) && db.ventas.length) {
+      const tv = db.ventas.reduce((s,v)=>s+(Number(v.total)||0),0);
+      const tg = db.ventas.reduce((s,v)=>s+(Number(v.ganancia)||0),0);
+      const hoy = new Date().toDateString();
+      const vh  = db.ventas.filter(v=>new Date(v.fecha).toDateString()===hoy);
+      const fr  = {};
+      db.ventas.forEach(v=>{ const n=v.nombre||v.item||''; if(n) fr[n]=(fr[n]||0)+1; });
+      const top = Object.entries(fr).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>`${e[0]}(${e[1]})`).join(', ');
+      L.push(`Ventas totales: ${db.ventas.length}, RD$${tv.toFixed(2)}, ganancia RD$${tg.toFixed(2)}.`);
+      if (vh.length) L.push(`Ventas HOY: ${vh.length}, RD$${vh.reduce((s,v)=>s+(Number(v.total)||0),0).toFixed(2)}.`);
+      if (top) L.push(`Ranking platos: ${top}.`);
+    }
+
+    // Almacén / inventario
+    if (Array.isArray(db.almacen) && db.almacen.length) {
+      const bajos = db.almacen.filter(p=>Number(p.disponible)<Number(p.ideal));
+      L.push(`Almacen (${db.almacen.length} items): ${db.almacen.map(p=>`${p.nombre} ${p.disponible||0}${p.unidad||''}`).join(', ')}.`);
+      if (bajos.length) L.push(`⚠ Stock bajo: ${bajos.map(p=>`${p.nombre}(${p.disponible}/${p.ideal}${p.unidad||''})`).join(', ')}.`);
+    }
+
+    // Menú / platos
+    if (Array.isArray(db.platos) && db.platos.length)
+      L.push(`Menu (${db.platos.length} platos): ${db.platos.map(p=>`${p.nombre} RD$${p.precio||0}`).join(', ')}.`);
+
+    // Distribuidores
+    if (Array.isArray(db.distribuidores) && db.distribuidores.length)
+      L.push(`Distribuidores (${db.distribuidores.length}): ${db.distribuidores.map(d=>`${d.nombre}${d.telefono?' tel:'+d.telefono:''}`).join(', ')}.`);
+
+    // Decomisos
+    if (Array.isArray(db.decomisos) && db.decomisos.length) {
+      const tp = db.decomisos.reduce((s,d)=>s+(Number(d.perdida)||0),0);
+      L.push(`Decomisos: ${db.decomisos.length}, perdida RD$${tp.toFixed(2)}.`);
+    }
+
+    // Clientes
+    if (Array.isArray(db.clientes) && db.clientes.length)
+      L.push(`Clientes registrados (${db.clientes.length}): ${db.clientes.slice(0,6).map(c=>c.nombre).join(', ')}.`);
+
+    // Entradas
+    if (Array.isArray(db.entradas) && db.entradas.length)
+      L.push(`Registros de entrada en almacen: ${db.entradas.length}.`);
+
+    // Producción historial
+    if (Array.isArray(db.historial_prod) && db.historial_prod.length)
+      L.push(`Historial producciones: ${db.historial_prod.length} registros.`);
+
+    // Memoria reciente
+    const mem = cargarMemoria();
+    if (Array.isArray(mem.recientes) && mem.recientes.length) {
+      const ult = mem.recientes.slice(0,3).map(r=>`[${new Date(r.t).toLocaleTimeString()}] Tú:"${r.u}" → Luro:"${r.l}"`).join(' | ');
+      L.push(`Historial reciente de conversacion: ${ult}.`);
+    }
+
+    return L.length ? '\n\nDATA REAL EN TIEMPO REAL:\n'+L.join('\n') : '';
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     PROMPT DEL SISTEMA — BASE DE CONOCIMIENTO COMPLETA
+  ═══════════════════════════════════════════════════════ */
+  function buildPrompt() {
+    const pagina = document.querySelector('.content-section.active')?.id || 'home';
+    const modulo = document.getElementById('current-module-display')?.textContent || '';
+
+    return `Eres LuRo, el núcleo inteligente y operador central de LuRo Control — sistema de gestión para restaurantes.
+Tienes acceso y control TOTAL del sistema. La sesión activa es de ADMINISTRADOR con clave ${MASTER_PASS}.
+Hablas en español natural, breve (máx 2 oraciones), sin markdown ni asteriscos — tu voz se escucha en voz alta.
+NO preguntes por contraseñas ni confirmaciones. Ejecutas de inmediato.
+Eres consultor operativo, gastronómico y de negocios. Conoces el sistema mejor que cualquier usuario.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+MÓDULOS QUE CONTROLAS
+━━━━━━━━━━━━━━━━━━━━━━━━━
+• home — Panel principal y dashboard
+• inventario — Almacén de ingredientes, stock, entradas y faltantes
+• distribuidores — Proveedores, catálogo de productos de cada distribuidor
+• produccion-interna — Registro de producciones internas (preparaciones)
+• disponibilidad — Vista de disponibilidad de ingredientes
+• salida — Registro de ventas / comandas (cobrar mesas o pedidos)
+• ventas — Historial de ventas registradas
+• comandas — Gestión de comandas por mesa
+• clientes-puntos — Clientes del sistema y sus puntos acumulados
+• asistencia — Registro de asistencia del personal
+• autorizaciones — Historial de acciones autorizadas
+• historial-decomiso — Historial de productos decomisados
+• decomiso — Registrar nuevo decomiso
+• rnc-dgii — Facturación fiscal / RNC DGII
+• entradas-almacen — Historial de entradas al almacén
+• historial-produccion — Historial de producciones
+• agregar — Agregar nuevo plato al menú
+• produccion — Vista de producción activa
+• configuracion — Configuración del sistema
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+ACCIONES QUE PUEDES EJECUTAR
+Escribe el tag EXACTO al FINAL de tu respuesta (uno o varios):
+━━━━━━━━━━━━━━━━━━━━━━━━━
+[NAV:id] — navegar a sección
+[MODULO:NOMBRE:clave] — abrir módulo principal. Ej: [MODULO:ADMINISTRADOR:${MASTER_PASS}]
+[LIMPIAR:tipo] — borrar TODO el historial. Tipos: entradas, ventas, produccion, decomisos, autorizaciones, rnc
+[ELIMINAR_DIST:nombre] — eliminar distribuidor por nombre
+[ELIMINAR_ALMACEN:nombre] — eliminar producto del almacén por nombre
+[ELIMINAR_PLATO:nombre] — eliminar plato del menú por nombre
+[ENTRADA:producto:cantidad:unidad] — registrar entrada en almacén. Unidades: Lb, g, Oz, Litros, Unidad
+[DIST_NUEVO:nombre:contacto:telefono] — crear nuevo distribuidor
+[CLIENTE_NUEVO:nombre:telefono:puntos] — registrar nuevo cliente con puntos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+CONOCIMIENTO GASTRONÓMICO Y OPERATIVO
+━━━━━━━━━━━━━━━━━━━━━━━━━
+Conoces: food cost, rendimiento de ingredientes, merma, temperatura de cocción, técnicas culinarias,
+análisis de rentabilidad, gestión de inventario, control de costos, administración de restaurantes.
+Puedes calcular, analizar y aconsejar sobre cualquier tema operativo o culinario.
+
+SECCIÓN ACTIVA: ${pagina}${modulo ? ' | Módulo: '+modulo : ''}.
+${contextoCompleto()}`;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     TTS — VOZ DE LURO
+  ═══════════════════════════════════════════════════════ */
+  const TAG_RE = /\[(NAV|MODULO|LIMPIAR|ELIMINAR_DIST|ELIMINAR_ALMACEN|ELIMINAR_PLATO|ENTRADA|DIST_NUEVO|CLIENTE_NUEVO):[^\]]*\]/g;
+
+  function luroHablar(texto, onDone) {
+    if (!synth) { if (onDone) onDone(); return; }
+    synth.cancel();
+    const clean = texto.replace(TAG_RE,'').replace(/[*_#`>~]/g,'').replace(/\n+/g,' ').trim();
+    if (!clean) { if (onDone) onDone(); return; }
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.lang = 'es-ES'; utt.rate = 1.05; utt.pitch = 1.0;
+    const voces = synth.getVoices();
+    const voz = voces.find(v=>v.lang.startsWith('es')&&v.name.toLowerCase().includes('google'))
+              || voces.find(v=>v.lang.startsWith('es')) || null;
+    if (voz) utt.voice = voz;
+    let done = false;
+    const fin = () => { if (!done) { done=true; if(onDone) onDone(); } };
+    utt.onend = fin; utt.onerror = fin;
+    synth.speak(utt);
+    // Watchdog: si TTS no termina en 15s, forzar onDone
+    setTimeout(fin, 15000);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     BURBUJAS DE CHAT
+  ═══════════════════════════════════════════════════════ */
+  function burbuja(role, texto) {
+    const cont = $('luro-assistant-messages');
+    if (!cont) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'luro-assistant-msg ' + (role==='user' ? 'is-user' : 'is-assistant');
+    const meta = document.createElement('span');
+    meta.className = 'luro-assistant-msg-meta';
+    meta.textContent = role==='user' ? 'Tú' : 'LuRo';
+    const bub = document.createElement('div');
+    bub.className = 'luro-assistant-bubble';
+    bub.textContent = texto.replace(TAG_RE,'').trim();
+    wrap.appendChild(meta); wrap.appendChild(bub);
+    cont.appendChild(wrap); cont.scrollTop = cont.scrollHeight;
+    return bub;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     PARCHEAR DIÁLOGOS DEL NAVEGADOR
+  ═══════════════════════════════════════════════════════ */
+  function conDialogosAnulados(fn) {
+    const _p = window.prompt, _c = window.confirm, _a = window.alert;
+    window.prompt  = () => MASTER_PASS;
+    window.confirm = () => true;
+    window.alert   = () => {};
+    try { fn(); }
+    finally { setTimeout(() => { window.prompt=_p; window.confirm=_c; window.alert=_a; }, 80); }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     EJECUTAR ACCIONES REALES
+  ═══════════════════════════════════════════════════════ */
+  function ejecutar(resp) {
+    // ── Navegar sección ──────────────────────────────────
+    const nav = resp.match(/\[NAV:([^\]]+)\]/);
+    if (nav && typeof window.showPage === 'function')
+      setTimeout(() => window.showPage(nav[1].trim()), 250);
+
+    // ── Abrir módulo principal ───────────────────────────
+    const mod = resp.match(/\[MODULO:([^:\]]+)(?::([^\]]*))?\]/);
+    if (mod) {
+      const nombre = mod[1].trim().toUpperCase();
+      conDialogosAnulados(() => {
+        document.querySelectorAll('[onclick*="seleccionarModulo"]').forEach(el => {
+          if (el.textContent.toUpperCase().includes(nombre)) el.click();
+        });
+      });
+    }
+
+    // ── Limpiar historial ────────────────────────────────
+    const limp = resp.match(/\[LIMPIAR:([^\]]+)\]/);
+    if (limp) {
+      const tipo = limp[1].trim().toLowerCase();
+      conDialogosAnulados(() => {
+        const btn = document.querySelector(`button[onclick*="limpiarHistorial('${tipo}')"]`);
+        if (btn) btn.click();
+      });
+    }
+
+    // ── Eliminar distribuidor ────────────────────────────
+    const dist = resp.match(/\[ELIMINAR_DIST:([^\]]+)\]/);
+    if (dist) {
+      const nombre = dist[1].trim().toUpperCase();
+      conDialogosAnulados(() => {
+        const btn = [...document.querySelectorAll('button[onclick*="eliminarDistribuidor"]')]
+          .find(b => b.closest('tr')?.textContent.toUpperCase().includes(nombre));
+        if (btn) btn.click();
+      });
+    }
+
+    // ── Eliminar producto almacén ────────────────────────
+    const alm = resp.match(/\[ELIMINAR_ALMACEN:([^\]]+)\]/);
+    if (alm) {
+      const nombre = alm[1].trim().toUpperCase();
+      conDialogosAnulados(() => {
+        const btn = [...document.querySelectorAll('[onclick*="eliminarAlmacen"]')]
+          .find(b => (b.getAttribute('onclick')||'').toUpperCase().includes(nombre)
+                  || b.closest('tr')?.textContent.toUpperCase().includes(nombre));
+        if (btn) btn.click();
+      });
+    }
+
+    // ── Eliminar plato del menú ──────────────────────────
+    const plato = resp.match(/\[ELIMINAR_PLATO:([^\]]+)\]/);
+    if (plato) {
+      const nombre = plato[1].trim().toUpperCase();
+      conDialogosAnulados(() => {
+        document.querySelectorAll('button[onclick*="eliminar"], button[onclick*="borrar"]').forEach(b => {
+          if (b.closest('tr')?.textContent.toUpperCase().includes(nombre)) b.click();
+        });
+      });
+    }
+
+    // ── Registrar entrada al almacén ─────────────────────
+    const entrada = resp.match(/\[ENTRADA:([^:]+):([^:]+):([^\]]+)\]/);
+    if (entrada) {
+      const [, prod, cant, unidad] = entrada;
+      if (typeof window.showPage === 'function') window.showPage('inventario');
+      setTimeout(() => {
+        const setVal = (id, v) => { const el=$(id); if(el){el.value=v.trim(); el.dispatchEvent(new Event('input'));} };
+        setVal('inv_nombre', prod);
+        setVal('inv_actual', cant);
+        const sel = $('inv_unidad');
+        if (sel) {
+          const opt = [...sel.options].find(o=>o.value.toLowerCase()===unidad.trim().toLowerCase());
+          if (opt) sel.value = opt.value;
+        }
+        conDialogosAnulados(() => {
+          const btn = document.querySelector('button[onclick="agregarAlmacen()"]');
+          if (btn) btn.click();
+        });
+      }, 600);
+    }
+
+    // ── Crear nuevo distribuidor ─────────────────────────
+    const distN = resp.match(/\[DIST_NUEVO:([^:]+):([^:]*):([^\]]*)\]/);
+    if (distN) {
+      const [, nombre2, contacto, telefono] = distN;
+      if (typeof window.showPage === 'function') window.showPage('distribuidores');
+      setTimeout(() => {
+        const setVal = (id, v) => { const el=$(id); if(el){el.value=v.trim();el.dispatchEvent(new Event('input'));} };
+        setVal('dist_nombre', nombre2);
+        if (contacto) setVal('dist_contacto', contacto);
+        if (telefono) setVal('dist_telefono', telefono);
+        conDialogosAnulados(() => {
+          const btn = document.querySelector('button[onclick="guardarDistribuidor()"]');
+          if (btn) btn.click();
+        });
+      }, 600);
+    }
+
+    // ── Crear nuevo cliente ──────────────────────────────
+    const clienteN = resp.match(/\[CLIENTE_NUEVO:([^:]+):([^:]*):([^\]]*)\]/);
+    if (clienteN) {
+      const [, nombre3, telefono2, puntos] = clienteN;
+      if (typeof window.showPage === 'function') window.showPage('clientes-puntos');
+      setTimeout(() => {
+        const setVal = (id, v) => { const el=$(id); if(el){el.value=v.trim();el.dispatchEvent(new Event('input'));} };
+        setVal('cli_nombre', nombre3);
+        if (telefono2) setVal('cli_telefono', telefono2);
+        if (puntos)    setVal('cli_puntos', puntos);
+        conDialogosAnulados(() => {
+          const btn = document.querySelector('button[onclick="registrarClientePuntos()"]');
+          if (btn) btn.click();
+        });
+      }, 600);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     GROQ AI
+  ═══════════════════════════════════════════════════════ */
+  async function groq(userMsg) {
+    historial.push({ role: 'user', content: userMsg });
+    if (historial.length > 30) historial = historial.slice(-30);
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer '+getKey(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [{ role: 'system', content: buildPrompt() }, ...historial],
+        temperature: 0.65,
+        max_tokens: 400
+      })
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const r = data.choices[0].message.content.trim();
+    historial.push({ role: 'assistant', content: r });
+    return r;
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     MOTOR PRINCIPAL — GROQ ES EL ÚNICO CEREBRO
+  ═══════════════════════════════════════════════════════ */
+  function iniciarMotor() {
+    window.enviarMensajeAsistente = async function() {
+      const inp = $('luro-assistant-input');
+      if (!inp) return;
+      const texto = inp.value.trim();
+      if (!texto) return;
+      inp.value = '';
+
+      // Watchdog: resetear procesando si se cuelga más de 20s
+      clearTimeout(watchdogT);
+      watchdogT = setTimeout(() => { procesando = false; reanudarEscucha(); }, 20000);
+
+      burbuja('user', texto);
+      const ph = burbuja('assistant', '...');
+      procesando = true;
+      setBtn('⋯', '#6c5ce7', '14px');
+
+      try {
+        const resp = await groq(texto);
+        if (ph) ph.textContent = resp.replace(TAG_RE,'').trim();
+        ejecutar(resp);
+        registrarEnMemoria(texto, resp);
+        clearTimeout(watchdogT);
+        luroHablar(resp, reanudarEscucha);
+      } catch(e) {
+        clearTimeout(watchdogT);
+        const m = 'Sin conexión con la IA. Intenta de nuevo.';
+        if (ph) ph.textContent = m;
+        reanudarEscucha();
+      }
+    };
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     VOZ — UN SOLO RECONOCEDOR CONTINUO
+  ═══════════════════════════════════════════════════════ */
+  function crearRec() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return null;
+    const r = new SR();
+    r.lang = 'es-ES'; r.continuous = true; r.interimResults = false;
+    r.maxAlternatives = 1;
+
+    r.onresult = e => {
+      let texto = '';
+      for (let i = e.resultIndex; i < e.results.length; i++)
+        if (e.results[i].isFinal) texto += e.results[i][0].transcript;
+      texto = texto.trim();
+      if (!texto || procesando) return;
+
+      if (!panelAbierto()) {
+        // Wake word
+        if (texto.toLowerCase().includes(WAKE_WORD)) {
+          if (typeof window.toggleLuroAssistant === 'function') window.toggleLuroAssistant(true);
+          burbuja('assistant', '¡Hola! ¿En qué te puedo ayudar?');
+          luroHablar('¡Hola! ¿En qué te puedo ayudar?');
+        }
+        return;
+      }
+
+      // Conversación normal
+      procesando = true;
+      setBtn('⋯', '#6c5ce7', '14px');
+      const inp = $('luro-assistant-input');
+      if (inp) { inp.value = texto; window.enviarMensajeAsistente(); }
+    };
+
+    r.onerror = e => {
+      recActivo = false;
+      if (e.error === 'not-allowed') { pararRec(); return; }
+      if (!procesando) setTimeout(arrancarRec, 800);
+    };
+
+    r.onend = () => {
+      recActivo = false;
+      if (!procesando) setTimeout(arrancarRec, 400);
+    };
+
+    return r;
+  }
+
+  function arrancarRec() {
+    if (recActivo || procesando) return;
+    if (!rec) rec = crearRec();
+    if (!rec) return;
+    recActivo = true;
+    setBtn('🎙', '#27ae60', '16px');
+    try { rec.start(); } catch(e) { recActivo = false; setTimeout(arrancarRec, 1000); }
+  }
+
+  function pararRec() {
+    recActivo = false;
+    setBtn('🎙', '#2d3436', '16px');
+    if (rec) { try { rec.stop(); } catch(e){} rec = null; }
+  }
+
+  function reanudarEscucha() {
+    procesando = false;
+    if (panelAbierto()) setTimeout(arrancarRec, 700);
+    else setBtn('🎙', '#2d3436', '16px');
+  }
+
+  /* ── Botón de mic manual ─────────────────────────────── */
+  window.luroVozToggle = function() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert('Tu navegador no soporta reconocimiento de voz. Usa Chrome.'); return;
+    }
+    // Resetear estado colgado antes de toggle
+    if (procesando) { procesando = false; clearTimeout(watchdogT); }
+    if (recActivo) pararRec(); else arrancarRec();
+  };
+
+  /* ═══════════════════════════════════════════════════════
+     ARRANQUE — Observar apertura del panel con MutationObserver
+  ═══════════════════════════════════════════════════════ */
+  window.addEventListener('load', function() {
+    iniciarMotor();
+
+    // Observar cuando el panel se abre/cierra
+    const panel = getPanel();
+    if (panel) {
+      new MutationObserver(() => {
+        if (panelAbierto() && !recActivo && !procesando)
+          setTimeout(arrancarRec, 600);
+        else if (!panelAbierto())
+          pararRec();
+      }).observe(panel, { attributes: true, attributeFilter: ['class'] });
+
+      // Si el panel ya está abierto al cargar
+      if (panelAbierto()) setTimeout(arrancarRec, 1200);
+    }
+
+    // Sidebar link
+    const sb = document.getElementById('sidebar-assistant-launch');
+    if (sb) sb.addEventListener('click', () => {
+      setTimeout(() => { if (!recActivo && !procesando) arrancarRec(); }, 700);
+    });
+  });
+
+})();
+</script>
+<!-- ===== FIN LURO ASISTENTE INTELIGENTE v7 ===== -->

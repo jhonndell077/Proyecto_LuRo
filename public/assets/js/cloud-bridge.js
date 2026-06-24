@@ -3,10 +3,10 @@
       const CLOUD_PROJECT = 'luro-control';
       const CLOUD_REGION = 'us-central1';
       const CLOUD_BASE_URL = `https://${CLOUD_REGION}-${CLOUD_PROJECT}.cloudfunctions.net`;
-      const POLL_DB_MS = 1500;
-      const POLL_OWNERS_MS = 8000;
-      const POLL_TEAM_MS = 3200;
-      const POLL_SESSION_MS = 2500;
+      const POLL_DB_MS = 20000;
+      const POLL_OWNERS_MS = 30000;
+      const POLL_TEAM_MS = 30000;
+      const POLL_SESSION_MS = 30000;
       let cloudDbPollTimer = null;
       let cloudOwnersPollTimer = null;
       let cloudTeamPollTimer = null;

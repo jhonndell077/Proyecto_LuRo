@@ -837,7 +837,7 @@ let masterVaultRefreshInFlight = false;
 let masterVaultLoadedOnce = false;
 let masterVaultLastSnapshot = '';
 let masterVaultLastMetaRefreshAt = 0;
-const MASTER_VAULT_REFRESH_MS = 3000;
+const MASTER_VAULT_REFRESH_MS = 20000;
 const MASTER_VAULT_META_REFRESH_MS = 15000;
 
 function formatoTiempoSistema(createdAtIso) {
@@ -1430,7 +1430,7 @@ window.iniciarGuardiaSesionActiva = function () {
         } finally {
             window.__guardiaSesionEnCurso = false;
         }
-    }, 2200);
+    }, 30000);
 };
 
 window.detenerGuardiaSesionActiva = function () {
@@ -3721,6 +3721,163 @@ function baseTieneContenido(dbRef) {
 
 window.baseTieneContenido = baseTieneContenido;
 
+    const LAFO_PUBLIC_URL = 'https://lafocacheria-default-rtdb.firebaseio.com/lafo_public.json';
+    const LAFO_PUBLIC_OWNER = MASTER_USER;
+    const LAFO_PUBLIC_MODULES = new Set(['COCINA', 'LA FOCA CHERIA']);
+
+    function normalizarTextoLafo(valor) {
+        return String(valor || '').trim().toLowerCase();
+    }
+
+    function coincideContextoLafo(item, ownerObjetivo) {
+        if (!item || typeof item !== 'object') return false;
+        const ownerItem = normalizarTextoLafo(item.owner);
+        const moduloItem = String(item.modulo || '').trim().toUpperCase();
+        return ownerItem === ownerObjetivo && LAFO_PUBLIC_MODULES.has(moduloItem);
+    }
+
+    function cantidadSalidasLafo(nombrePlato, ownerObjetivo) {
+        return (Array.isArray(db.salidas) ? db.salidas : [])
+            .filter((item) => coincideContextoLafo(item, ownerObjetivo) && normalizarTextoLafo(item.plato) === normalizarTextoLafo(nombrePlato))
+            .reduce((acc, item) => acc + (Number(item.cantidad || 0) || 0), 0);
+    }
+
+    function calcularCapacidadRecetaLafo(plato, ownerObjetivo) {
+        const receta = Array.isArray(plato?.receta) ? plato.receta : [];
+        if (!receta.length) return { capacidad: Number(plato?.stock || 0) || 0, faltantes: [] };
+        let capacidad = Infinity;
+        const faltantes = [];
+
+        receta.forEach((ing) => {
+            const itemStock = (Array.isArray(db.almacen) ? db.almacen : []).find((item) =>
+                coincideContextoLafo(item, ownerObjetivo) &&
+                normalizarTextoLafo(item.nombre) === normalizarTextoLafo(ing.nombre)
+            ) || (Array.isArray(db.produccion_stock) ? db.produccion_stock : []).find((item) =>
+                coincideContextoLafo(item, ownerObjetivo) &&
+                normalizarTextoLafo(item.nombre) === normalizarTextoLafo(ing.nombre)
+            );
+
+            if (!itemStock) {
+                capacidad = 0;
+                faltantes.push({ nombre: String(ing.nombre || ''), actual: 0, requerido: Number(ing.cantidad || 0), unidad: String(ing.unidad || '') });
+                return;
+            }
+
+            let requerido = Number(ing.cantidad || 0);
+            const disponible = Number(itemStock.actual || 0);
+            const unidadBase = String(itemStock.unidad || ing.unidad || '').trim();
+
+            if (typeof convertirUnidad === 'function') {
+                try {
+                    requerido = convertirUnidad(Number(ing.cantidad || 0), ing.unidad, unidadBase);
+                } catch (_) {}
+            }
+
+            if (!(requerido > 0)) return;
+            const raciones = disponible / requerido;
+            capacidad = Math.min(capacidad, Math.floor(Math.max(0, raciones)));
+            if (disponible < requerido) {
+                faltantes.push({
+                    nombre: String(ing.nombre || ''),
+                    actual: disponible,
+                    requerido,
+                    unidad: unidadBase
+                });
+            }
+        });
+
+        if (!Number.isFinite(capacidad)) capacidad = 0;
+        return { capacidad: Math.max(0, capacidad), faltantes };
+    }
+
+    function construirSnapshotPublicoLafo() {
+        const ownerObjetivo = LAFO_PUBLIC_OWNER;
+        const producciones = (Array.isArray(db.produccion_stock) ? db.produccion_stock : [])
+            .filter((item) => coincideContextoLafo(item, ownerObjetivo))
+            .map((item) => {
+                const actual = Number(item.actual || 0);
+                const ideal = Number(item.ideal || 0);
+                return {
+                    nombre: String(item.nombre || ''),
+                    actual,
+                    unidad: String(item.unidad || ''),
+                    ideal,
+                    estado: actual <= 0 ? 'agotado' : (ideal > 0 && actual <= (ideal * 0.35) ? 'limitado' : 'ok')
+                };
+            })
+            .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+        const platos = (Array.isArray(db.platos) ? db.platos : [])
+            .filter((item) => coincideContextoLafo(item, ownerObjetivo))
+            .map((plato) => {
+                const salidas = cantidadSalidasLafo(plato.nombre, ownerObjetivo);
+                const stockManual = Math.max(0, Number(plato.stock || 0) || 0);
+                const stockDisponibilidad = Math.max(0, stockManual - salidas);
+                const recetaInfo = calcularCapacidadRecetaLafo(plato, ownerObjetivo);
+                const stockReal = Math.max(0, Math.min(stockDisponibilidad, recetaInfo.capacidad));
+                const estado = stockReal <= 0 ? 'agotado' : (stockReal <= 3 ? 'limitado' : 'disponible');
+                return {
+                    nombre: String(plato.nombre || ''),
+                    precio: Number(plato.precio || 0),
+                    costo: Number(plato.costo || 0),
+                    stock: stockReal,
+                    stockDisponibilidad,
+                    stockReceta: recetaInfo.capacidad,
+                    salidas,
+                    estado,
+                    receta: Array.isArray(plato.receta) ? plato.receta : [],
+                    faltantes: recetaInfo.faltantes
+                };
+            })
+            .sort((a, b) => b.stock - a.stock || a.nombre.localeCompare(b.nombre));
+
+        return {
+            _updated: Date.now(),
+            owner: ownerObjetivo,
+            modules: Array.from(LAFO_PUBLIC_MODULES),
+            summary: {
+                disponibles: platos.filter((item) => item.estado === 'disponible').length,
+                limitados: platos.filter((item) => item.estado === 'limitado').length,
+                agotados: platos.filter((item) => item.estado === 'agotado').length,
+                produccionesCriticas: producciones.filter((item) => item.estado !== 'ok').length
+            },
+            platos,
+            producciones
+        };
+    }
+
+    function publicarSnapshotPublicoLafo(opts = {}) {
+        try {
+            const body = JSON.stringify(construirSnapshotPublicoLafo());
+            if (!opts.force && body === String(window.__lafoPublicLastSnapshot || '')) {
+                return Promise.resolve(false);
+            }
+            window.__lafoPublicLastSnapshot = body;
+            return fetch(LAFO_PUBLIC_URL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body
+            }).catch((err) => {
+                console.warn('No se pudo publicar snapshot de Lafo:', err);
+                window.__lafoPublicLastSnapshot = '';
+                return false;
+            });
+        } catch (err) {
+            console.warn('No se pudo construir snapshot de Lafo:', err);
+            return Promise.resolve(false);
+        }
+    }
+
+    function programarPublicacionLafo(opts = {}) {
+        if (window.__lafoPublicPublishTimer) clearTimeout(window.__lafoPublicPublishTimer);
+        window.__lafoPublicPublishTimer = setTimeout(() => {
+            publicarSnapshotPublicoLafo(opts);
+        }, opts.force ? 120 : 950);
+    }
+
+    window.publicarSnapshotPublicoLafo = publicarSnapshotPublicoLafo;
+    window.programarPublicacionLafo = programarPublicacionLafo;
+
     function guardarDatos(opts = {}) { 
         const skipCloudUpload = opts?.skipCloudUpload === true;
         const keepExistingVersion = opts?.keepExistingVersion === true;
@@ -3773,6 +3930,7 @@ window.baseTieneContenido = baseTieneContenido;
         localStorage.setItem('LURO_CONTROL_DB', serializedDb);
         window.__luroLastSavedSnapshot = serializedDb;
         guardarMetaDbLocal(saveMeta);
+        if (typeof window.programarPublicacionLafo === 'function') window.programarPublicacionLafo();
         if (!skipCloudUpload && typeof window.autoSubirCloudDebounced === 'function') window.autoSubirCloudDebounced();
     }
 function cargarDatos() { 
@@ -3969,6 +4127,7 @@ function cargarDatos() {
             console.warn('Carga local detectó base sin contenido operativo; se mantendrá en modo seguro hasta sincronizar con nube.');
           }
           guardarDatos({ source: 'bootstrap-load', skipCloudUpload: true, keepExistingVersion: true });
+          if (typeof window.programarPublicacionLafo === 'function') window.programarPublicacionLafo({ force: true });
         } else {
           console.warn('No se encontró base local. Se crea estructura mínima sin subir automáticamente a la nube.');
           asegurarCuentaMaestra();
@@ -3977,6 +4136,7 @@ function cargarDatos() {
           if(!db.configMembresia || typeof db.configMembresia !== 'object') db.configMembresia = { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 };
           aplicarConfigMembresiaDesdeDB();
           guardarDatos({ source: 'bootstrap-empty', skipCloudUpload: true, keepExistingVersion: true });
+          if (typeof window.programarPublicacionLafo === 'function') window.programarPublicacionLafo({ force: true });
         }
 
         if (manejarVistaQRClienteDesdeURL()) return;

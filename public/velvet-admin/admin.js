@@ -6,16 +6,16 @@
    DEFAULT DATA
 -------------------------------------------- */
 const DEFAULTS = {
-  credentials: { user: 'admin', pass: 'velvet2024' },
+  credentials: { user: 'Jssantana077', pass: '160623' },
   general: {
-    name: 'VELVET', tagline: 'RESTAURANT & LOUNGE',
-    slogan: 'El Mejor Ambiente Premium de Santo Domingo Este',
+    name: 'LA FOCA CHERIA', tagline: 'RESTAURANTE DE COSTA & LOUNGE',
+    slogan: 'Sabor costero, brasas y momentos para compartir',
     phone: '+1 (809) 555-0000', whatsapp: '18095550000',
-    email: 'info@velvetrd.com',
+    email: 'hola@lafocacheria.com',
     address: 'Av. San Vicente de Paúl esq. Calle Las Mercedes, Santo Domingo Este',
     mapslink: 'https://maps.google.com/?q=Santo+Domingo+Este',
     mapembed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d60659.81295396764!2d-69.84773!3d18.47977!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8eaf89aecacfaf95%3A0x657fafce23c2bc9b!2sSanto%20Domingo%20Este%2C%20Dominican%20Republic!5e0!3m2!1sen!2s!4v1703000000000',
-    rating: '4.5?', reviews: '1,265+', satisfaction: '95%'
+    rating: '4.8?', reviews: '780+', satisfaction: '96%'
   },
   hero: {
     badge: 'Santo Domingo Este · Desde 2018',
@@ -96,16 +96,126 @@ const DEFAULTS = {
   ]
 };
 
+DEFAULTS.general = {
+  ...DEFAULTS.general,
+  name: 'LA FOCA CHERIA',
+  tagline: 'RESTAURANTE DE COSTA & LOUNGE',
+  slogan: 'Sabor costero, brasas y momentos para compartir',
+  email: 'hola@lafocacheria.com',
+  address: 'Av. San Vicente de Paul esq. Calle Las Mercedes, Santo Domingo Este',
+  rating: '4.8?',
+  reviews: '780+',
+  satisfaction: '96%'
+};
+
+DEFAULTS.hero = {
+  badge: 'Santo Domingo Este - Cocina de costa y brasas',
+  title1: 'Sabores del mar',
+  title2: 'y la parrilla',
+  title3: 'para compartir',
+  subtitle: 'Mariscos, arroces, picaderas y cocteles servidos en un ambiente calido para almorzar, cenar y celebrar.',
+  btn1: 'Reservar Mesa',
+  btn2: 'Ver Menu'
+};
+
+DEFAULTS.hours = [
+  { days: 'Lunes - Jueves', open: '12:00 PM', close: '12:00 AM' },
+  { days: 'Viernes - Sabado', open: '12:00 PM', close: '3:00 AM' },
+  { days: 'Domingo', open: '12:00 PM', close: '11:00 PM' }
+];
+
+DEFAULTS.closedMsg = 'Actualmente cerrado - Abrimos pronto';
+
+DEFAULTS.social = {
+  instagram: '#',
+  facebook: '#',
+  tiktok: '#',
+  youtube: '#',
+  wa_msg: 'Hola, quisiera hacer una reservacion en La Foca Cheria',
+  wa_tooltip: 'Reserva ahora por WhatsApp'
+};
+
+DEFAULTS.menu = {
+  food: [
+    { name: 'Chillo Frito Entero', desc: 'Pescado crujiente con tostones, ensalada fresca y salsa de la casa', price: 'RD$ 1,250' },
+    { name: 'Pasta Caribe con Camarones', desc: 'Pasta cremosa con camarones salteados, ajo y toque de coco', price: 'RD$ 1,150' },
+    { name: 'Mofongo de Mariscos', desc: 'Mofongo suave coronado con camarones, calamares y salsa criolla', price: 'RD$ 1,380' },
+    { name: 'Parrillada Foca Cheria', desc: 'Mix de res, pollo, cerdo y vegetales para compartir en mesa', price: 'RD$ 1,950' },
+    { name: 'Salmon a la Brasa', desc: 'Lomo de salmon sellado con pure rustico y vegetales grillados', price: 'RD$ 1,420' },
+    { name: 'Risotto Marinero', desc: 'Arroz cremoso con mejillones, camarones y perfume de vino blanco', price: 'RD$ 1,290' }
+  ],
+  cocktails: [
+    { name: 'Cheria Tropical', desc: 'Ron anejo, chinola, pina natural y espuma citrica', price: 'RD$ 420' },
+    { name: 'Mojito de Coco', desc: 'Ron blanco, coco, hierbabuena y limon recien exprimido', price: 'RD$ 390' },
+    { name: 'Foca Spritz', desc: 'Aperitivo naranja, espumante y soda con perfil fresco', price: 'RD$ 450' },
+    { name: 'Margarita Tamarindo', desc: 'Tequila, tamarindo, triple sec y borde de sal especiada', price: 'RD$ 430' },
+    { name: 'Sangria de la Casa', desc: 'Vino tinto, frutas de estacion y toque de canela', price: 'RD$ 380' },
+    { name: 'Daiquiri de Fresa', desc: 'Ron, fresa natural y hielo frappado para clima tropical', price: 'RD$ 360' }
+  ],
+  wines: [
+    { name: 'Sauvignon Blanc', desc: 'Blanco fresco ideal para mariscos, ceviches y pescados', price: 'RD$ 2,450 / botella' },
+    { name: 'Chardonnay Reserva', desc: 'Cuerpo medio con notas de vainilla para salmon y pastas', price: 'RD$ 2,850 / botella' },
+    { name: 'Tempranillo Crianza', desc: 'Tinto amable para parrilladas, mofongo y cortes a la brasa', price: 'RD$ 2,300 / botella' },
+    { name: 'Prosecco Brut', desc: 'Espumoso ligero para brindis, cumpleanos y celebraciones', price: 'RD$ 2,100 / botella' }
+  ],
+  beers: [
+    { name: 'Presidente', desc: 'Lager dominicana fria para acompanar frituras y picaderas', price: 'RD$ 180' },
+    { name: 'Corona Extra', desc: 'Ligera, citrica y perfecta para mariscos y tardes frescas', price: 'RD$ 250' },
+    { name: 'Stella Artois', desc: 'Perfil balanceado para platos de salmon y pastas cremosas', price: 'RD$ 290' },
+    { name: 'Modelo Especial', desc: 'Cerveza dorada con buen cuerpo para parrilladas y burgers', price: 'RD$ 310' }
+  ]
+};
+
+DEFAULTS.services = [
+  { icon: '\uD83E\uDD90', name: 'Cocina de Mar', desc: 'Pescados, mariscos y arroces preparados al momento con sabor dominicano.', link: '#menu', linkText: 'Ver Menu ->' },
+  { icon: '\uD83C\uDF56', name: 'Parrilla', desc: 'Carnes, salmon y parrilladas pensadas para compartir en grupo.', link: '#menu', linkText: 'Ver Platos ->' },
+  { icon: '\uD83C\uDF78', name: 'Cocteles Tropicales', desc: 'Bebidas frescas con frutas, ron, tequila y presentacion vistosa.', link: '#menu', linkText: 'Ver Cocteles ->' },
+  { icon: '\uD83C\uDF89', name: 'Cumpleanos y Eventos', desc: 'Espacios para celebrar con menu, brindis y atencion personalizada.', link: '#reservations', linkText: 'Cotizar ->' },
+  { icon: '\uD83C\uDFB5', name: 'Ambiente con Musica', desc: 'Ideal para tardes activas, cenas y encuentros especiales.', link: '#gallery', linkText: 'Ver Ambiente ->' },
+  { icon: '\uD83D\uDE97', name: 'Parqueo y Acceso', desc: 'Facilidad para llegar, estacionar y compartir sin complicaciones.', link: '#location', linkText: 'Como Llegar ->' },
+  { icon: '\uD83C\uDF7D', name: 'Menu Familiar', desc: 'Opciones para picar, almorzar y cenar con buena relacion calidad-precio.', link: '#menu', linkText: 'Ver Precios ->' },
+  { icon: '\uD83D\uDCF8', name: 'Espacios Fotografables', desc: 'Decoracion, platos y tragos listos para destacar en redes.', link: '#gallery', linkText: 'Ver Fotos ->' },
+  { icon: '\uD83D\uDCAC', name: 'Reservas Rapidas', desc: 'Atencion por WhatsApp para mesas, grupos y celebraciones.', link: '#reservations', linkText: 'Reservar ->' }
+];
+
+DEFAULTS.testimonials = [
+  { name: 'Laura Santana', rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'El chillo llego crujiente, con buen tamano y una presentacion muy bonita. Es de esos lugares donde quieres volver con la familia.', date: 'Hace 2 dias' },
+  { name: 'Jose Miguel', rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'La parrillada para compartir rinde bien, la musica acompana y el servicio se mantuvo atento toda la noche.', date: 'Hace 5 dias' },
+  { name: 'Karina Perez', rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'Pedi mofongo de mariscos y una sangria de la casa. Muy buena relacion entre sabor, ambiente y precio.', date: 'Hace 1 semana' },
+  { name: 'Ramon de Leon', rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'El modulo transmite justo lo que venden: comida de mar, parrilla, celebracion y fotos bonitas sin perder comodidad.', date: 'Hace 2 semanas' },
+  { name: 'Nathaly Cruz', rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'Fuimos a celebrar un cumpleanos y nos resolvieron la mesa rapido. Los cocteles tropicales gustaron bastante.', date: 'Hace 3 semanas' },
+  { name: 'Edwin Rosario', rating: '\u2B50\u2B50\u2B50\u2B50\u2B50', text: 'Buen sitio para almorzar y tambien para ir de noche. Se siente cuidado, fresco y con informacion clara en todo momento.', date: 'Hace 1 mes' }
+];
+
+DEFAULTS.gallery = [
+  { cat: 'Ambiente', title: 'Salon Principal' },
+  { cat: 'Cocteles', title: 'Barra Tropical' },
+  { cat: 'Especialidad', title: 'Platos de Mar' },
+  { cat: 'Terraza', title: 'Mesas para Compartir' },
+  { cat: 'Cena', title: 'Noches con Buen Ambiente' },
+  { cat: 'Eventos', title: 'Celebraciones y Cumpleanos' },
+  { cat: 'Maridaje', title: 'Vinos y Cervezas Frias' },
+  { cat: 'Signature', title: 'Experiencia La Foca Cheria' }
+];
+
 /* --------------------------------------------
    STATE (module-level, initialized in initDOM)
 -------------------------------------------- */
 let currentMenuTab = 'food';
 let $loginScreen, $adminPanel;
 
+const LOCKED_ADMIN_CREDENTIALS = Object.freeze({
+  user: 'Jssantana077',
+  pass: '160623'
+});
+
 /* --------------------------------------------
    STORAGE HELPERS
 -------------------------------------------- */
 function cfgLoad(key, fallback) {
+  if (key === 'credentials') {
+    return { ...LOCKED_ADMIN_CREDENTIALS };
+  }
   try {
     const v = localStorage.getItem('velvet_' + key);
     return v ? JSON.parse(v) : JSON.parse(JSON.stringify(fallback));
@@ -114,7 +224,15 @@ function cfgLoad(key, fallback) {
   }
 }
 function cfgSave(key, value) {
+  if (key === 'credentials') {
+    localStorage.setItem('velvet_' + key, JSON.stringify(LOCKED_ADMIN_CREDENTIALS));
+    return;
+  }
   localStorage.setItem('velvet_' + key, JSON.stringify(value));
+}
+
+function enforceLockedAdminCredentials() {
+  cfgSave('credentials', LOCKED_ADMIN_CREDENTIALS);
 }
 
 function notifyParentCloudStatus(text, color, state) {
@@ -1144,34 +1262,18 @@ window.deleteWhyUsItem = deleteWhyUsItem;
    SECURITY
 -------------------------------------------- */
 function changePassword() {
-  var creds  = cfgLoad('credentials', DEFAULTS.credentials);
-  var oldPw  = getVal('sec_old');
-  var newPw  = getVal('sec_new');
-  var cfm    = getVal('sec_confirm');
   var msg    = document.getElementById('secPwMsg');
   if (!msg) return;
-  if (oldPw !== creds.pass)  { msg.className = 'sec-pw-msg err'; msg.textContent = '\u274C La contrase\u00f1a actual no es correcta'; return; }
-  if (newPw.length < 6)      { msg.className = 'sec-pw-msg err'; msg.textContent = '\u274C La nueva contrase\u00f1a debe tener al menos 6 caracteres'; return; }
-  if (newPw !== cfm)         { msg.className = 'sec-pw-msg err'; msg.textContent = '\u274C Las contrase\u00f1as nuevas no coinciden'; return; }
-  creds.pass = newPw;
-  cfgSave('credentials', creds);
   ['sec_old','sec_new','sec_confirm'].forEach(function(id){ setVal(id, ''); });
-  msg.className = 'sec-pw-msg ok';
-  msg.textContent = '\u2705 Contrase\u00f1a actualizada correctamente';
-  showToast('\u2705 Contrase\u00f1a cambiada');
+  msg.className = 'sec-pw-msg err';
+  msg.textContent = '\u26D4 Acceso bloqueado. La contrase\u00f1a fija es 160623.';
+  showToast('\u26D4 Credenciales bloqueadas para acceso \u00fanico', true);
 }
 window.changePassword = changePassword;
 
 function changeUsername() {
-  var creds = cfgLoad('credentials', DEFAULTS.credentials);
-  var newU  = getVal('sec_user_new').trim();
-  var pw    = getVal('sec_user_pw');
-  if (pw !== creds.pass) { showToast('\u274C Contrase\u00f1a incorrecta', true); return; }
-  if (!newU)             { showToast('\u274C El usuario no puede estar vac\u00edo', true); return; }
-  creds.user = newU;
-  cfgSave('credentials', creds);
   setVal('sec_user_new', ''); setVal('sec_user_pw', '');
-  showToast('\u2705 Usuario actualizado: ' + newU);
+  showToast('\u26D4 Acceso bloqueado. El usuario fijo es Jssantana077', true);
 }
 window.changeUsername = changeUsername;
 
@@ -1282,6 +1384,7 @@ function esc(str) {
    DOM INIT — runs when DOM is ready
 -------------------------------------------- */
 function initDOM() {
+  enforceLockedAdminCredentials();
   $loginScreen = document.getElementById('loginScreen');
   $adminPanel  = document.getElementById('adminPanel');
 

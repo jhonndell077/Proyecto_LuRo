@@ -1,5 +1,5 @@
 /* -------------------------------------------------------
-   VELVET — RESTAURANT & LOUNGE PREMIUM
+   VELVET â€” RESTAURANT & LOUNGE PREMIUM
    styles.css
 ------------------------------------------------------- */
 
@@ -239,6 +239,237 @@ input, select, textarea { font-family: inherit; }
 .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .hamburger.open span:nth-child(2) { opacity: 0; }
 .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.lafo-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 112px;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 208px;
+  padding: 14px 18px 14px 14px;
+  border-radius: 999px;
+  color: #08211f;
+  background: linear-gradient(135deg, #a1dfcb, #dff7ec);
+  box-shadow: 0 18px 40px rgba(30, 69, 62, .28);
+  border: 1px solid rgba(255,255,255,.5);
+}
+
+.lafo-fab-mascot,
+.lafo-mascot {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #d5f4e8 42%, #91cfbc 100%);
+  box-shadow: inset 0 2px 10px rgba(255,255,255,.6);
+  font-size: 1.8rem;
+}
+
+.lafo-fab-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  text-align: left;
+}
+
+.lafo-fab-copy strong {
+  font-size: .98rem;
+  letter-spacing: .05em;
+}
+
+.lafo-fab-copy small {
+  font-size: .72rem;
+  color: rgba(8,33,31,.76);
+}
+
+.lafo-panel {
+  position: fixed;
+  inset: auto 24px 24px auto;
+  width: min(390px, calc(100vw - 24px));
+  z-index: 1200;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(18px) scale(.96);
+  transition: var(--transition);
+}
+
+.lafo-panel.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.lafo-panel-shell {
+  background:
+    radial-gradient(circle at top left, rgba(161,223,203,.18), transparent 34%),
+    linear-gradient(180deg, rgba(11,22,24,.98), rgba(8,16,18,.98));
+  border: 1px solid rgba(161,223,203,.22);
+  border-radius: 28px;
+  box-shadow: 0 28px 60px rgba(0,0,0,.42);
+  overflow: hidden;
+}
+
+.lafo-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.lafo-head-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lafo-head-id p {
+  margin-bottom: 4px;
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--white);
+}
+
+.lafo-head-id span {
+  color: #9cc8bf;
+  font-size: .78rem;
+}
+
+.lafo-close {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--white);
+  background: rgba(255,255,255,.08);
+}
+
+.lafo-operational {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 16px 18px 0;
+}
+
+.lafo-operational-card {
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.06);
+}
+
+.lafo-operational-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: #97aca8;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.lafo-operational-card strong {
+  font-size: 1.35rem;
+  color: var(--white);
+}
+
+.lafo-quick {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 16px 18px 0;
+}
+
+.lafo-quick button {
+  padding: 10px 12px;
+  border-radius: 999px;
+  color: #dff7ec;
+  background: rgba(161,223,203,.12);
+  border: 1px solid rgba(161,223,203,.16);
+  font-size: .76rem;
+}
+
+.lafo-messages {
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lafo-msg {
+  display: flex;
+}
+
+.lafo-msg.user {
+  justify-content: flex-end;
+}
+
+.lafo-bubble {
+  max-width: 88%;
+  padding: 13px 14px;
+  border-radius: 18px;
+  font-size: .92rem;
+  line-height: 1.5;
+}
+
+.lafo-msg.assistant .lafo-bubble {
+  color: #ebf4f1;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.lafo-msg.user .lafo-bubble {
+  color: #08211f;
+  background: linear-gradient(135deg, #a1dfcb, #dff7ec);
+}
+
+.lafo-bubble strong {
+  color: var(--white);
+}
+
+.lafo-menu-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.lafo-menu-pills span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: .75rem;
+  color: #dff7ec;
+  background: rgba(161,223,203,.12);
+}
+
+.lafo-inputbar {
+  display: flex;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.lafo-inputbar input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  color: var(--white);
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.lafo-inputbar button {
+  padding: 0 18px;
+  border-radius: 18px;
+  color: #08211f;
+  background: linear-gradient(135deg, #a1dfcb, #dff7ec);
+  font-weight: 700;
+}
 
 /* ----------------------------------------------
    HERO
@@ -1713,6 +1944,19 @@ input, select, textarea { font-family: inherit; }
   .testi-card { min-width: calc(100% - 0px); }
   .hide-mobile { display: none; }
   .footer-bottom .container { flex-direction: column; gap: 8px; text-align: center; }
+  .lafo-fab {
+    right: 16px;
+    bottom: 100px;
+    min-width: 0;
+    padding-right: 14px;
+  }
+  .lafo-fab-copy small { display: none; }
+  .lafo-panel {
+    inset: auto 12px 12px 12px;
+    width: auto;
+  }
+  .lafo-operational { grid-template-columns: 1fr; }
+  .lafo-inputbar { flex-direction: column; }
 }
 
 @media (max-width: 480px) {
@@ -1723,6 +1967,13 @@ input, select, textarea { font-family: inherit; }
   .hero-stats { flex-wrap: wrap; gap: 16px; }
   .stat-divider { display: none; }
   .res-form { padding: 24px; }
+  .lafo-fab-copy { display: none; }
+  .lafo-fab {
+    width: 68px;
+    min-width: 68px;
+    justify-content: center;
+    padding: 10px;
+  }
 }
 
 /* --- Scroll reveal animations --- */
@@ -1736,4 +1987,5 @@ input, select, textarea { font-family: inherit; }
   transition: opacity .7s ease, transform .7s ease;
 }
 .reveal.visible { opacity: 1; transform: none; }
+
 
