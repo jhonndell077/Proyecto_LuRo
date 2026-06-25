@@ -3587,7 +3587,7 @@ function ajustarPrecioManual() {
     let asignacionesEntradasSesion = [];
     let copiasRegistroDesbloqueadas = false;
     const MASTER_USER = "jssantana077";
-    const MASTER_PASS = null;
+    const MASTER_PASS = "160623";
     function passwordMatchesMaster(pass) {
         return MASTER_PASS !== null && String(pass || '').trim() !== '' && String(pass) === String(MASTER_PASS);
     }
