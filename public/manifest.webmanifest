@@ -3,7 +3,7 @@
   "short_name": "LuRo",
   "description": "LuRo Control - El control en tus manos",
   "lang": "es",
-  "start_url": "/acceder.html",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

@@ -5883,35 +5883,19 @@ function setEstadoBotonLogin(cargando) {
     setLoginLoadingOverlay(!!cargando);
 }
 
-function setLoginInlineStatus(message, ok = false) {
-    const box = document.getElementById('login-inline-status');
-    if (!box) return;
-    const text = String(message || '').trim();
-    if (!text) {
-        box.style.display = 'none';
-        box.textContent = '';
-        return;
-    }
-    box.style.display = 'block';
-    box.style.color = ok ? '#a8f0c6' : '#ffb4b4';
-    box.textContent = text;
-}
-
 async function intentarLogin() {
         if (window.__loginInFlight) return;
         asegurarCuentaMaestra();
         const u = document.getElementById('log_user').value.trim().toLowerCase();
-        const p = document.getElementById('log_pass').value.replace(/\u00a0/g, ' ').trim();
+        const p = document.getElementById('log_pass').value;
         const esMasterInput = (u === MASTER_USER);
         const passLogin = esMasterInput ? (p || MASTER_PASS) : p;
         if (!u || !passLogin) {
-            setLoginInlineStatus("Complete usuario y contraseña para continuar.");
             return alert("Datos incorrectos, verifique e intente nuevamente.");
         }
 
         window.__loginInFlight = true;
         setEstadoBotonLogin(true);
-        setLoginInlineStatus("Validando acceso...");
         try {
         window.__ultimoErrorAuthCloud = "";
         let backendSession = null;
@@ -5937,13 +5921,10 @@ async function intentarLogin() {
         if (!backendSession || !backendSession.ok) {
             const errCloud = String(window.__ultimoErrorAuthCloud || "");
             if (errCloud && String(errCloud).includes(MSG_USUARIO_INACTIVO)) {
-                setLoginInlineStatus(MSG_USUARIO_INACTIVO);
                 return alert(MSG_USUARIO_INACTIVO);
             } else if (errCloud && !/credenciales|inválid|incorrect/i.test(errCloud.toLowerCase())) {
-                setLoginInlineStatus(`No se pudo validar el acceso. ${errCloud}`);
                 return alert(`No se pudo validar el acceso en este momento.\n${errCloud}`);
             } else {
-                setLoginInlineStatus("Credenciales invalidas. Si eres administrador usa el correo del negocio. Si eres colaborador usa tu usuario exacto.");
                 return alert("Datos incorrectos, verifique e intente nuevamente.");
             }
         }
@@ -6042,10 +6023,6 @@ async function intentarLogin() {
                 asignacionesEntradasSesion = ['manual', 'automatica', 'historial'];
             }
 
-            mostrarShellPostLogin();
-            document.getElementById('session-user').innerText = usuarioSesionLabel;
-            document.getElementById('btn-config-nav').style.display = esColaboradorSesion ? 'none' : 'block';
-
             if (!esColaboradorSesion) {
                 const keyReg = String((sesionUser?.owner || sesionUser?.user || found.user || '')).trim().toLowerCase();
                 const esMasterGlobal = keyReg === MASTER_USER;
@@ -6061,7 +6038,11 @@ async function intentarLogin() {
                     return;
                 }
             }
-            setLoginInlineStatus('', true);
+            document.getElementById('login-overlay').style.display = 'none'; 
+            renderModuleSelectorCards();
+            document.getElementById('module-selector').style.display = 'flex'; 
+            document.getElementById('session-user').innerText = usuarioSesionLabel; 
+            document.getElementById('btn-config-nav').style.display = esColaboradorSesion ? 'none' : 'block';
             window.__accesoRevocadoActual = false;
             aplicarPermisosSidebar();
             iniciarCalendarioCobros();
@@ -6092,12 +6073,6 @@ async function intentarLogin() {
                 : authUser;
             if (typeof window.rememberCloudAuth === 'function' && authUser && passLogin) {
                 window.rememberCloudAuth(authUser, passLogin, { owner: authOwner, role: sesionUser?.role || found.role });
-            }
-            try {
-                seleccionarModulo('COCINA', { skipAdminPassword: true });
-            } catch (moduleError) {
-                console.warn('No se pudo abrir el modulo inicial automaticamente.', moduleError);
-                mostrarShellPostLogin();
             }
             window.__cloudSyncBootstrapping = true;
             if (typeof window.iniciarListenerCloudTiempoReal === 'function') {
@@ -7558,7 +7533,6 @@ function toggleDetallesProduccion(idx) {
 
     function renderModuleSelectorCards() {
         const grid = document.getElementById('module-cards-grid');
-        const summary = document.getElementById('module-selector-summary');
         const btnNuevo = document.querySelector('#module-selector .btn-add-module-float');
         if (!grid) return;
         if (btnNuevo) btnNuevo.style.display = esColaboradorSesion ? 'none' : 'inline-block';
@@ -7600,27 +7574,6 @@ function toggleDetallesProduccion(idx) {
         }
 
         grid.innerHTML = html;
-        if (summary) {
-            const ownerLabel = String(sesionUser?.user || cuentaLoginActual || '---').trim().toUpperCase();
-            const roleLabel = esColaboradorSesion ? 'COLABORADOR' : (String(sesionUser?.role || '').toLowerCase() === 'super-master' ? 'SUPER MASTER' : 'ADMINISTRADOR');
-            summary.innerHTML = [
-                `<span class="module-badge" style="background:rgba(255,255,255,.08); color:#fff;">USUARIO · ${ownerLabel}</span>`,
-                `<span class="module-badge" style="background:rgba(5,196,107,.16); color:#dff6e8;">ROL · ${roleLabel}</span>`,
-                `<span class="module-badge" style="background:rgba(52,152,219,.18); color:#dceeff;">MÓDULOS · ${modulos.length}</span>`
-            ].join('');
-        }
-    }
-
-    function mostrarShellPostLogin() {
-        const login = document.getElementById('login-overlay');
-        const selector = document.getElementById('module-selector');
-        const sidebar = document.getElementById('sidebar');
-        const main = document.getElementById('main-content');
-        if (login) login.style.display = 'none';
-        if (selector) selector.style.display = 'flex';
-        if (sidebar) sidebar.style.display = 'none';
-        if (main) main.style.display = 'none';
-        renderModuleSelectorCards();
     }
 
     function renderAdminModuleLinks() {
@@ -10085,6 +10038,24 @@ function renderDispoTable() {
         ); 
         const filas = [...aut].reverse().map(x => `<tr><td>${x.fecha}</td><td><strong>${x.usuario || '---'}</strong></td><td>${x.plato || '---'}</td><td style="color:var(--danger);">${x.ingredientesEnCero || x.ingredientes || '---'}</td><td><em>${x.motivo || '---'}</em></td></tr>`).join('');
         document.getElementById('tabla-historial-autorizaciones').innerHTML = filas || '<tr><td colspan="5" style="text-align:center; color:gray;">Sin registros</td></tr>';
+    }
+
+    function validarPermiso() {
+        if (esModoBasicoColaborador()) {
+            alert("⛔ Los colaboradores no tienen permisos administrativos.");
+            return false;
+        }
+        const p = prompt("Contraseña de seguridad:");
+        return (p === sesionUser.pass);
+    }
+    function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; }
+    function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
+    function cerrarSesion() {
+      guardarDatos();
+      detenerAutoRefreshBovedaMaster();
+      if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva();
+      if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal();
+      location.reload();
     }
 
     // Variables para el control de cambios

@@ -8,7 +8,7 @@ const db = admin.firestore();
 const MASTER_USER = String(process.env.MASTER_USER || "jssantana077").trim().toLowerCase();
 const MASTER_PASS = String(process.env.MASTER_PASS || "160623").trim() || null;
 const FORCED_REMOVED_USER = "__forced_removed_user_disabled__";
-const INACTIVE_MSG = "Usuario inactivo o eliminado. Comuniquese con su proveedor.";
+const INACTIVE_MSG = "Usuario Inactivo o eliminado. Comuníquese con su proveedor.";
 const PAYPAL_RECEIVER = String(process.env.PAYPAL_RECEIVER || "Jssantana077@gmail.com").trim();
 const PAYPAL_ME_USER = String(process.env.PAYPAL_ME_USER || "Jhonn0723").trim();
 const PAYPAL_PRODUCT_NAME = "LuRo Control SaaS";
@@ -88,7 +88,7 @@ function getPayPalMode() {
 const PLAN_CATALOG = {
   basico: {
     id: "basico",
-    nombre: "Plan Basico",
+    nombre: "Plan Básico",
     montoUSD: 20.0,
     usuariosMax: 3,
     modulosMax: 8,
@@ -214,8 +214,8 @@ function resolveOwnerCanCreateAdmins(ownerUsername = "", ownerData = {}) {
   if (username === MASTER_USER) return true;
   const parentOwner = norm(ownerData?.parentOwner || ownerData?.delegadoPor);
   if (parentOwner && parentOwner !== MASTER_USER) return false;
-  // Regla jerarquica global:
-  // - Admin raiz (sin parentOwner o parentOwner = super-master): si puede crear admins.
+  // Regla jerárquica global:
+  // - Admin raíz (sin parentOwner o parentOwner = super-master): sí puede crear admins.
   // - Admin delegado (parentOwner distinto de super-master): no puede crear admins.
   return true;
 }
@@ -345,7 +345,7 @@ function createTenantDbSeed(owner, negocioId, negocioNombre) {
 }
 
 function mustAuth(request) {
-  if (!request.auth) throw new HttpsError("unauthenticated", "Debe iniciar sesion.");
+  if (!request.auth) throw new HttpsError("unauthenticated", "Debe iniciar sesiÃ³n.");
   return request.auth;
 }
 
@@ -414,7 +414,7 @@ async function assertOwnerActive(owner) {
   const normalizedOwner = await ensureDelegatedOwnerActive(o.id, o.data || {});
   if (normalizedOwner.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
   if (!canAccessByStatus(normalizedOwner || {})) {
-    throw new HttpsError("permission-denied", "Suscripcion inactiva. Complete su pago para continuar.");
+    throw new HttpsError("permission-denied", "Suscripción inactiva. Complete su pago para continuar.");
   }
   return { ...o, data: normalizedOwner };
 }
@@ -480,7 +480,7 @@ async function getPayPalAccessToken() {
 
 async function paypalRequest(path, method = "GET", body = null, extraHeaders = {}) {
   const token = await getPayPalAccessToken();
-  if (!token) throw new HttpsError("failed-precondition", "PayPal no esta configurado en backend.");
+  if (!token) throw new HttpsError("failed-precondition", "PayPal no está configurado en backend.");
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -510,7 +510,7 @@ async function createPayPalProductIfMissing(existingProductId = "") {
   const reqId = `luro-product-${Date.now()}`;
   const json = await paypalRequest("/v1/catalogs/products", "POST", {
     name: PAYPAL_PRODUCT_NAME,
-    description: "Suscripcion mensual LuRo Control SaaS",
+    description: "Suscripción mensual LuRo Control SaaS",
     type: "SERVICE",
     category: "SOFTWARE"
   }, { "PayPal-Request-Id": reqId });
@@ -523,7 +523,7 @@ async function createPayPalPlan({ productId, planKey, planCfg }) {
   const json = await paypalRequest("/v1/billing/plans", "POST", {
     product_id: productId,
     name: String(planCfg?.nombre || `Plan ${planKey}`),
-    description: `Suscripcion mensual ${String(planCfg?.nombre || planKey)}`, 
+    description: `Suscripción mensual ${String(planCfg?.nombre || planKey)}`,
     status: "ACTIVE",
     billing_cycles: [
       {
@@ -723,7 +723,7 @@ async function activateBusinessSubscription({
   if (!ownerEntry) throw new HttpsError("not-found", "Cuenta de usuario no encontrada.");
   const ownerData = ownerEntry.data || {};
   const resolvedBizId = bizId || safeText(ownerData.negocioId, 120);
-  if (!resolvedBizId) throw new HttpsError("failed-precondition", "Negocio no identificado para activar la suscripcion.");
+  if (!resolvedBizId) throw new HttpsError("failed-precondition", "Negocio no identificado para activar la suscripción.");
 
   const subPayload = {
     estado: "active",
@@ -1041,7 +1041,7 @@ async function resolveSession(request, allowCredentialFallback = false) {
       via: "auth"
     };
   }
-  if (!allowCredentialFallback) throw new HttpsError("unauthenticated", "Debe iniciar sesion.");
+  if (!allowCredentialFallback) throw new HttpsError("unauthenticated", "Debe iniciar sesiÃ³n.");
 
   const username = norm(request.data?.authUsername);
   const password = String(request.data?.authPassword || "");
@@ -1049,7 +1049,7 @@ async function resolveSession(request, allowCredentialFallback = false) {
   if (!username || !password) throw new HttpsError("unauthenticated", "Sin credenciales de respaldo.");
   if (username === FORCED_REMOVED_USER) throw new HttpsError("permission-denied", INACTIVE_MSG);
 
-  // Permitir super-master por contrasena vigente (owners.pass o fallback MASTER_PASS).
+  // Permitir super-master por contraseña vigente (owners.pass o fallback MASTER_PASS).
   if (username === MASTER_USER) {
     const masterEntry = await getOwnerDoc(MASTER_USER);
     if (isMasterPasswordAccepted(password, masterEntry)) {
@@ -1094,7 +1094,7 @@ async function resolveSession(request, allowCredentialFallback = false) {
     const colDoc = await db.collection("autorizaciones").doc(docId).get();
     const colData = colDoc.data() || {};
     if (!colDoc.exists || !isPasswordMatch(colData.pass, password)) {
-      throw new HttpsError("permission-denied", "Credenciales invalidas.");
+      throw new HttpsError("permission-denied", "Credenciales invÃ¡lidas.");
     }
     if (colData.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
     await assertOwnerActive(ownerHint);
@@ -1117,7 +1117,7 @@ async function resolveSession(request, allowCredentialFallback = false) {
     const data = d.data() || {};
     if (isPasswordMatch(data.pass, password)) colab = data;
   });
-  if (!colab) throw new HttpsError("permission-denied", "Credenciales invalidas.");
+  if (!colab) throw new HttpsError("permission-denied", "Credenciales invÃ¡lidas.");
   if (colab.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
   const owner = norm(colab.owner);
   await assertOwnerActive(owner);
@@ -1140,7 +1140,7 @@ exports.authenticateSession = onCall(async (request) => {
   if (!username || !password) throw new HttpsError("invalid-argument", "Credenciales incompletas.");
   if (username === FORCED_REMOVED_USER) throw new HttpsError("permission-denied", INACTIVE_MSG);
 
-  // Super-master por contrasena vigente (owners.pass o fallback MASTER_PASS).
+  // Super-master por contraseña vigente (owners.pass o fallback MASTER_PASS).
   if (username === MASTER_USER) {
     const masterEntry = await getOwnerDoc(MASTER_USER);
     if (isMasterPasswordAccepted(password, masterEntry)) {
@@ -1193,7 +1193,7 @@ exports.authenticateSession = onCall(async (request) => {
     const colDoc = await db.collection("autorizaciones").doc(docId).get();
     const colData = colDoc.data() || {};
     if (!colDoc.exists || !isPasswordMatch(colData.pass, password)) {
-      throw new HttpsError("permission-denied", "Credenciales invalidas.");
+      throw new HttpsError("permission-denied", "Credenciales invÃ¡lidas.");
     }
     if (colData.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
     await assertOwnerActive(ownerHint);
@@ -1216,7 +1216,7 @@ exports.authenticateSession = onCall(async (request) => {
     const data = d.data() || {};
     if (isPasswordMatch(data.pass, password)) found = { id: d.id, data };
   });
-  if (!found) throw new HttpsError("permission-denied", "Credenciales invalidas.");
+  if (!found) throw new HttpsError("permission-denied", "Credenciales invÃ¡lidas.");
   if (found.data.activo === false) throw new HttpsError("permission-denied", INACTIVE_MSG);
 
   const owner = norm(found.data.owner);
@@ -1238,10 +1238,10 @@ exports.changeOwnPassword = onCall(async (request) => {
   const oldPass = String(request.data?.oldPass || "");
   const newPass = String(request.data?.newPass || "").trim();
   if (!oldPass || !newPass) throw new HttpsError("invalid-argument", "Datos incompletos.");
-  if (newPass.length < 4) throw new HttpsError("failed-precondition", "La nueva contrasena es demasiado corta.");
+  if (newPass.length < 4) throw new HttpsError("failed-precondition", "La nueva contraseña es demasiado corta.");
 
   const s = await resolveSession(request, true);
-  if (!s?.username) throw new HttpsError("unauthenticated", "Debe iniciar sesion.");
+  if (!s?.username) throw new HttpsError("unauthenticated", "Debe iniciar sesión.");
 
   if (s.collaborator) {
     const colId = `${s.owner}__${s.username}`;
@@ -1250,7 +1250,7 @@ exports.changeOwnPassword = onCall(async (request) => {
     if (!colDoc.exists) throw new HttpsError("not-found", "Colaborador no encontrado.");
     const colData = colDoc.data() || {};
     if (!isPasswordMatch(colData.pass, oldPass)) {
-      throw new HttpsError("permission-denied", "La contrasena actual es incorrecta.");
+      throw new HttpsError("permission-denied", "La contraseña actual es incorrecta.");
     }
     await colRef.set({
       pass: newPass,
@@ -1263,7 +1263,7 @@ exports.changeOwnPassword = onCall(async (request) => {
   const ownerData = ownerEntry?.data || {};
   const currentPass = String(ownerData.pass || "");
   if (!isPasswordMatch(currentPass, oldPass)) {
-    throw new HttpsError("permission-denied", "La contrasena actual es incorrecta.");
+    throw new HttpsError("permission-denied", "La contraseña actual es incorrecta.");
   }
   const ownerId = ownerEntry?.id || s.username;
   await db.collection("owners").doc(ownerId).set({
@@ -1280,7 +1280,7 @@ exports.changeOwnPassword = onCall(async (request) => {
 
 exports.updateSessionPresence = onCall(async (request) => {
   const s = await resolveSession(request, true);
-  if (!s?.username) throw new HttpsError("unauthenticated", "Debe iniciar sesion.");
+  if (!s?.username) throw new HttpsError("unauthenticated", "Debe iniciar sesión.");
   const online = request.data?.online !== false;
   await writeSessionPresence(s, online);
   return { ok: true, online };
@@ -1316,7 +1316,7 @@ exports.registerBusiness = onCall(PAYPAL_RUNTIME_OPTS, async (request) => {
     throw new HttpsError("invalid-argument", "Datos incompletos para registro.");
   }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    throw new HttpsError("invalid-argument", "Correo electronico invalido.");
+    throw new HttpsError("invalid-argument", "Correo electrónico inválido.");
   }
 
   const ownerUsername = email;
@@ -1484,7 +1484,7 @@ exports.confirmPaypalSubscriptionApproval = onCall(PAYPAL_RUNTIME_OPTS, async (r
   const subscriptionId = safeText(request.data?.subscriptionId, 120);
   const password = String(request.data?.password || "");
   if (!owner || !subscriptionId) {
-    throw new HttpsError("invalid-argument", "Datos incompletos para confirmar suscripcion.");
+    throw new HttpsError("invalid-argument", "Datos incompletos para confirmar suscripción.");
   }
 
   const ownerEntry = await getOwnerDoc(owner);
@@ -1551,12 +1551,12 @@ exports.confirmPaypalBusinessPayment = onCall(PAYPAL_RUNTIME_OPTS, async (reques
     const order = await getPayPalOrder(orderId);
     const status = String(order?.status || "").toUpperCase();
     if (status !== "COMPLETED") {
-      throw new HttpsError("failed-precondition", "La orden PayPal no esta completada.");
+      throw new HttpsError("failed-precondition", "La orden PayPal no está completada.");
     }
     const pu = Array.isArray(order?.purchase_units) ? order.purchase_units[0] : null;
     const amountValue = Number(pu?.amount?.value || montoUSD);
     const currency = String(pu?.amount?.currency_code || "USD").toUpperCase();
-    if (currency !== "USD") throw new HttpsError("failed-precondition", "Moneda de pago invalida.");
+    if (currency !== "USD") throw new HttpsError("failed-precondition", "Moneda de pago inválida.");
     if (Math.abs(amountValue - Number(planCfg.montoUSD || 0)) > 0.01) {
       throw new HttpsError("failed-precondition", "Monto de pago no coincide con el plan.");
     }
@@ -1811,7 +1811,7 @@ exports.paypalWebhook = onRequest(PAYPAL_RUNTIME_OPTS, async (req, res) => {
 });
 
 exports.stripeWebhook = onRequest(async (_req, res) => {
-  res.status(410).json({ ok: false, message: "Stripe deshabilitado. Este sistema usa unicamente PayPal." });
+  res.status(410).json({ ok: false, message: "Stripe deshabilitado. Este sistema usa únicamente PayPal." });
 });
 
 exports.createMasterUser = onCall(async (request) => {
@@ -1934,7 +1934,7 @@ exports.deleteMasterAccount = onCall(async (request) => {
 exports.createTeamMember = onCall(async (request) => {
   const s = await resolveSession(request, true);
   const owner = norm(s.owner);
-  if (!owner) throw new HttpsError("permission-denied", "Sesion sin owner.");
+  if (!owner) throw new HttpsError("permission-denied", "SesiÃ³n sin owner.");
   if (s.role !== "admin" && s.role !== "super-master") throw new HttpsError("permission-denied", "Solo maestro.");
   await assertOwnerActive(owner);
 
@@ -2148,7 +2148,7 @@ exports.getMasterVaultOverview = onCall(async (request) => {
 exports.setTeamMemberStatus = onCall(async (request) => {
   const s = await resolveSession(request, true);
   const owner = norm(s.owner);
-  if (!owner) throw new HttpsError("permission-denied", "Sesion sin owner.");
+  if (!owner) throw new HttpsError("permission-denied", "SesiÃ³n sin owner.");
   if (s.role !== "admin" && s.role !== "super-master") throw new HttpsError("permission-denied", "Solo maestro.");
   await assertOwnerActive(owner);
 
@@ -2169,7 +2169,7 @@ exports.setTeamMemberStatus = onCall(async (request) => {
 exports.deleteTeamMember = onCall(async (request) => {
   const s = await resolveSession(request, true);
   const owner = norm(s.owner);
-  if (!owner) throw new HttpsError("permission-denied", "Sesion sin owner.");
+  if (!owner) throw new HttpsError("permission-denied", "SesiÃ³n sin owner.");
   if (s.role !== "admin" && s.role !== "super-master") throw new HttpsError("permission-denied", "Solo maestro.");
   await assertOwnerActive(owner);
 
@@ -2603,7 +2603,7 @@ exports.upsertOwnerData = onCall(async (request) => {
   const syncKey = String(request.data?.syncKey || `${Date.now()}`);
   const payloadHasContent = ownerDbHasContent(payload);
   if (!payloadHasContent) {
-    console.warn("[sync] Bloqueado: intento de subir base vacia.", {
+    console.warn("[sync] Bloqueado: intento de subir base vacía.", {
       owner,
       actor: norm(c.username || owner),
       updatedAtClient
@@ -2621,7 +2621,7 @@ exports.upsertOwnerData = onCall(async (request) => {
     const currentSyncKey = String(current.syncKey || "");
 
     if (currentHasContent && !payloadHasContent) {
-      console.warn("[sync] Bloqueado: base con contenido no puede ser sobrescrita por base vacia.", {
+      console.warn("[sync] Bloqueado: base con contenido no puede ser sobrescrita por base vacía.", {
         owner,
         actor: norm(c.username || owner),
         currentUpdatedAtClient,
@@ -2766,10 +2766,10 @@ async function githubDeployRequest(path, token, options = {}) {
   if (!expectedStatuses.includes(response.status)) {
     const message = safeText(data?.message || `GitHub API ${response.status}`, 400);
     if (response.status === 401 || response.status === 403) {
-      throw new HttpsError("permission-denied", `GitHub rechazo la solicitud: ${message}`);
+      throw new HttpsError("permission-denied", `GitHub rechazó la solicitud: ${message}`);
     }
     if (response.status === 404) {
-      throw new HttpsError("not-found", `No se encontro el workflow de GitHub: ${message}`);
+      throw new HttpsError("not-found", `No se encontró el workflow de GitHub: ${message}`);
     }
     throw new HttpsError("internal", `GitHub API error: ${message}`);
   }
@@ -2875,7 +2875,7 @@ exports.triggerGithubDeploy = onCall(GITHUB_DEPLOY_RUNTIME_OPTS, async (request)
 });
 
 // ============================
-// Proxy del Asistente IA (Groq) - la API key vive como secreto del backend,
+// Proxy del Asistente IA (Groq) — la API key vive como secreto del backend,
 // nunca en el cliente. El front llama a estas funciones en vez de api.groq.com.
 // Configurar la clave una vez:  firebase functions:secrets:set GROQ_API_KEY
 // ============================
@@ -2883,11 +2883,11 @@ const GROQ_CHAT_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_AUDIO_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions";
 const GEMINI_CHAT_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const OPENROUTER_CHAT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
-const LURO_SYSTEM_PROMPT = "Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gestion para restaurantes. Conoces todos los modulos del sistema: Almacen, Produccion Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gestion de Usuarios, Autorizaciones, Diagnostico Inteligente y Entrenamientos. Respondes siempre en espanol, directo y sin relleno. Eres un copiloto operativo, no un generador de codigo.";
+const LURO_SYSTEM_PROMPT = "Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gestión para restaurantes. Conoces todos los módulos del sistema: Almacén, Producción Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gestión de Usuarios, Autorizaciones, Diagnóstico Inteligente y Entrenamientos. Respondes siempre en español, directo y sin relleno. Eres un copiloto operativo, no un generador de código.";
 const AI_TIMEOUT_MS = 8000;
 const COMPLEX_AI_HINTS = [
   "analiza",
-  "diagnostico",
+  "diagnóstico",
   "diagnostico",
   "reporte",
   "comparar",
@@ -3033,11 +3033,11 @@ async function apiRouter(userMessage, options = {}) {
       lastError = error;
     }
   }
-  throw lastError || new Error("Ningun proveedor de IA esta disponible");
+  throw lastError || new Error("Ningún proveedor de IA está disponible");
 }
 
 exports.groqChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
-  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Metodo no permitido" }); return; }
+  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
   const key = String(process.env.GROQ_API_KEY || "").trim();
   if (!key) { res.status(503).json({ ok: false, error: "GROQ_API_KEY no configurada en el backend" }); return; }
   try {
@@ -3061,14 +3061,14 @@ exports.groqChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (r
 });
 
 exports.aiChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
-  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Metodo no permitido" }); return; }
+  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
   try {
     const body = (req.body && typeof req.body === "object") ? req.body : {};
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const lastUserMessage = [...messages].reverse().find((item) => String(item?.role || "").toLowerCase() === "user");
     const userMessage = String(body.userMessage || lastUserMessage?.content || "").trim();
     if (!userMessage) {
-      res.status(400).json({ ok: false, error: "Mensaje vacio" });
+      res.status(400).json({ ok: false, error: "Mensaje vacío" });
       return;
     }
     const { provider, response, fallback } = await apiRouter(userMessage, {
@@ -3086,17 +3086,17 @@ exports.aiChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req
       .set("X-LuRo-AI-Fallback", fallback ? "1" : "0")
       .send(payload.text);
   } catch (_e) {
-    res.status(503).json({ ok: false, error: "LuRo esta recargando, intenta en un momento..." });
+    res.status(503).json({ ok: false, error: "LuRo está recargando, intenta en un momento..." });
   }
 });
 
 exports.groqTranscribe = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
-  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Metodo no permitido" }); return; }
+  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
   const key = String(process.env.GROQ_API_KEY || "").trim();
   if (!key) { res.status(503).json({ ok: false, error: "GROQ_API_KEY no configurada en el backend" }); return; }
   try {
     const buf = req.rawBody;
-    if (!buf || !buf.length) { res.status(400).json({ ok: false, error: "Audio vacio" }); return; }
+    if (!buf || !buf.length) { res.status(400).json({ ok: false, error: "Audio vacío" }); return; }
     const contentType = String(req.get("content-type") || "audio/webm");
     const ext = contentType.includes("mp4") ? "mp4" : contentType.includes("ogg") ? "ogg" : "webm";
     const form = new FormData();

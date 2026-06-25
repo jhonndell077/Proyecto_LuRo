@@ -1,4 +1,4 @@
-const SW_VERSION = 'luro-pwa-stable-20260625-4';
+const SW_VERSION = 'luro-pwa-cachefix-20260414-2';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -9,9 +9,9 @@ const CORE_ASSETS = [
   '/assets/saas/css/landing.css?v=20260414-landing-ecosistema-2',
   '/assets/saas/js/landing.js?v=20260412-1200',
   '/assets/saas/js/access.js?v=20260306-1205',
-  '/assets/css/styles.css?v=20260611-modulos-separados',
-  '/assets/js/app.js?v=20260625-login-open-1',
-  '/assets/js/cloud-bridge.js?v=20260625-shell-fix-2',
+  '/assets/css/styles.css?v=20260413-hotfix-1',
+  '/assets/js/app.js?v=20260413-hotfix-1',
+  '/assets/js/cloud-bridge.js?v=20260413-hotfix-1',
   '/assets/brand/logo-luro.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
@@ -20,13 +20,14 @@ const CORE_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SW_VERSION).then((cache) => cache.addAll(CORE_ASSETS))
+    caches.open(SW_VERSION).then((cache) => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== SW_VERSION).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 

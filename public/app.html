@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -21,7 +21,7 @@
                   <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo-app luro-logo-toned-app">
                   <span>LuRo Control</span>
                 </h2>
-                <p style="margin:2px; font-size:12px;">Gesti�n de Ventas</p>
+                <p style="margin:2px; font-size:12px;">Gestión de Ventas</p>
                 <p id="factura-fecha" style="margin:2px; font-size:11px;"></p>
             </div>
 
@@ -49,7 +49,7 @@
             </div>
         </div>
 
-        <button class="btn" onclick="imprimirTicket()" style="width:100%; margin-top:20px; background:var(--accent); color:white;">??? IMPRIMIR FACTURA</button>
+        <button class="btn" onclick="imprimirTicket()" style="width:100%; margin-top:20px; background:var(--accent); color:white;">🖨️ IMPRIMIR FACTURA</button>
         
         <button onclick="document.getElementById('modal-factura').style.display='none'" 
                 style="margin-top:10px; width:100%; padding:12px; background:var(--secondary); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; text-transform: uppercase;">
@@ -57,7 +57,7 @@
         </button>
 
         <button class="btn" id="btn-whatsapp-factura" onclick="enviarFacturaWhatsapp()" style="width:100%; margin-top:10px; background:#25D366; color:white;">
-            ?? ENVIAR POR WHATSAPP
+            💬 ENVIAR POR WHATSAPP
         </button>
     </div>
 </div>
@@ -65,12 +65,12 @@
 <div id="modal-cierre-total" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:3205; justify-content:center; align-items:center; padding:16px;">
     <div style="background:#fff; width:min(760px,96vw); max-height:92vh; overflow:auto; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--danger);">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
-            <strong>?? Cierre Total del Turno</strong>
+            <strong>📌 Cierre Total del Turno</strong>
             <button class="btn btn-danger" onclick="cerrarModalCierreTotal()">X</button>
         </div>
         <div id="cierre-total-contenido" style="padding:14px;"></div>
         <div style="display:flex; gap:8px; justify-content:flex-end; padding:12px 14px; border-top:1px solid #eee;">
-            <button class="btn btn-blue" onclick="imprimirCierreTotal()">??? IMPRIMIR CIERRE</button>
+            <button class="btn btn-blue" onclick="imprimirCierreTotal()">🖨️ IMPRIMIR CIERRE</button>
             <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cerrarModalCierreTotal()">CERRAR</button>
         </div>
     </div>
@@ -98,12 +98,11 @@
         <span>LuRo Control</span>
       </h2>
       <div class="brand-motion-text">El control en tus manos</div>
-      <p id="login-subtitle" style="margin-bottom:12px; color: #aaa; font-size: 0.9em;">Use el correo del negocio o el usuario exacto del colaborador.</p>
-      <p id="login-inline-status" style="display:none; margin:0 0 12px; color:#ffb4b4; font-size:0.9em; text-align:center;"></p>
-      <div class="form-group"><input type="text" id="log_user" placeholder="Correo del negocio o usuario colaborador"></div>
-      <div class="form-group"><input type="password" id="log_pass" placeholder="Contrase�a"></div>
+      <p id="login-subtitle" style="margin-bottom:20px; color: #aaa; font-size: 0.9em;">Inicie sesión para continuar</p>
+      <div class="form-group"><input type="text" id="log_user" placeholder="Nombre de Usuario"></div>
+      <div class="form-group"><input type="password" id="log_pass" placeholder="Contraseña"></div>
       <button id="btn-login-acceder" class="btn btn-save" style="width:100%; padding: 15px;" onclick="intentarLogin()">ACCEDER AL PANEL</button>
-      <button id="btn-olvido-login" class="btn btn-warning" style="width:100%; padding: 10px; margin-top:10px;" onclick="olvidastePassword()">�Olvidaste tu contrase�a?</button>
+      <button id="btn-olvido-login" class="btn btn-warning" style="width:100%; padding: 10px; margin-top:10px;" onclick="olvidastePassword()">¿Olvidaste tu contraseña?</button>
       <button id="btn-contacto-dev-login" class="btn btn-blue" style="width:100%; padding:10px; margin-top:10px;" onclick="abrirModalContactoDesarrollador()">CONTACTAR CON EL DESARROLLADOR</button>
     </div>
   </div>
@@ -116,7 +115,7 @@
       </div>
       <div style="padding:14px;">
         <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:10px; margin-bottom:10px;">
-          <div><strong>Tel�fono:</strong> <span id="dev-contact-phone">+18293666947</span></div>
+          <div><strong>Teléfono:</strong> <span id="dev-contact-phone">+18293666947</span></div>
           <div style="margin-top:6px;"><strong>Correo:</strong> <span id="dev-contact-email">Jssantana077@gmail.com</span></div>
         </div>
         <label style="font-size:12px; color:#666; font-weight:700;">Mensaje predeterminado</label>
@@ -136,10 +135,10 @@
       <p style="margin:0 0 16px; color:#d2dae2; font-size:13px;">Complete estos datos antes de ingresar al sistema.</p>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
         <div class="form-group"><input type="text" id="reg_user" placeholder="Usuario"></div>
-        <div class="form-group"><input type="password" id="reg_pass" placeholder="Contrase�a"></div>
+        <div class="form-group"><input type="password" id="reg_pass" placeholder="Contraseña"></div>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div class="form-group"><input type="text" id="reg_phone" placeholder="N�mero telef�nico (WhatsApp)"></div>
+        <div class="form-group"><input type="text" id="reg_phone" placeholder="Número telefónico (WhatsApp)"></div>
         <div class="form-group"><input type="text" id="reg_business" placeholder="Nombre del negocio"></div>
       </div>
       <div class="form-group">
@@ -171,12 +170,12 @@
 
         <div class="home-profile-edit-grid">
           <div class="form-group">
-            <label>Nueva contrase�a</label>
+            <label>Nueva contraseña</label>
             <input type="password" id="home-edit-new-pass" placeholder="Opcional">
           </div>
           <div class="form-group">
-            <label>Confirmar nueva contrase�a</label>
-            <input type="password" id="home-edit-new-pass-confirm" placeholder="Repita la nueva contrase�a">
+            <label>Confirmar nueva contraseña</label>
+            <input type="password" id="home-edit-new-pass-confirm" placeholder="Repita la nueva contraseña">
           </div>
         </div>
 
@@ -224,14 +223,13 @@
 
   <div id="module-selector">
     <div id="module-selector-header">
-      <h2>??? LuRo Control</h2>
-      <p>Selecciona un m�dulo para comenzar</p>
-      <div id="module-selector-summary" style="margin-top:12px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;"></div>
+      <h2>🎛️ LuRo Control</h2>
+      <p>Selecciona un módulo para comenzar</p>
     </div>
     <div id="module-cards-grid"></div>
-    <button class="btn btn-add-module-float" onclick="agregarNuevoModulo()">? A�ADIR NUEVO M�DULO</button>
+    <button class="btn btn-add-module-float" onclick="agregarNuevoModulo()">✨ AÑADIR NUEVO MÓDULO</button>
   </div>
-  <button id="mobile-nav-toggle" class="mobile-nav-toggle" onclick="toggleSidebarMovil(event)" aria-label="Abrir men�">?</button>
+  <button id="mobile-nav-toggle" class="mobile-nav-toggle" onclick="toggleSidebarMovil(event)" aria-label="Abrir menú">☰</button>
   <div id="mobile-topbar">
     <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="mobile-topbar-logo luro-logo-toned-app">
     <span id="mobile-topbar-title">LuRo Control</span>
@@ -246,60 +244,60 @@
         <span>LuRo Control</span>
       </strong>
       <span id="sidebar-brand-sub">El control en tus manos</span>
-      <div id="sidebar-brand-module" class="active-module-tag">M�dulo: COCINA</div>
+      <div id="sidebar-brand-module" class="active-module-tag">Módulo: COCINA</div>
     </div>
     <div id="admin-module-links" style="display:none; margin:0 12px 12px; padding:10px; border:1px dashed rgba(255,255,255,.2); border-radius:10px; background:rgba(255,255,255,.04);">
-      <div style="font-size:11px; color:#b2bec3; margin-bottom:6px; font-weight:700;">ENLACES DE M�DULOS</div>
+      <div style="font-size:11px; color:#b2bec3; margin-bottom:6px; font-weight:700;">ENLACES DE MÓDULOS</div>
       <div id="admin-module-links-list" style="display:grid; gap:6px;"></div>
     </div>
     
-    <a onclick="showPage('home')" style="border-left: 15px solid var(--warning);" class="active">?? Inicio</a>
-    <a id="nav-item-plato" onclick="showPage('agregar')" style="border-left: 15px solid var(--warning);">?? Agregar Plato</a>
+    <a onclick="showPage('home')" style="border-left: 15px solid var(--warning);" class="active">🏠 Inicio</a>
+    <a id="nav-item-plato" onclick="showPage('agregar')" style="border-left: 15px solid var(--warning);">🧪 Agregar Plato</a>
 
     <div class="folder-container">
         <a class="menu-folder" onclick="toggleFolder(this)">
-            <span>?? COSTOS</span>
-            <span class="folder-arrow">?</span>
+            <span>💰 COSTOS</span>
+            <span class="folder-arrow">▶</span>
         </a>
         <div class="folder-content">
-            <a onclick="showPage('inventario')">?? Almac�n</a>
-            <a onclick="showPage('distribuidores')">?? Distribuidores</a>
-            <a onclick="showPage('produccion-interna')">?? Producci�n Interna</a>
-            <a onclick="showPage('disponibilidad')">??? Disponibilidad</a>
-            <a onclick="showPage('salida')">?? Registrar Salida</a>
-            <a onclick="showPage('asistencia')">?? Asistencia</a>
-            <a onclick="showPage('entrenamientos')">?? Entrenamientos</a>
-            <a onclick="showPage('procedimientos')">?? Procedimientos</a>
-            <a onclick="showPage('clientes-puntos')">?? Clientes y Puntos</a>
+            <a onclick="showPage('inventario')">📦 Almacén</a>
+            <a onclick="showPage('distribuidores')">🚚 Distribuidores</a>
+            <a onclick="showPage('produccion-interna')">🏭 Producción Interna</a>
+            <a onclick="showPage('disponibilidad')">👁️ Disponibilidad</a>
+            <a onclick="showPage('salida')">📤 Registrar Salida</a>
+            <a onclick="showPage('asistencia')">🕒 Asistencia</a>
+            <a onclick="showPage('entrenamientos')">🎓 Entrenamientos</a>
+            <a onclick="showPage('procedimientos')">📘 Procedimientos</a>
+            <a onclick="showPage('clientes-puntos')">👥 Clientes y Puntos</a>
         </div>
     </div>
 
 <div class="folder-container">
     <a class="menu-folder" onclick="toggleFolder(this)">
-        <span>?? HISTORIAL</span>
-        <span class="folder-arrow">?</span>
+        <span>🕙 HISTORIAL</span>
+        <span class="folder-arrow">▶</span>
     </a>
     <div class="folder-content">
-        <a onclick="showPage('historial-produccion')">?? Historial Producci�n</a>
-        <a onclick="showPage('entradas-almacen')">?? Entradas Almac�n</a>
-        <a onclick="showPage('ventas')">?? Historial de Ventas</a>
-        <a onclick="showPage('reporte-compras-distribuidor')">?? Reporte Compras Distribuidor</a>
-        <a onclick="showPage('rnc-dgii')">?? Resumen de facturas</a> 
-        <a onclick="showPage('autorizaciones')">? Autorizaciones</a>
-        <a onclick="showPage('historial-decomiso')">?? Historial Decomiso</a>
+        <a onclick="showPage('historial-produccion')">📜 Historial Producción</a>
+        <a onclick="showPage('entradas-almacen')">📥 Entradas Almacén</a>
+        <a onclick="showPage('ventas')">📊 Historial de Ventas</a>
+        <a onclick="showPage('reporte-compras-distribuidor')">📑 Reporte Compras Distribuidor</a>
+        <a onclick="showPage('rnc-dgii')">🧾 Resumen de facturas</a> 
+        <a onclick="showPage('autorizaciones')">✅ Autorizaciones</a>
+        <a onclick="showPage('historial-decomiso')">📑 Historial Decomiso</a>
     </div>
 </div>
 
-    <a onclick="showPage('decomiso')" style="border-left: 15px solid var(--warning);">??? Registrar Decomiso</a>
-    <a onclick="showPage('produccion')" style="border-left: 15px solid var(--warning);">?? Departamentos A-B-C</a>
-    <a onclick="showPage('diagnostico')" style="border-left: 15px solid var(--blue);">?? Diagn�stico Inteligente</a>
-    <a class="sidebar-command-launch" onclick="showPage('comandos')" style="border-left: 15px solid var(--blue);">?? COMANDOS</a>
-    <a id="sidebar-assistant-launch" class="sidebar-assistant-launch" onclick="toggleLuroAssistant(true)" style="border-left: 15px solid var(--blue);">?? Asistente LuRo</a>
+    <a onclick="showPage('decomiso')" style="border-left: 15px solid var(--warning);">🗑️ Registrar Decomiso</a>
+    <a onclick="showPage('produccion')" style="border-left: 15px solid var(--warning);">📊 Departamentos A-B-C</a>
+    <a onclick="showPage('diagnostico')" style="border-left: 15px solid var(--blue);">🧠 Diagnóstico Inteligente</a>
+    <a class="sidebar-command-launch" onclick="showPage('comandos')" style="border-left: 15px solid var(--blue);">📜 COMANDOS</a>
+    <a id="sidebar-assistant-launch" class="sidebar-assistant-launch" onclick="toggleLuroAssistant(true)" style="border-left: 15px solid var(--blue);">🧠 Asistente LuRo</a>
     
-    <a id="btn-config-nav" onclick="showPage('configuracion')" style="background: #1e272e; margin-top: 10px;">?? Configuraci�n</a>
-    <a onclick="cerrarSesion()" style="background:var(--danger); margin-top:20px; text-align:center;">Cerrar Sesi�n</a>
-    <a onclick="regresarAModulos()" style="background:var(--secondary); text-align:center; border-top: 1px solid rgba(255,255,255,0.1);">?? Cambiar M�dulo</a>
-    <a onclick="cambiarUsuario()" style="background:var(--primary); text-align:center; border-top: 1px solid rgba(255,255,255,0.1);">?? Cambiar de Usuario</a>
+    <a id="btn-config-nav" onclick="showPage('configuracion')" style="background: #1e272e; margin-top: 10px;">⚙️ Configuración</a>
+    <a onclick="cerrarSesion()" style="background:var(--danger); margin-top:20px; text-align:center;">Cerrar Sesión</a>
+    <a onclick="regresarAModulos()" style="background:var(--secondary); text-align:center; border-top: 1px solid rgba(255,255,255,0.1);">🔄 Cambiar Módulo</a>
+    <a onclick="cambiarUsuario()" style="background:var(--primary); text-align:center; border-top: 1px solid rgba(255,255,255,0.1);">👤 Cambiar de Usuario</a>
 </div>
 
   <div class="main" id="main-content">
@@ -313,9 +311,9 @@
                     </div>
 
                     <div class="home-profile-identity">
-                        <span class="home-profile-eyebrow">Inicio � Perfil profesional</span>
+                        <span class="home-profile-eyebrow">Inicio · Perfil profesional</span>
                         <h2 class="home-profile-title"><span id="home-profile-display-name">LuRo Control</span></h2>
-                        <p id="home-profile-summary" class="home-profile-summary">Panel principal para administrar la cuenta, la membres�a y la identidad operativa del negocio.</p>
+                        <p id="home-profile-summary" class="home-profile-summary">Panel principal para administrar la cuenta, la membresía y la identidad operativa del negocio.</p>
                         <span id="current-module-display" hidden>-</span>
                     </div>
 
@@ -337,7 +335,7 @@
                     <div class="home-profile-panel-head">
                         <div>
                             <span class="home-profile-panel-kicker">Resumen de cuenta</span>
-                            <h3>Informaci�n principal</h3>
+                            <h3>Información principal</h3>
                         </div>
                     </div>
 
@@ -379,13 +377,13 @@
                     </div>
 
                     <div class="home-profile-actions">
-                        <button id="home-btn-editar-perfil" class="btn btn-blue" onclick="abrirModalEditarPerfilInicio()">?? EDITAR PERFIL</button>
+                        <button id="home-btn-editar-perfil" class="btn btn-blue" onclick="abrirModalEditarPerfilInicio()">✏️ EDITAR PERFIL</button>
                     </div>
 
                     <div class="home-profile-danger-zone">
-                        <p>Desde aqu� puede reiniciar el registro inicial del negocio si necesita volver a configurar la identidad principal de la cuenta.</p>
-                        <p>Es una acci�n sensible y debe usarse solo cuando realmente quiera rehacer ese perfil base.</p>
-                        <button id="home-btn-eliminar-registro" class="btn btn-danger" onclick="eliminarRegistroInicialDesdeInicio()">?? ELIMINAR REGISTRO INICIAL</button>
+                        <p>Desde aquí puede reiniciar el registro inicial del negocio si necesita volver a configurar la identidad principal de la cuenta.</p>
+                        <p>Es una acción sensible y debe usarse solo cuando realmente quiera rehacer ese perfil base.</p>
+                        <button id="home-btn-eliminar-registro" class="btn btn-danger" onclick="eliminarRegistroInicialDesdeInicio()">🧨 ELIMINAR REGISTRO INICIAL</button>
                     </div>
                 </aside>
             </div>
@@ -394,9 +392,9 @@
 
     <div id="agregar" class="content-section">
       <div class="card">
-        <h2 id="titulo-receta">?? Crear Receta Nueva</h2>
+        <h2 id="titulo-receta">🧪 Crear Receta Nueva</h2>
         <div id="alerta-existente" style="display:none; background:#fff3cd; color:#856404; padding:10px; border-radius:8px; margin-bottom:15px; font-size:13px;">
-            ?? Este plato ya existe. Si contin�a, se actualizar� la receta actual.
+            ⚠️ Este plato ya existe. Si continúa, se actualizará la receta actual.
         </div>
         <div class="form-group">
           <label id="label-nombre-item">Nombre del Plato</label>
@@ -405,11 +403,11 @@
         <div class="tax-container">
           <span style="font-size: 12px; color: var(--secondary);">IMPUESTOS:</span>
           <label class="tax-option"><input type="checkbox" class="tax-check" value="0.13" onclick="recalcularCostoReceta()" checked> Cobertura 13%</label>
-          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.10" onclick="recalcularCostoReceta()" checked> A�adir 10%</label>
-          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.16" onclick="recalcularCostoReceta()" checked> A�adir 16%</label>
+          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.10" onclick="recalcularCostoReceta()" checked> Añadir 10%</label>
+          <label class="tax-option"><input type="checkbox" class="tax-check" value="0.16" onclick="recalcularCostoReceta()" checked> Añadir 16%</label>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-          <div class="form-group"><label>Costo Producci�n (RD$)</label><input type="number" id="p_costo" value="0.00" readonly style="background: #f1f2f6;"></div>
+          <div class="form-group"><label>Costo Producción (RD$)</label><input type="number" id="p_costo" value="0.00" readonly style="background: #f1f2f6;"></div>
           <div class="form-group" id="row-tax-visual" style="display:none;">
             <label style="color: var(--purple); font-weight: bold;">Costo con Impuestos (RD$)</label>
             <input type="number" id="p_costo_tax" value="0.00" readonly style="background: #fff0f3; border: 1px solid var(--purple);">
@@ -424,14 +422,14 @@
           <input type="number" id="p_precio" placeholder="Ingrese el precio final">
         </div>
         <div id="contenedor-ingredientes"></div>
-        <button class="btn btn-warning" onclick="agregarFilaIngrediente()" style="width:100%; margin-top:10px;">+ VINCULAR INGREDIENTE (ALMAC�N / PROD)</button>
-        <button class="btn btn-save" id="btn-guardar-plato" onclick="guardarPlatoNuevo()" style="width:100%; margin-top:15px;">GUARDAR EN EL MEN�</button>
+        <button class="btn btn-warning" onclick="agregarFilaIngrediente()" style="width:100%; margin-top:10px;">+ VINCULAR INGREDIENTE (ALMACÉN / PROD)</button>
+        <button class="btn btn-save" id="btn-guardar-plato" onclick="guardarPlatoNuevo()" style="width:100%; margin-top:15px;">GUARDAR EN EL MENÚ</button>
       </div>
     </div>
 
 <div id="inventario" class="content-section">
       <div class="card">
-        <h2>?? Almac�n de Suministros</h2>
+        <h2>📦 Almacén de Suministros</h2>
         
         <div class="inventory-form-shell">
           <div class="inventory-top-grid">
@@ -451,11 +449,11 @@
           </div>
 
           <div class="inventory-metrics-row">
-            <div class="inventory-metric-card" title="Cantidad que est� entrando f�sicamente">
+            <div class="inventory-metric-card" title="Cantidad que está entrando físicamente">
                <label class="inventory-metric-label">CANT. ENTRADA</label>
                <input type="number" id="inv_actual" placeholder="0.00">
             </div>
-            <div class="inventory-metric-card" title="Nivel de stock que siempre deber�as tener">
+            <div class="inventory-metric-card" title="Nivel de stock que siempre deberías tener">
                <label class="inventory-metric-label">STOCK IDEAL (META)</label>
                <input type="number" id="inv_ideal" placeholder="0.00">
             </div>
@@ -469,25 +467,25 @@
         <button class="btn btn-save" style="width:100%; background:#d8f7e5; color:#136a43; border:1px solid #b8e8cb;" onclick="agregarAlmacen()">REGISTRAR ENTRADA</button>
         <div class="inventory-provider-row" style="display:grid; grid-template-columns: 1fr auto; gap:10px; margin-top:10px;">
             <div style="font-size:12px; color:#666; align-self:center;">Puede seleccionar el mejor proveedor desde el comparador de distribuidores.</div>
-            <button class="btn btn-purple" style="background:#eedcff; color:#5d3b8c; border:1px solid #d8b7ff;" onclick="buscarMejorProveedorEnAlmacen()">?? MEJOR PROVEEDOR</button>
+            <button class="btn btn-purple" style="background:#eedcff; color:#5d3b8c; border:1px solid #d8b7ff;" onclick="buscarMejorProveedorEnAlmacen()">🏆 MEJOR PROVEEDOR</button>
         </div>
         
         <div class="inventory-bulk-actions" style="display: flex; gap: 10px; margin-top: 10px;">
             <button class="btn" style="flex: 1; background-color: #dceeff; color:#1d567f; border:1px solid #bddcff;" onclick="entradaAutomaticaMasiva()">
-                ?? RELLENAR STOCK IDEAL
+                🧮 RELLENAR STOCK IDEAL
             </button>
             <button class="btn btn-blue" style="flex: 1; background-color: #dcf7e6; color:#1e6e46; border:1px solid #bfeccc;" onclick="enviarPedidoWhatsapp()">
-                ?? LISTA DE COMPRAS (WA)
+                🛒 LISTA DE COMPRAS (WA)
             </button>
         </div>
 
         <button class="btn btn-danger" style="width: 100%; margin-top: 10px; background-color: #ffcfc7; color:#8f2412; border:1px solid #ffb4aa;" onclick="borrarTodoElAlmacen()">
-    ??? ELIMINAR TODO EL ALMAC�N
+    🗑️ ELIMINAR TODO EL ALMACÉN
 </button>
 
         <div class="inventory-search-tools">
             <div class="inventory-search-input-wrap">
-                <input type="text" id="buscarProductoAlmacen" class="inventory-search-input" placeholder="?? Buscar producto en inventario..." onkeyup="resaltarProducto()">
+                <input type="text" id="buscarProductoAlmacen" class="inventory-search-input" placeholder="🔎 Buscar producto en inventario..." onkeyup="resaltarProducto()">
             </div>
             <div id="inventory-faltante-total" class="inventory-faltante-total" aria-live="polite">
                 <span class="inventory-faltante-total-label">Total Costo p/ Faltante</span>
@@ -516,7 +514,7 @@
 
     <div id="distribuidores" class="content-section">
       <div class="card">
-        <h2>?? Gesti�n de Distribuidores</h2>
+        <h2>🚚 Gestión de Distribuidores</h2>
         <div class="dist-form-shell">
           <div class="dist-toolbar">
             <div class="dist-toolbar-fields">
@@ -529,9 +527,9 @@
           </div>
           <div class="dist-contact-grid">
             <input type="text" id="dist_contacto" placeholder="Contacto">
-            <input type="text" id="dist_telefono" placeholder="Tel�fono">
+            <input type="text" id="dist_telefono" placeholder="Teléfono">
             <input type="email" id="dist_email" placeholder="Email">
-            <input type="text" id="dist_direccion" placeholder="Direcci�n">
+            <input type="text" id="dist_direccion" placeholder="Dirección">
           </div>
           <div class="dist-actions-row">
             <button class="btn btn-save" onclick="guardarDistribuidor()">GUARDAR</button>
@@ -541,7 +539,7 @@
         </div>
         <input type="hidden" id="dist_edit_id">
         <table class="luro-table luro-table--distribuidores">
-          <thead><tr><th>Distribuidor</th><th>Estado</th><th>Contacto</th><th>Tel�fono</th><th>Email</th><th>Alerta Producto</th><th>Productos</th><th>Acci�n</th></tr></thead>
+          <thead><tr><th>Distribuidor</th><th>Estado</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th>Alerta Producto</th><th>Productos</th><th>Acción</th></tr></thead>
           <tbody id="tabla-distribuidores"></tbody>
         </table>
       </div>
@@ -557,7 +555,7 @@
         <div style="padding:14px;">
           <input type="hidden" id="modal-catalogo-dist-id" value="">
           <table>
-            <thead><tr><th>Producto</th><th>Unidad</th><th>Precio</th><th>Disponible</th><th>Actualizado</th><th>Acci�n</th></tr></thead>
+            <thead><tr><th>Producto</th><th>Unidad</th><th>Precio</th><th>Disponible</th><th>Actualizado</th><th>Acción</th></tr></thead>
             <tbody id="modal-catalogo-productos-body"></tbody>
           </table>
         </div>
@@ -582,7 +580,7 @@
           </div>
           <input type="hidden" id="dist-productos-dist-id" value="">
           <table>
-            <thead><tr><th></th><th>Producto</th><th>Unidad</th><th>Precio</th><th>Faltante</th><th>Disponible</th><th>Acci�n</th></tr></thead>
+            <thead><tr><th></th><th>Producto</th><th>Unidad</th><th>Precio</th><th>Faltante</th><th>Disponible</th><th>Acción</th></tr></thead>
             <tbody id="tabla-dist-productos"></tbody>
           </table>
         </div>
@@ -607,11 +605,11 @@
 
     <div id="produccion-interna" class="content-section">
       <div class="card">
-        <h2>?? Gesti�n de Producci�n (Semielaborados)</h2>
-        <p style="font-size: 0.9em; color: #666;">Cree productos preparados a partir de insumos del almac�n.</p>
+        <h2>🏭 Gestión de Producción (Semielaborados)</h2>
+        <p style="font-size: 0.9em; color: #666;">Cree productos preparados a partir de insumos del almacén.</p>
         
         <div class="production-builder-row" style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; margin-bottom:15px;">
-          <input type="text" id="prod_nombre" placeholder="Nombre de la Producci�n (Ej: Salsa Bolo�esa)">
+          <input type="text" id="prod_nombre" placeholder="Nombre de la Producción (Ej: Salsa Boloñesa)">
           <input type="number" id="prod_cantidad" placeholder="Cant. Producida">
           <select id="prod_unidad">
             <option value="g">g</option>
@@ -626,9 +624,9 @@
 
         <div id="contenedor-insumos-produccion" style="margin-bottom: 15px;"></div>
         
-        <button class="btn btn-save" style="width:100%" onclick="procesarNuevaProduccion()">FINALIZAR Y CARGAR A PRODUCCI�N</button>
+        <button class="btn btn-save" style="width:100%" onclick="procesarNuevaProduccion()">FINALIZAR Y CARGAR A PRODUCCIÓN</button>
         
-        <h3 style="margin-top:30px;">Inventario de Producci�n Actual</h3>
+        <h3 style="margin-top:30px;">Inventario de Producción Actual</h3>
         <table class="luro-table luro-table--produccion">
           <thead>
             <tr><th>Producto</th><th>Existencia Disponible</th><th>Costo Unit. (RD$)</th><th>Acciones</th></tr>
@@ -640,7 +638,7 @@
 
     <div id="historial-produccion" class="content-section">
       <div class="card">
-        <h2>?? Historial de Producci�n <button class="btn btn-danger" onclick="limpiarHistorial('produccion')">BORRAR TODO</button></h2>
+        <h2>📜 Historial de Producción <button class="btn btn-danger" onclick="limpiarHistorial('produccion')">BORRAR TODO</button></h2>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
           <input type="date" id="filtro-prod-desde" onchange="renderHistorialProduccion()">
           <input type="date" id="filtro-prod-hasta" onchange="renderHistorialProduccion()">
@@ -656,7 +654,7 @@
 
     <div id="entradas-almacen" class="content-section">
       <div class="card">
-        <h2>?? Registro de Entradas <button class="btn btn-danger" onclick="limpiarHistorial('entradas')">BORRAR TODO</button></h2>
+        <h2>📥 Registro de Entradas <button class="btn btn-danger" onclick="limpiarHistorial('entradas')">BORRAR TODO</button></h2>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
           <input type="date" id="filtro-entradas-desde" onchange="renderEntradas()">
           <input type="date" id="filtro-entradas-hasta" onchange="renderEntradas()">
@@ -667,12 +665,12 @@
 
     <div id="rnc-dgii" class="content-section">
       <div class="card">
-        <h2>?? Resumen de facturas <button class="btn btn-danger" onclick="limpiarHistorial('rnc')">BORRAR TODO</button></h2>
+        <h2>🧾 Resumen de facturas <button class="btn btn-danger" onclick="limpiarHistorial('rnc')">BORRAR TODO</button></h2>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
           <input type="date" id="filtro-rnc-desde" onchange="actualizarTablaRNC()">
           <input type="date" id="filtro-rnc-hasta" onchange="actualizarTablaRNC()">
         </div>
-        <input type="text" id="busqueda-rnc-clientes" onkeyup="actualizarTablaRNC()" placeholder="Buscar por cliente, RNC/C�dula, NCF, mesa, c�digo o WhatsApp..." style="width:100%; margin-bottom:10px; padding:12px;">
+        <input type="text" id="busqueda-rnc-clientes" onkeyup="actualizarTablaRNC()" placeholder="Buscar por cliente, RNC/Cédula, NCF, mesa, código o WhatsApp..." style="width:100%; margin-bottom:10px; padding:12px;">
         <table>
           <thead>
             <tr>
@@ -681,8 +679,8 @@
               <th>Mesa</th>
               <th>Cliente</th>
               <th>NCF</th>
-              <th>RNC / C�dula</th>
-              <th>C�digo</th>
+              <th>RNC / Cédula</th>
+              <th>Código</th>
               <th>Total</th>
               <th>WhatsApp</th>
             </tr>
@@ -695,7 +693,7 @@
 <div id="disponibilidad" class="content-section">
     <div class="card">
         <div class="card" style="border-top: 5px solid var(--blue); background: #f1f2f6;">
-            <h3 style="font-size: 14px; color: var(--secondary); margin-bottom: 10px;">?? AJUSTE MASIVO DE PRECIOS (COSTO DE VENTA)</h3>
+            <h3 style="font-size: 14px; color: var(--secondary); margin-bottom: 10px;">💹 AJUSTE MASIVO DE PRECIOS (COSTO DE VENTA)</h3>
             <div class="availability-adjust-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.05)">+5%</button>
                 <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.10)">+10%</button>
@@ -703,15 +701,15 @@
                 <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.20)">+20%</button>
                 <button class="btn btn-purple" onclick="validarYEjecutarAjuste('manual')">MANUAL</button>
                 
-                <button class="btn btn-danger" onclick="borrarTodoElMenu()" style="margin-left: 10px;">??? BORRAR TODO EL MEN�</button>
+                <button class="btn btn-danger" onclick="borrarTodoElMenu()" style="margin-left: 10px;">🗑️ BORRAR TODO EL MENÚ</button>
                 
-                <button id="btn-revertir" class="btn btn-danger" style="display:none; margin-left: auto;" onclick="revertirCambioPrecio()">?? REVERTIR</button>
+                <button id="btn-revertir" class="btn btn-danger" style="display:none; margin-left: auto;" onclick="revertirCambioPrecio()">↩️ REVERTIR</button>
             </div>
         </div>
 
         <div class="availability-header-row" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0 10px;">
-            <h2 style="margin:0;">?? Disponibilidad del Men�</h2>
-            <button class="btn btn-blue" onclick="abrirModalPlatoDirecto()">A�adir Directamente</button>
+            <h2 style="margin:0;">📋 Disponibilidad del Menú</h2>
+            <button class="btn btn-blue" onclick="abrirModalPlatoDirecto()">Añadir Directamente</button>
         </div>
         <table class="luro-table luro-table--disponibilidad">
             <thead id="thead-disponibilidad-full">
@@ -731,14 +729,14 @@
 <div id="modal-plato-directo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3320; align-items:center; justify-content:center; padding:16px;">
     <div style="width:min(520px,96vw); background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
-            <strong style="font-size:18px; color:var(--primary);">A�adir Directamente</strong>
+            <strong style="font-size:18px; color:var(--primary);">Añadir Directamente</strong>
             <button class="btn btn-danger" onclick="cerrarModalPlatoDirecto()">X</button>
         </div>
         <div style="padding:14px; display:grid; gap:12px;">
-            <div style="font-size:12px; color:#666;">Agregue un plato r�pido con solo nombre y precio.</div>
+            <div style="font-size:12px; color:#666;">Agregue un plato rápido con solo nombre y precio.</div>
             <div>
                 <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Nombre</label>
-                <input id="plato-directo-nombre" type="text" placeholder="Ej. Chimi cl�sico">
+                <input id="plato-directo-nombre" type="text" placeholder="Ej. Chimi clásico">
             </div>
             <div>
                 <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Precio</label>
@@ -754,27 +752,27 @@
 
     <div id="ventas" class="content-section">
       <div class="card">
-        <h2>?? Historial Ventas <button class="btn btn-danger" onclick="limpiarHistorial('ventas')">BORRAR TODO</button></h2>
+        <h2>📊 Historial Ventas <button class="btn btn-danger" onclick="limpiarHistorial('ventas')">BORRAR TODO</button></h2>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
           <input type="date" id="filtro-ventas-desde" onchange="renderHistorialVentas()">
           <input type="date" id="filtro-ventas-hasta" onchange="renderHistorialVentas()">
         </div>
-        <table><thead><tr><th>Fecha</th><th>�tem</th><th>Total</th><th>Ganancia</th><th>Operador</th></tr></thead><tbody id="tabla-historial-ventas"></tbody></table>
+        <table><thead><tr><th>Fecha</th><th>Ítem</th><th>Total</th><th>Ganancia</th><th>Operador</th></tr></thead><tbody id="tabla-historial-ventas"></tbody></table>
         <div id="total-ganancias-cuadro" class="resumen-caja resumen-ganancia"></div>
       </div>
     </div>
 
     <div id="asistencia" class="content-section">
       <div class="card">
-        <h2>?? Asistencia</h2>
-        <div id="asistencia-status-modulo" style="margin-bottom:12px; padding:10px; border:1px dashed #dfe6e9; border-radius:8px; background:#f8fafc; font-size:12px; color:#57606f;">Estado del m�dulo: cargando...</div>
+        <h2>🕒 Asistencia</h2>
+        <div id="asistencia-status-modulo" style="margin-bottom:12px; padding:10px; border:1px dashed #dfe6e9; border-radius:8px; background:#f8fafc; font-size:12px; color:#57606f;">Estado del módulo: cargando...</div>
         <div class="asistencia-main-grid" style="margin-bottom:12px;">
           <div class="asistencia-colaboradores-panel" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
               <div style="font-size:12px; font-weight:bold; color:var(--secondary);">Sucursales de asistencia</div>
             </div>
             <div class="asistencia-colab-actions">
-              <button id="btn-asistencia-add-colab" class="btn btn-purple asistencia-colab-action-btn" style="padding:8px 10px;" onclick="abrirGestionSucursalesAsistencia()">+ A�ADIR SUCURSAL</button>
+              <button id="btn-asistencia-add-colab" class="btn btn-purple asistencia-colab-action-btn" style="padding:8px 10px;" onclick="abrirGestionSucursalesAsistencia()">+ AÑADIR SUCURSAL</button>
               <button id="btn-asistencia-remove-sucursal" class="btn btn-danger asistencia-colab-action-btn" style="padding:8px 10px;" onclick="eliminarSucursalAsistenciaSeleccionada()" title="Eliminar sucursal seleccionada">ELIMINAR SUCURSAL</button>
             </div>
             <div id="asistencia-sucursales-lista" class="asistencia-colab-lista" style="margin-bottom:10px;">
@@ -785,7 +783,7 @@
               <div id="asistencia-sucursal-actual-label" style="font-size:11px; color:#57606f; font-weight:700;">Sucursal: ---</div>
             </div>
             <div class="asistencia-colab-actions">
-              <button id="btn-asistencia-add-colab-sucursal" class="btn btn-purple asistencia-colab-action-btn" style="padding:8px 10px;" onclick="abrirGestionColaboradoresSucursalAsistencia()">+ A�ADIR COLABORADOR</button>
+              <button id="btn-asistencia-add-colab-sucursal" class="btn btn-purple asistencia-colab-action-btn" style="padding:8px 10px;" onclick="abrirGestionColaboradoresSucursalAsistencia()">+ AÑADIR COLABORADOR</button>
               <button id="btn-asistencia-remove-colab" class="btn btn-danger asistencia-colab-action-btn" style="padding:8px 10px;" onclick="abrirModalEliminarColaboradorAsistencia()" disabled title="Selecciona un colaborador para eliminarlo de asistencia">ELIMINAR DE ASISTENCIA</button>
             </div>
             <div id="asistencia-colaboradores-lista" class="asistencia-colab-lista">
@@ -824,12 +822,12 @@
               <button class="btn btn-danger" onclick="limpiarRegistrosAsistencia()">LIMPIAR REGISTROS</button>
               <button class="btn btn-danger" onclick="limpiarAutorizacionesAsistencia()">LIMPIAR AUTORIZACIONES</button>
             </div>
-            <div style="font-size:11px; color:#777;">Las acciones de limpieza requieren validaci�n de contrase�a.</div>
+            <div style="font-size:11px; color:#777;">Las acciones de limpieza requieren validación de contraseña.</div>
           </div>
 
         <div style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff; margin-bottom:12px;">
           <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-            <strong>?? Reporte consolidado por colaborador</strong>
+            <strong>📋 Reporte consolidado por colaborador</strong>
             <input type="text" id="asistencia-filtro-colaborador" onkeyup="renderAsistenciaRegistros()" placeholder="Buscar colaborador..." style="max-width:280px;">
           </div>
           <div id="asistencia-reporte-consolidado-lista" class="asistencia-reporte-consolidado-lista">
@@ -839,7 +837,7 @@
 
         <div id="asistencia-autorizaciones-card" style="padding:12px; border:1px solid #eee; border-radius:10px; background:#fff;">
           <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-            <strong>?? Historial de autorizaciones de asistencia</strong>
+            <strong>🔐 Historial de autorizaciones de asistencia</strong>
             <button class="btn btn-purple" style="padding:8px 10px;" onclick="desbloquearClavesAsistencia()">VER CLAVES</button>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
@@ -852,7 +850,7 @@
                 <th>Fecha</th>
                 <th>Hora</th>
                 <th>Colaborador</th>
-                <th>Acci�n</th>
+                <th>Acción</th>
                 <th>Clave usada</th>
                 <th>Resultado</th>
                 <th>Operador</th>
@@ -866,12 +864,12 @@
     <div id="modal-asistencia-colaborador" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3350; align-items:center; justify-content:center; padding:16px;">
       <div style="width:min(560px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--blue);">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid #eee;">
-          <strong>? A�adir Colaborador a Sucursal</strong>
+          <strong>➕ Añadir Colaborador a Sucursal</strong>
           <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalAsistenciaColaborador()">X</button>
         </div>
         <div style="padding:14px; display:grid; gap:10px;">
           <div id="asistencia-colab-sucursal-info" style="font-size:12px; color:#666;">Sucursal: ---</div>
-          <div style="font-size:12px; color:#666;">Puede seleccionar un colaborador existente (auto-completa nombre y contrase�a) o registrar uno manual para asistencia independiente.</div>
+          <div style="font-size:12px; color:#666;">Puede seleccionar un colaborador existente (auto-completa nombre y contraseña) o registrar uno manual para asistencia independiente.</div>
           <div>
             <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Tomar desde colaboradores registrados</label>
             <select id="asistencia-colab-existente" onchange="autocompletarAsistenciaColaboradorDesdeSelect()"></select>
@@ -882,7 +880,7 @@
               <input id="asistencia-colab-nombre" type="text" placeholder="Ej. zoro">
             </div>
             <div>
-              <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Contrase�a</label>
+              <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Contraseña</label>
               <input id="asistencia-colab-pass" type="text" placeholder="Clave de acceso">
             </div>
           </div>
@@ -907,7 +905,7 @@
     <div id="modal-asistencia-sucursal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3340; align-items:center; justify-content:center; padding:16px;">
       <div style="width:min(520px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--purple);">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid #eee;">
-          <strong>?? A�adir Sucursal de Asistencia</strong>
+          <strong>🏢 Añadir Sucursal de Asistencia</strong>
           <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalSucursalAsistencia()">X</button>
         </div>
         <div style="padding:14px; display:grid; gap:10px;">
@@ -926,14 +924,14 @@
     <div id="modal-asistencia-acceso" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:3370; align-items:center; justify-content:center; padding:16px;">
       <div style="width:min(460px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--blue);">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid #eee;">
-          <strong>?? Acceso al M�dulo Asistencia</strong>
+          <strong>🔐 Acceso al Módulo Asistencia</strong>
           <button class="btn btn-danger" style="padding:6px 10px;" onclick="cancelarAccesoAsistenciaPorContrasena()">X</button>
         </div>
         <div style="padding:14px; display:grid; gap:10px;">
-          <div id="asistencia-access-hint" style="font-size:12px; color:#666;">Ingrese su contrase�a para detectar autom�ticamente su usuario y sucursal.</div>
+          <div id="asistencia-access-hint" style="font-size:12px; color:#666;">Ingrese su contraseña para detectar automáticamente su usuario y sucursal.</div>
           <div>
-            <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Contrase�a</label>
-            <input id="asistencia-access-pass" type="password" placeholder="Contrase�a de acceso" onkeydown="if(event.key==='Enter'){validarAccesoAsistenciaPorContrasena();}">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Contraseña</label>
+            <input id="asistencia-access-pass" type="password" placeholder="Contraseña de acceso" onkeydown="if(event.key==='Enter'){validarAccesoAsistenciaPorContrasena();}">
           </div>
           <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
             <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cancelarAccesoAsistenciaPorContrasena()">CANCELAR</button>
@@ -945,7 +943,7 @@
     <div id="modal-asistencia-colaborador-remove" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3360; align-items:center; justify-content:center; padding:16px;">
       <div class="asistencia-remove-modal-card">
         <div class="asistencia-remove-modal-head">
-          <strong class="asistencia-remove-modal-title">??? Eliminar Colaborador de Asistencia</strong>
+          <strong class="asistencia-remove-modal-title">🗑️ Eliminar Colaborador de Asistencia</strong>
           <button class="btn btn-danger" style="padding:6px 10px;" onclick="cerrarModalEliminarColaboradorAsistencia()">X</button>
         </div>
         <div class="asistencia-remove-modal-body">
@@ -979,7 +977,7 @@
             <span id="asistencia-reporte-subtitulo" class="asistencia-reporte-status">Seleccione un mes para visualizar entradas, salidas y total.</span>
           </div>
           <div class="asistencia-reporte-head-actions">
-            <button type="button" class="btn asistencia-reporte-icon-btn" onclick="toggleAsistenciaReporteMinimize()" aria-label="Minimizar reporte">-</button>
+            <button type="button" class="btn asistencia-reporte-icon-btn" onclick="toggleAsistenciaReporteMinimize()" aria-label="Minimizar reporte">─</button>
             <button type="button" class="btn btn-danger asistencia-reporte-icon-btn" onclick="toggleAsistenciaReporte(false)" aria-label="Cerrar reporte">X</button>
           </div>
         </div>
@@ -1013,7 +1011,7 @@
 
     <div id="autorizaciones" class="content-section">
         <div class="card">
-          <h2>? Historial de Autorizaciones <button class="btn btn-danger" onclick="limpiarHistorial('autorizaciones')">BORRAR TODO</button></h2>
+          <h2>✅ Historial de Autorizaciones <button class="btn btn-danger" onclick="limpiarHistorial('autorizaciones')">BORRAR TODO</button></h2>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
             <input type="date" id="filtro-auth-desde" onchange="renderAutorizaciones()">
             <input type="date" id="filtro-auth-hasta" onchange="renderAutorizaciones()">
@@ -1023,7 +1021,7 @@
               <tr>
                 <th>Fecha</th>
                 <th>Operador</th>
-                <th>�tem</th>
+                <th>Ítem</th>
                 <th>Ingredientes en 0</th>
                 <th>Motivo</th>
               </tr>
@@ -1035,25 +1033,25 @@
 
     <div id="historial-decomiso" class="content-section">
       <div class="card">
-        <h2>?? Historial Decomiso <button class="btn btn-danger" onclick="limpiarHistorial('decomisos')">BORRAR TODO</button></h2>
+        <h2>📑 Historial Decomiso <button class="btn btn-danger" onclick="limpiarHistorial('decomisos')">BORRAR TODO</button></h2>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
           <input type="date" id="filtro-decomiso-desde" onchange="renderHistorialDecomiso()">
           <input type="date" id="filtro-decomiso-hasta" onchange="renderHistorialDecomiso()">
         </div>
-        <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Cant.</th><th>Medida</th><th>P�rdida (RD$)</th><th>Operador</th></tr></thead><tbody id="tabla-historial-decomiso"></tbody></table>
+        <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Cant.</th><th>Medida</th><th>Pérdida (RD$)</th><th>Operador</th></tr></thead><tbody id="tabla-historial-decomiso"></tbody></table>
         <div id="total-perdidas-cuadro" class="resumen-caja resumen-perdida"></div>
       </div>
     </div>
 
     <div id="reporte-compras-distribuidor" class="content-section">
       <div class="card">
-        <h2>?? Reporte de Compras por Distribuidor</h2>
+        <h2>📑 Reporte de Compras por Distribuidor</h2>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
           <input type="date" id="filtro-compra-dist-desde" onchange="renderHistorialComprasDistribuidor()">
           <input type="date" id="filtro-compra-dist-hasta" onchange="renderHistorialComprasDistribuidor()">
         </div>
         <table>
-          <thead><tr><th>Distribuidor</th><th>Entradas</th><th>Monto</th><th>�ltima Compra</th></tr></thead>
+          <thead><tr><th>Distribuidor</th><th>Entradas</th><th>Monto</th><th>Última Compra</th></tr></thead>
           <tbody id="tabla-historial-compras-distribuidor"></tbody>
         </table>
       </div>
@@ -1061,9 +1059,9 @@
 
     <div id="clientes-puntos" class="content-section">
       <div class="card">
-        <h2>?? Registro de Clientes y Puntos</h2>
+        <h2>👥 Registro de Clientes y Puntos</h2>
         <div style="margin-bottom:12px; padding:12px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
-          <strong style="display:block; margin-bottom:8px; color:var(--secondary);">?? Tipos de Planes de Membres�a</strong>
+          <strong style="display:block; margin-bottom:8px; color:var(--secondary);">📋 Tipos de Planes de Membresía</strong>
           <div id="plan-membresia-resumen" style="font-size:17px; font-weight:800; color:#2f3542; margin:6px 0 10px; padding:10px; background:#fff; border-left:5px solid var(--blue); border-radius:8px;">Plan actual no configurado.</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
             <button class="btn btn-danger" onclick="limpiarClientesPuntosMasivo()">ELIMINAR TODOS LOS CLIENTES</button>
@@ -1071,14 +1069,14 @@
         </div>
         <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
           <input type="text" id="cliente_nombre_reg" placeholder="Nombre del cliente">
-          <input type="text" id="cliente_cedula_reg" placeholder="C�dula">
-          <input type="text" id="cliente_telefono_reg" placeholder="Tel�fono">
+          <input type="text" id="cliente_cedula_reg" placeholder="Cédula">
+          <input type="text" id="cliente_telefono_reg" placeholder="Teléfono">
           <button class="btn btn-save" onclick="registrarClientePuntos()">REGISTRAR</button>
         </div>
-        <input type="text" id="clientes-puntos-buscar" onkeyup="renderTablaClientesPuntos()" placeholder="Buscar por c�dula o c�digo generado (CLI-00001)..." style="width:100%; margin-bottom:10px; padding:12px;">
+        <input type="text" id="clientes-puntos-buscar" onkeyup="renderTablaClientesPuntos()" placeholder="Buscar por cédula o código generado (CLI-00001)..." style="width:100%; margin-bottom:10px; padding:12px;">
         <div id="clientes-puntos-resumen" style="font-size:12px; color:#666; margin-bottom:8px;">Sin clientes registrados.</div>
         <table>
-          <thead><tr><th>Nombre</th><th>C�dula</th><th>C�digo</th><th>Tel�fono</th><th>Puntos</th><th>RD$ Acumulado</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Cédula</th><th>Código</th><th>Teléfono</th><th>Puntos</th><th>RD$ Acumulado</th></tr></thead>
           <tbody id="tabla-clientes-puntos"></tbody>
         </table>
       </div>
@@ -1086,55 +1084,55 @@
 
     <div id="configuracion" class="content-section">
         <div class="card">
-            <h2>?? Configuraci�n</h2>
+            <h2>⚙️ Configuración</h2>
             <div class="config-main-actions" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn btn-danger" onclick="realizarCierreTotalConCodigo()">CIERRE TOTAL</button>
               <button class="btn btn-warning" onclick="borrarBaseDatosConPassword()">Borrar base de datos</button>
             </div>
             <div id="section-cloud-masters" style="margin-bottom:20px; padding:12px; border:1px solid #dfe6e9; border-radius:10px; background:#f8fafc;">
-              <h3 style="margin:0 0 10px; color:var(--blue);">?? Usuarios Maestros en la Nube</h3>
+              <h3 style="margin:0 0 10px; color:var(--blue);">☁️ Usuarios Maestros en la Nube</h3>
               <div class="cloud-owner-create-row" style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:10px; margin-bottom:10px;">
                 <input id="cloud-owner-username" type="text" placeholder="Username">
-                <input id="cloud-owner-pass" type="password" placeholder="Contrase�a">
+                <input id="cloud-owner-pass" type="password" placeholder="Contraseña">
                 <input id="cloud-owner-empresa" type="text" placeholder="Empresa">
                 <button class="btn btn-blue" onclick="crearOwner()">GUARDAR EN FIRESTORE</button>
               </div>
               <div class="master-vault-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                <button class="btn btn-save" onclick="subirBaseActualAlCloud()">?? SUBIR BASE ACTUAL AL CLOUD</button>
-                <button class="btn btn-warning" onclick="descargarBaseDesdeCloud()">?? DESCARGAR BASE DESDE CLOUD</button>
+                <button class="btn btn-save" onclick="subirBaseActualAlCloud()">☁️ SUBIR BASE ACTUAL AL CLOUD</button>
+                <button class="btn btn-warning" onclick="descargarBaseDesdeCloud()">⬇️ DESCARGAR BASE DESDE CLOUD</button>
               </div>
-              <div id="cloud-sync-status" style="font-size:12px; color:#666; margin-bottom:8px;">Sincronizaci�n manual disponible.</div>
+              <div id="cloud-sync-status" style="font-size:12px; color:#666; margin-bottom:8px;">Sincronización manual disponible.</div>
               <div id="cloud-owner-status" style="font-size:12px; color:#666; margin-bottom:8px;">Conectando a Firebase...</div>
               <ul id="cloud-owner-lista" style="margin:0; padding-left:18px; max-height:180px; overflow:auto;"></ul>
 
               <div id="section-github-deploy" style="margin-top:14px; padding:12px; border:1px solid #dfe6e9; border-radius:10px; background:#fff;">
-                <h3 style="margin:0 0 8px; color:#24292f;">?? Puente Firebase ? GitHub</h3>
-                <div style="font-size:12px; color:#666; margin-bottom:10px;">Desde aqu� puede lanzar despliegues remotos de GitHub Actions para trabajar tambi�n desde el m�vil y mantener GitHub/Firebase conectados.</div>
+                <h3 style="margin:0 0 8px; color:#24292f;">🚀 Puente Firebase → GitHub</h3>
+                <div style="font-size:12px; color:#666; margin-bottom:10px;">Desde aquí puede lanzar despliegues remotos de GitHub Actions para trabajar también desde el móvil y mantener GitHub/Firebase conectados.</div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
                   <button class="btn btn-save" onclick="solicitarDeployGithub('hosting')">DEPLOY HOSTING</button>
                   <button class="btn btn-blue" onclick="solicitarDeployGithub('functions')">DEPLOY FUNCTIONS</button>
                   <button class="btn btn-warning" onclick="solicitarDeployGithub('all')">DEPLOY TODO</button>
                   <button class="btn" style="background:#7f8c8d; color:#fff;" onclick="cargarEstadoDeployGithubUI()">ACTUALIZAR ESTADO</button>
                 </div>
-                <div id="github-deploy-connection" style="font-size:12px; color:#666; margin-bottom:8px;">Comprobando conexi�n con GitHub Actions...</div>
+                <div id="github-deploy-connection" style="font-size:12px; color:#666; margin-bottom:8px;">Comprobando conexión con GitHub Actions...</div>
                 <div id="github-deploy-status" style="font-size:12px; color:#666; margin-bottom:8px;">Sin solicitudes remotas.</div>
-                <div id="github-deploy-last-run" style="font-size:12px; color:#57606f; line-height:1.55;">Sin ejecuciones detectadas todav�a.</div>
+                <div id="github-deploy-last-run" style="font-size:12px; color:#57606f; line-height:1.55;">Sin ejecuciones detectadas todavía.</div>
               </div>
             </div>
             <div id="section-servidor-master" style="display:none; margin-bottom:20px; padding:12px; border:2px solid #0b5ed7; border-radius:10px; background:#f5f9ff;">
-              <h3 style="margin:0 0 10px; color:#0b5ed7;">??? CONTROL TOTAL MASTER</h3>
+              <h3 style="margin:0 0 10px; color:#0b5ed7;">🛡️ CONTROL TOTAL MASTER</h3>
               <div id="master-global-stats" style="display:grid; grid-template-columns:repeat(4,minmax(180px,1fr)); gap:10px; margin-bottom:12px;">
                 <button type="button" onclick="abrirDetalleControlMaster('owners')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Maestros</strong><div id="master-stat-owners" style="font-size:20px; font-weight:800;">0</div></button>
                 <button type="button" onclick="abrirDetalleControlMaster('collaborators')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Colaboradores</strong><div id="master-stat-colabs" style="font-size:20px; font-weight:800;">0</div></button>
                 <button type="button" onclick="abrirDetalleControlMaster('clients_saas')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Clientes (SaaS)</strong><div id="master-stat-clients" style="font-size:20px; font-weight:800;">0</div></button>
-                <button type="button" onclick="abrirDetalleControlMaster('clients_fidelizacion')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Clientes (fidelizaci�n)</strong><div id="master-stat-clients-fid" style="font-size:20px; font-weight:800;">0</div></button>
+                <button type="button" onclick="abrirDetalleControlMaster('clients_fidelizacion')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Clientes (fidelización)</strong><div id="master-stat-clients-fid" style="font-size:20px; font-weight:800;">0</div></button>
                 <button type="button" onclick="abrirDetalleControlMaster('subs_active')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Suscripciones activas</strong><div id="master-stat-subs-active" style="font-size:20px; font-weight:800;">0</div></button>
                 <button type="button" onclick="abrirDetalleControlMaster('pay_done')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Pagos realizados</strong><div id="master-stat-pay-done" style="font-size:20px; font-weight:800;">0</div></button>
                 <button type="button" onclick="abrirDetalleControlMaster('pay_pending')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Pagos pendientes</strong><div id="master-stat-pay-pending" style="font-size:20px; font-weight:800;">0</div></button>
                 <button type="button" onclick="abrirDetalleControlMaster('pay_failed')" style="text-align:left; padding:10px; border-radius:8px; border:1px solid #dfe6e9; background:#fff; cursor:pointer;"><strong>Pagos fallidos</strong><div id="master-stat-pay-failed" style="font-size:20px; font-weight:800;">0</div></button>
               </div>
               <div class="cloud-sync-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                <button class="btn btn-blue" onclick="cargarBovedaMaster()">ACTUALIZAR B�VEDA</button>
+                <button class="btn btn-blue" onclick="cargarBovedaMaster()">ACTUALIZAR BÓVEDA</button>
                 <span id="master-vault-status" style="font-size:12px; color:#666; align-self:center;">Sin cargar.</span>
               </div>
               <div style="overflow:auto; margin-bottom:14px;">
@@ -1148,13 +1146,13 @@
                   <strong id="master-vault-collab-title" style="display:block; margin-bottom:8px;">Colaboradores del maestro seleccionado</strong>
                   <div style="overflow:auto; max-height:260px;">
                 <table>
-                  <thead><tr><th>Usuario</th><th>Estado</th><th>Creaci�n</th><th>Acci�n</th></tr></thead>
+                  <thead><tr><th>Usuario</th><th>Estado</th><th>Creación</th><th>Acción</th></tr></thead>
                   <tbody id="master-vault-collab-body"><tr><td colspan="4" style="text-align:center; color:#777;">Seleccione un maestro.</td></tr></tbody>
                 </table>
               </div>
                 </div>
                 <div style="padding:10px; border:1px solid #dfe6e9; border-radius:8px; background:#fff;">
-                  <strong style="display:block; margin-bottom:8px;">?? Notificaciones de pagos</strong>
+                  <strong style="display:block; margin-bottom:8px;">🔔 Notificaciones de pagos</strong>
                   <div style="overflow:auto; max-height:260px;">
                     <table>
                       <thead><tr><th>Usuario</th><th>Fecha</th><th>Estado</th><th>Monto</th></tr></thead>
@@ -1180,7 +1178,7 @@
               </div>
             </div>
             <div id="section-my-security" style="margin-bottom:30px; padding:15px; border:1px solid #eee; border-radius:10px;">
-              <h3>?? Seguridad</h3>
+              <h3>🔒 Seguridad</h3>
               <div class="security-password-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:10px;">
                   <input type="password" id="my_old_pass" placeholder="Clave Actual">
                   <input type="password" id="my_new_pass" placeholder="Clave Nueva">
@@ -1189,82 +1187,82 @@
               </div>
             </div>
             <div id="section-registro-backups" style="margin-bottom:30px; padding:15px; border:1px solid #eee; border-radius:10px;">
-                <h3 style="color: var(--blue);">?? Copias de Seguridad del Registro Inicial</h3>
+                <h3 style="color: var(--blue);">🧾 Copias de Seguridad del Registro Inicial</h3>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-                    <button class="btn btn-warning" onclick="desbloquearCopiasRegistroConPassword()">?? VER COPIAS (CONTRASE�A)</button>
-                    <button class="btn btn-blue" onclick="crearCopiaRegistroManual()">?? CREAR COPIA</button>
+                    <button class="btn btn-warning" onclick="desbloquearCopiasRegistroConPassword()">📂 VER COPIAS (CONTRASEÑA)</button>
+                    <button class="btn btn-blue" onclick="crearCopiaRegistroManual()">🧾 CREAR COPIA</button>
                 </div>
-                <div id="config-registro-backups-status" style="font-size:12px; color:#666; margin-bottom:8px;">Copias bloqueadas. Ingrese contrase�a para visualizar.</div>
+                <div id="config-registro-backups-status" style="font-size:12px; color:#666; margin-bottom:8px;">Copias bloqueadas. Ingrese contraseña para visualizar.</div>
                 <table>
-                    <thead><tr><th>Fecha Copia</th><th>Motivo</th><th>Fecha Eliminado</th><th>Eliminado Por</th><th>Acci�n</th></tr></thead>
+                    <thead><tr><th>Fecha Copia</th><th>Motivo</th><th>Fecha Eliminado</th><th>Eliminado Por</th><th>Acción</th></tr></thead>
                     <tbody id="config-registro-backups-body"><tr><td colspan="5" style="text-align:center; color:#777;">Copias bloqueadas.</td></tr></tbody>
                 </table>
             </div>
             <div id="section-asistencia-config" style="margin-bottom:30px; padding:15px; border:1px solid #dfe6e9; border-radius:10px; background:#f8fafc;">
-                <h3 style="color: var(--blue);">?? Configuraci�n de Asistencia</h3>
-                <div style="font-size:12px; color:#666; margin-bottom:10px;">Controla activaci�n del m�dulo, autorizaci�n por clave, hora l�mite de salida y claves de colaboradores.</div>
+                <h3 style="color: var(--blue);">🕒 Configuración de Asistencia</h3>
+                <div style="font-size:12px; color:#666; margin-bottom:10px;">Controla activación del módulo, autorización por clave, hora límite de salida y claves de colaboradores.</div>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin-bottom:10px;">
-                    <label class="team-check-row"><input type="checkbox" id="cfg-asistencia-activa"><span>M�dulo activo</span></label>
+                    <label class="team-check-row"><input type="checkbox" id="cfg-asistencia-activa"><span>Módulo activo</span></label>
                     <label class="team-check-row"><input type="checkbox" id="cfg-asistencia-requiere-clave"><span>Solicitar clave para confirmar</span></label>
                     <div>
-                        <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Hora l�mite salida (madrugada)</label>
+                        <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Hora límite salida (madrugada)</label>
                         <input id="cfg-asistencia-hora-limite" type="number" min="0" max="12" step="1" placeholder="4">
                     </div>
                     <div>
-                        <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Contrase�a maestra asistencia</label>
-                        <input id="cfg-asistencia-master-pass" type="password" placeholder="Defina contrase�a maestra">
+                        <label style="display:block; font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:4px;">Contraseña maestra asistencia</label>
+                        <input id="cfg-asistencia-master-pass" type="password" placeholder="Defina contraseña maestra">
                     </div>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                    <button class="btn btn-save" onclick="guardarConfigAsistenciaDesdeUI()">GUARDAR CONFIGURACI�N</button>
+                    <button class="btn btn-save" onclick="guardarConfigAsistenciaDesdeUI()">GUARDAR CONFIGURACIÓN</button>
                     <button class="btn btn-purple" onclick="generarClavesAsistenciaColaboradores()">GENERAR CLAVES</button>
                     <button class="btn btn-blue" onclick="desbloquearClavesAsistencia()">VER CLAVES</button>
                 </div>
-                <div id="config-asistencia-status" style="font-size:12px; color:#666; margin-bottom:8px;">Configuraci�n de asistencia pendiente de carga.</div>
+                <div id="config-asistencia-status" style="font-size:12px; color:#666; margin-bottom:8px;">Configuración de asistencia pendiente de carga.</div>
                 <table>
-                    <thead><tr><th>Colaborador</th><th>Estado</th><th>Clave</th><th>�ltima actualizaci�n</th><th>Acci�n</th></tr></thead>
+                    <thead><tr><th>Colaborador</th><th>Estado</th><th>Clave</th><th>Última actualización</th><th>Acción</th></tr></thead>
                     <tbody id="config-asistencia-colaboradores-body"><tr><td colspan="5" style="text-align:center; color:#777;">Sin colaboradores vinculados.</td></tr></tbody>
                 </table>
             </div>
             <div id="section-admin-master" style="display:none; margin-bottom:30px; padding:15px; border:2px solid var(--accent); border-radius:10px;">
-                <h3 style="color: var(--accent);">?? Usuarios Administradores</h3>
+                <h3 style="color: var(--accent);">👑 Usuarios Administradores</h3>
                 <div style="margin-bottom:10px; font-size:12px; color:var(--secondary);">Los administradores delegados pueden gestionar equipo, pero no crear nuevos administradores.</div>
                 <div class="admin-master-create-row" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:10px; margin-bottom:10px;">
                     <input type="text" id="new_u_name" placeholder="Nuevo Admin">
                     <input type="password" id="new_u_pass" placeholder="Clave">
                     <div style="display:flex; gap:8px;">
                         <button class="btn btn-blue" onclick="abrirModalPagoUsuarioMaestro()">REGISTRAR PAGO</button>
-                        <button class="btn btn-save" onclick="crearUsuario()">A�ADIR</button>
+                        <button class="btn btn-save" onclick="crearUsuario()">AÑADIR</button>
                     </div>
                 </div>
-                <div id="new_u_payment_status" style="font-size:12px; color:#666; margin-bottom:15px;">Debe registrar m�todo de pago antes de a�adir el usuario.</div>
-                <table><thead><tr><th>Usuario</th><th>Estado</th><th>Membres�a</th><th>M�todo de Pago</th><th>Cobro</th><th>Acci�n</th></tr></thead><tbody id="lista-usuarios-tabla"></tbody></table>
+                <div id="new_u_payment_status" style="font-size:12px; color:#666; margin-bottom:15px;">Debe registrar método de pago antes de añadir el usuario.</div>
+                <table><thead><tr><th>Usuario</th><th>Estado</th><th>Membresía</th><th>Método de Pago</th><th>Cobro</th><th>Acción</th></tr></thead><tbody id="lista-usuarios-tabla"></tbody></table>
             </div>
             <div id="section-user-colaboradores" class="team-panel">
-                <h3 class="team-panel__title">?? Gesti�n de Mi Equipo</h3>
+                <h3 class="team-panel__title">👥 Gestión de Mi Equipo</h3>
                 <div class="team-create-row">
                     <input type="text" id="colab_name" placeholder="Nombre Miembro">
                     <input type="password" id="colab_pass" placeholder="Clave Acceso">
-                    <button id="btn-colab-guardar" class="btn btn-purple" onclick="crearColaborador()">A�ADIR</button>
+                    <button id="btn-colab-guardar" class="btn btn-purple" onclick="crearColaborador()">AÑADIR</button>
                     <button id="btn-colab-cancelar" class="btn" style="display:none; background:#7f8c8d; color:#fff;" onclick="cancelarEdicionColaborador()">CANCELAR</button>
                 </div>
                 <div class="team-panel__help">
-                    Se pedir� la clave de un <strong>Usuario Maestro</strong> para autorizar la creaci�n del colaborador.
+                    Se pedirá la clave de un <strong>Usuario Maestro</strong> para autorizar la creación del colaborador.
                 </div>
                 <div class="team-panel__box team-panel__box--permissions">
-                    <strong class="team-panel__box-title">Renglones que utilizar� el colaborador (m�dulos/casillas)</strong>
-                    <p class="team-panel__box-subtitle">Seleccione por bloques para una asignaci�n m�s r�pida y organizada.</p>
+                    <strong class="team-panel__box-title">Renglones que utilizará el colaborador (módulos/casillas)</strong>
+                    <p class="team-panel__box-subtitle">Seleccione por bloques para una asignación más rápida y organizada.</p>
 
                     <section class="team-group-block">
                         <div class="team-group-toggle">
-                            <label class="team-check-row team-check-row--group"><input type="checkbox" id="colab-group-admin" class="colab-perm-group" onchange="togglePermisosGrupo('admin', this.checked)"><span>&#x1F4CB; �REAS GENERALES (marcar/desmarcar todo)</span></label>
+                            <label class="team-check-row team-check-row--group"><input type="checkbox" id="colab-group-admin" class="colab-perm-group" onchange="togglePermisosGrupo('admin', this.checked)"><span>&#x1F4CB; ÁREAS GENERALES (marcar/desmarcar todo)</span></label>
                         </div>
                         <div class="team-check-grid team-check-grid--two">
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="agregar"><span>?? Agregar Plato</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="agregar"><span>🧪 Agregar Plato</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="clientes-puntos"><span>&#x1F465; Clientes y Puntos</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="entrenamientos"><span>&#x1F393; Entrenamientos</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="procedimientos"><span>&#x1F4D8; Procedimientos</span></label>
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="configuracion"><span>&#x2699;&#xFE0F; Configuraci�n</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="configuracion"><span>&#x2699;&#xFE0F; Configuración</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-admin" onchange="sincronizarSeleccionGrupo('admin')" value="comandas"><span>&#x1F9FE; Comandas</span></label>
                         </div>
                     </section>
@@ -1274,11 +1272,11 @@
                             <label class="team-check-row team-check-row--group"><input type="checkbox" id="colab-group-costos" class="colab-perm-group" onchange="togglePermisosGrupo('costos', this.checked)"><span>&#x1F4B0; COSTOS (marcar/desmarcar todo)</span></label>
                         </div>
                         <div id="colab-permisos-grid" class="team-check-grid team-check-grid--two">
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="inventario"><span>&#x1F4E6; Almac�n</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="inventario"><span>&#x1F4E6; Almacén</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="distribuidores"><span>&#x1F69A; Distribuidores</span></label>
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="produccion-interna"><span>&#x1F3ED; Producci�n Interna</span></label>
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad"><span>??? Disponibilidad (completa)</span></label>
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad-lite"><span>?? Disponibilidad (b�sica)</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="produccion-interna"><span>&#x1F3ED; Producción Interna</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad"><span>👁️ Disponibilidad (completa)</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="disponibilidad-lite"><span>🔎 Disponibilidad (básica)</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="salida"><span>&#x1F4E4; Registrar Salida</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-costos" onchange="sincronizarSeleccionGrupo('costos')" value="asistencia"><span>&#x1F552; Asistencia</span></label>
                         </div>
@@ -1289,12 +1287,12 @@
                             <label class="team-check-row team-check-row--group"><input type="checkbox" id="colab-group-historial" class="colab-perm-group" onchange="togglePermisosGrupo('historial', this.checked)"><span>&#x1F559; HISTORIAL (marcar/desmarcar todo)</span></label>
                         </div>
                         <div class="team-check-grid team-check-grid--two">
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-produccion"><span>&#x1F4DC; Historial Producci�n</span></label>
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="entradas-almacen"><span>&#x1F4E5; Entradas Almac�n</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-produccion"><span>&#x1F4DC; Historial Producción</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="entradas-almacen"><span>&#x1F4E5; Entradas Almacén</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="ventas"><span>&#x1F4CA; Historial de Ventas</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="reporte-compras-distribuidor"><span>&#x1F4D1; Compras Distribuidor</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="rnc-dgii"><span>&#x1F9FE; Resumen de facturas</span></label>
-                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="autorizaciones"><span>? Autorizaciones</span></label>
+                            <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="autorizaciones"><span>✅ Autorizaciones</span></label>
                             <label class="team-check-row"><input type="checkbox" class="colab-perm colab-perm-historial" onchange="sincronizarSeleccionGrupo('historial')" value="historial-decomiso"><span>&#x1F5C2;&#xFE0F; Historial Decomiso</span></label>
                         </div>
                         <div class="team-check-grid team-check-grid--two">
@@ -1307,11 +1305,11 @@
                     <strong class="team-panel__box-title">Asignaciones de Entradas</strong>
                     <div class="team-check-grid team-check-grid--three">
                         <label class="team-check-row"><input type="checkbox" class="colab-entry" value="manual"><span>Registrar entrada manual</span></label>
-                        <label class="team-check-row"><input type="checkbox" class="colab-entry" value="automatica"><span>Entrada autom�tica masiva</span></label>
+                        <label class="team-check-row"><input type="checkbox" class="colab-entry" value="automatica"><span>Entrada automática masiva</span></label>
                         <label class="team-check-row"><input type="checkbox" class="colab-entry" value="historial"><span>Ver historial de entradas</span></label>
                     </div>
                 </div>
-                <table><thead><tr><th>Nombre</th><th>Due�o</th><th>Estado</th><th>Renglones</th><th>Entradas</th><th>Acci�n</th></tr></thead><tbody id="lista-colab-tabla"></tbody></table>
+                <table><thead><tr><th>Nombre</th><th>Dueño</th><th>Estado</th><th>Renglones</th><th>Entradas</th><th>Acción</th></tr></thead><tbody id="lista-colab-tabla"></tbody></table>
             </div>
         </div>
     </div>
@@ -1320,7 +1318,7 @@
     <div id="salida-layout" style="display:grid; grid-template-columns:1fr; gap:14px;">
         <div class="card" id="salida-selector-card">
             <div class="salida-title-actions">
-                <h2>?? Espacios de Cobro</h2>
+                <h2>💳 Espacios de Cobro</h2>
                 <button id="btn-salida-notificaciones" type="button" class="btn btn-blue salida-notificaciones-btn" onclick="abrirModalNotificacionesSalida()">NOTIFICACIONES</button>
             </div>
             <div class="salida-mesas-shell" style="margin-bottom:12px; padding:10px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
@@ -1329,7 +1327,7 @@
                         <strong id="mesas-total-label" class="salida-mesas-label" style="display:block; margin-bottom:8px; color:var(--secondary);">Espacios de cobro (40)</strong>
                         <span class="salida-selector-helper">Selecciona una tarjeta para abrir su detalle de cobro.</span>
                     </div>
-                    <button id="mesas-mostrar-mas-btn" type="button" class="btn btn-blue" onclick="mostrarMasTarjetasSalida()" style="display:none; width:auto;">Mostrar m�s</button>
+                    <button id="mesas-mostrar-mas-btn" type="button" class="btn btn-blue" onclick="mostrarMasTarjetasSalida()" style="display:none; width:auto;">Mostrar más</button>
                 </div>
                 <div id="mesas-grid" class="salida-mesas-grid" style="display:grid; grid-template-columns:repeat(8, minmax(72px, 1fr)); gap:6px; max-height:320px; overflow:auto;"></div>
             </div>
@@ -1344,7 +1342,7 @@
                         <span class="salida-facturacion-status">Mesa activa: <span id="mesa-activa-label" style="color:#8ff5bf;">Mesa 1</span></span>
                     </div>
                     <div class="salida-facturacion-head-actions">
-                        <button type="button" class="btn salida-facturacion-icon-btn" onclick="toggleSalidaFacturacionMinimize()" aria-label="Minimizar ventana de cobro">-</button>
+                        <button type="button" class="btn salida-facturacion-icon-btn" onclick="toggleSalidaFacturacionMinimize()" aria-label="Minimizar ventana de cobro">─</button>
                         <button type="button" class="btn btn-danger salida-facturacion-icon-btn" onclick="cerrarMesaCobroActiva()" aria-label="Cerrar ventana de cobro">X</button>
                     </div>
                 </div>
@@ -1354,10 +1352,10 @@
                 <button class="btn btn-blue" onclick="renombrarMesaActiva()">RENOMBRAR</button>
             </div>
             <div id="salida-productos-shell" class="salida-productos-shell is-disabled">
-                <div id="salida-productos-hint" class="salida-productos-hint">El detalle de venta se abrir� cuando elijas una tarjeta de cobro.</div>
+                <div id="salida-productos-hint" class="salida-productos-hint">El detalle de venta se abrirá cuando elijas una tarjeta de cobro.</div>
                 <div id="salida-stock-alertas-panel" class="salida-stock-alertas-panel" role="status" aria-live="polite">
                     <div class="salida-stock-alertas-head">
-                        <strong>?? Alertas de stock en salida</strong>
+                        <strong>⚠️ Alertas de stock en salida</strong>
                         <span id="salida-stock-alertas-meta">Monitoreo activo</span>
                     </div>
                     <div id="salida-stock-alertas-lista" class="salida-stock-alertas-lista">
@@ -1377,7 +1375,7 @@
                     <div>
                         <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Datos del cliente</div>
                         <div id="venta-cliente-estado" style="display:none; margin-bottom:8px;">Cliente sin identificar.</div>
-                        <button class="btn btn-blue" onclick="abrirModalRegistrarClienteVenta()">+ A�ADIR CLIENTE</button>
+                        <button class="btn btn-blue" onclick="abrirModalRegistrarClienteVenta()">+ AÑADIR CLIENTE</button>
                     </div>
                     <div>
                         <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:8px;">Cantidad de Personas</div>
@@ -1396,7 +1394,7 @@
                 </div>
             </div>
             <div id="lista-cobro" class="sale-ticket-panel" style="min-height: 250px; margin-bottom: 15px; border: 1px dashed #ccc; padding: 10px; border-radius: 8px;">
-                <p id="ticket-vacio" style="color: gray; text-align: center; margin-top: 100px;">?? Carrito vac�o</p>
+                <p id="ticket-vacio" style="color: gray; text-align: center; margin-top: 100px;">🛒 Carrito vacío</p>
             </div>
             
             <div class="sale-total-panel" style="background: #f1f2f6; padding: 15px; border-radius: 8px;">
@@ -1408,7 +1406,7 @@
 
             <div class="sale-submit-row" style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px;">
                 <button id="btn-registrar-salida" class="btn btn-save" onclick="finalizarVenta()" style="background: #2ed573;">
-                    ?? REGISTRAR SALIDA
+                    📤 REGISTRAR SALIDA
                 </button>
             </div>
                 </div>
@@ -1419,7 +1417,7 @@
 <div id="modal-salida-notificaciones" class="salida-notificaciones-modal" style="display:none;" onclick="if(event.target===this){cerrarModalNotificacionesSalida();}">
     <div class="salida-notificaciones-card">
         <div class="salida-notificaciones-head">
-            <strong>?? Notificaciones de Salida</strong>
+            <strong>🔔 Notificaciones de Salida</strong>
             <button class="btn btn-danger" onclick="cerrarModalNotificacionesSalida()">X</button>
         </div>
         <div class="salida-notificaciones-body">
@@ -1433,14 +1431,14 @@
 
 <div id="entrenamientos" class="content-section">
   <div class="card">
-    <h2>?? Entrenamientos por Equipos</h2>
+    <h2>🎓 Entrenamientos por Equipos</h2>
     <div style="display:grid; grid-template-columns: 320px 1fr; gap:16px;">
       <div style="border:1px solid #eee; border-radius:10px; padding:12px; background:#fafafa;">
-        <div style="font-weight:700; margin-bottom:8px;">A�adir Equipo</div>
+        <div style="font-weight:700; margin-bottom:8px;">Añadir Equipo</div>
         <div style="display:grid; gap:8px;">
-          <input id="ent-equipo-area" type="text" placeholder="�rea (Ej: L�nea Caliente)">
+          <input id="ent-equipo-area" type="text" placeholder="Área (Ej: Línea Caliente)">
           <input id="ent-equipo-nombre" type="text" placeholder="Equipo (Ej: Freidora #1)">
-          <button class="btn btn-save" onclick="agregarEquipoEntrenamiento()">+ A�ADIR EQUIPO</button>
+          <button class="btn btn-save" onclick="agregarEquipoEntrenamiento()">+ AÑADIR EQUIPO</button>
         </div>
         <div style="margin-top:12px; font-size:12px; color:#666;">Equipos creados</div>
         <div id="ent-equipos-lista" style="margin-top:8px; max-height:460px; overflow:auto;"></div>
@@ -1454,7 +1452,7 @@
           </div>
           <div style="display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:10px;">
             <select id="ent-plato-select"></select>
-            <button class="btn btn-blue" onclick="agregarPlatoAEquipoEntrenamiento()">A�ADIR PLATO</button>
+            <button class="btn btn-blue" onclick="agregarPlatoAEquipoEntrenamiento()">AÑADIR PLATO</button>
           </div>
           <div id="ent-platos-equipo" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; margin-bottom:12px;"></div>
           <div id="ent-procedimiento-box" style="display:none; border:1px dashed #ccc; border-radius:10px; padding:10px; background:#fcfcfc;">
@@ -1468,7 +1466,7 @@
               <input id="ent-proc-tiempo" type="text" placeholder="Tiempo en fuego (Ej: 7 min)">
             </div>
             <textarea id="ent-proc-pasos" rows="5" style="width:100%; margin-bottom:8px;" placeholder="Procedimientos paso a paso (todo el proceso para lograr el plato)"></textarea>
-            <textarea id="ent-proc-protocolos" rows="4" style="width:100%; margin-bottom:8px;" placeholder="Protocolos (higiene, manipulaci�n, temperatura, orden, seguridad)"></textarea>
+            <textarea id="ent-proc-protocolos" rows="4" style="width:100%; margin-bottom:8px;" placeholder="Protocolos (higiene, manipulación, temperatura, orden, seguridad)"></textarea>
             <button class="btn btn-save" onclick="guardarProcedimientoEntrenamiento()">GUARDAR PROCEDIMIENTO Y PROTOCOLO</button>
           </div>
         </div>
@@ -1479,8 +1477,8 @@
 
 <div id="procedimientos" class="content-section">
   <div class="card">
-    <h2>?? Procedimientos (Solo Vista)</h2>
-    <div style="font-size:12px; color:#666; margin-bottom:10px;">Esta hoja muestra equipos, platos y protocolos creados en Entrenamientos. Aqu� no se puede editar.</div>
+    <h2>📘 Procedimientos (Solo Vista)</h2>
+    <div style="font-size:12px; color:#666; margin-bottom:10px;">Esta hoja muestra equipos, platos y protocolos creados en Entrenamientos. Aquí no se puede editar.</div>
     <div id="procedimientos-view"></div>
   </div>
 </div>
@@ -1488,7 +1486,7 @@
 <div id="mesa-accion-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2600; align-items:center; justify-content:center; padding:16px;">
     <div style="width:min(760px, 96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--accent);">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
-            <strong id="mesa-modal-titulo" style="font-size:18px; color:var(--primary);">Gesti�n de Mesas</strong>
+            <strong id="mesa-modal-titulo" style="font-size:18px; color:var(--primary);">Gestión de Mesas</strong>
             <button class="btn btn-danger" onclick="cerrarModalMesaAccion()">X</button>
         </div>
         <div style="padding:16px;">
@@ -1543,16 +1541,16 @@
         </div>
         <div style="padding:16px; display:grid; grid-template-columns:1fr; gap:10px;">
             <div>
-                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Nombre / Raz�n Social</label>
-                <input type="text" id="venta-modal-cliente-nombre" placeholder="Nombre / Raz�n Social">
+                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Nombre / Razón Social</label>
+                <input type="text" id="venta-modal-cliente-nombre" placeholder="Nombre / Razón Social">
             </div>
             <div>
-                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">C�dula / NRC</label>
-                <input type="text" id="venta-modal-cliente-rnc" placeholder="C�dula / NRC">
+                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Cédula / NRC</label>
+                <input type="text" id="venta-modal-cliente-rnc" placeholder="Cédula / NRC">
             </div>
             <div>
-                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Tel�fono</label>
-                <input type="text" id="venta-modal-cliente-telefono" placeholder="Tel�fono / WhatsApp">
+                <label style="display:block; font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:4px;">Teléfono</label>
+                <input type="text" id="venta-modal-cliente-telefono" placeholder="Teléfono / WhatsApp">
             </div>
         </div>
         <div style="display:flex; justify-content:space-between; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
@@ -1573,7 +1571,7 @@
         <div style="padding:16px; display:grid; gap:10px;">
             <input type="text" id="new_u_client_name" placeholder="Nombre del cliente completo">
             <select id="new_u_payment_method">
-                <option value="TRANSFERENCIA">M�todo de Pago: Transferencia</option>
+                <option value="TRANSFERENCIA">Método de Pago: Transferencia</option>
             </select>
             <input type="text" id="new_u_card" placeholder="Tarjeta">
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
@@ -1581,21 +1579,21 @@
                 <input type="password" id="new_u_card_cvv" placeholder="CVV">
             </div>
             <div>
-                <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">Fecha para pr�ximo cobro</label>
+                <label style="display:block; font-size:12px; color:#666; margin-bottom:4px;">Fecha para próximo cobro</label>
                 <input type="date" id="new_u_next_charge">
-                <div style="font-size:11px; color:#666; margin-top:4px;">Se tomar� el d�a del mes de esta fecha para los cobros recurrentes.</div>
+                <div style="font-size:11px; color:#666; margin-top:4px;">Se tomará el día del mes de esta fecha para los cobros recurrentes.</div>
             </div>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #eee;">
             <button class="btn btn-secondary" style="background:#7f8c8d;" onclick="cerrarModalPagoUsuarioMaestro()">CANCELAR</button>
-            <button class="btn btn-save" onclick="guardarPagoUsuarioMaestro()">GUARDAR M�TODO DE PAGO</button>
+            <button class="btn btn-save" onclick="guardarPagoUsuarioMaestro()">GUARDAR MÉTODO DE PAGO</button>
         </div>
     </div>
 </div>
 <div id="modal-pago-suscripcion" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2650; align-items:center; justify-content:center; padding:16px;">
     <div style="width:min(880px, 96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:14px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid var(--blue);">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee;">
-            <strong style="font-size:18px; color:var(--primary);">Datos de Transferencia de Suscripci�n</strong>
+            <strong style="font-size:18px; color:var(--primary);">Datos de Transferencia de Suscripción</strong>
             <button class="btn btn-danger" onclick="cerrarModalPagoSuscripcion()">X</button>
         </div>
         <div style="padding:16px; display:grid; grid-template-columns: minmax(280px, 360px) 1fr; gap:16px;">
@@ -1625,10 +1623,10 @@
                 <div style="font-size:12px; font-weight:bold; color:var(--secondary); margin-bottom:6px;">Mi tarjeta (origen)</div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
                     <select id="pago-tarjeta-tipo" onchange="actualizarPreviewTarjetaPago()">
-                        <option value="credito">Tarjeta cr�dito</option>
-                        <option value="debito">Tarjeta d�bito</option>
+                        <option value="credito">Tarjeta crédito</option>
+                        <option value="debito">Tarjeta débito</option>
                     </select>
-                    <input type="text" id="pago-tarjeta-numero" placeholder="N�mero de tarjeta" oninput="actualizarPreviewTarjetaPago()">
+                    <input type="text" id="pago-tarjeta-numero" placeholder="Número de tarjeta" oninput="actualizarPreviewTarjetaPago()">
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 90px 110px; gap:8px; margin-bottom:8px;">
                     <input type="text" id="pago-tarjeta-titular" placeholder="Titular de tarjeta" oninput="actualizarPreviewTarjetaPago()">
@@ -1645,8 +1643,8 @@
                     <input type="text" id="pago-receptor-apellido" placeholder="Apellido receptor">
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
-                    <input type="text" id="pago-receptor-cedula" placeholder="C�dula receptor">
-                    <input type="text" id="pago-receptor-telefono" placeholder="Tel�fono receptor">
+                    <input type="text" id="pago-receptor-cedula" placeholder="Cédula receptor">
+                    <input type="text" id="pago-receptor-telefono" placeholder="Teléfono receptor">
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
                     <input type="text" id="pago-periodo" value="MENSUAL" readonly>
@@ -1662,15 +1660,15 @@
 </div>
     <div id="diagnostico" class="content-section">
       <div class="card">
-        <h2>?? Diagn�stico Inteligente</h2>
+        <h2>🧠 Diagnóstico Inteligente</h2>
 
         <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
-          <button class="btn btn-warning" onclick="ejecutarDiagnosticoGlobal()">?? Ejecutar Diagn�stico</button>
-          <button class="btn btn-blue" onclick="limpiarDiagnostico()">?? Limpiar Alertas</button>
+          <button class="btn btn-warning" onclick="ejecutarDiagnosticoGlobal()">🔍 Ejecutar Diagnóstico</button>
+          <button class="btn btn-blue" onclick="limpiarDiagnostico()">🧹 Limpiar Alertas</button>
         </div>
 
         <div id="panel-errores" style="margin-top:20px;">
-          <div class="diag-muted">Ejecuta el diagn�stico para ver resultados.</div>
+          <div class="diag-muted">Ejecuta el diagnóstico para ver resultados.</div>
         </div>
       </div>
     </div>
@@ -1679,28 +1677,28 @@
         <div class="comandos-module-hero">
           <div>
             <span class="comandos-module-kicker">Centro de control</span>
-            <h2>?? COMANDOS</h2>
-            <p>Consulta, busca y ejecuta comandos reales del sistema. Este m�dulo muestra �nicamente �rdenes conectadas a la l�gica viva de LuRo Control.</p>
+            <h2>📜 COMANDOS</h2>
+            <p>Consulta, busca y ejecuta comandos reales del sistema. Este módulo muestra únicamente órdenes conectadas a la lógica viva de LuRo Control.</p>
           </div>
           <button id="comandos-open-assistant-btn" class="btn btn-blue" type="button" onclick="toggleLuroAssistant(true)">ABRIR CONSOLA</button>
         </div>
 
         <div class="comandos-module-toolbar">
           <div class="comandos-module-search">
-            <label for="comandos-buscar">Buscar comando o m�dulo</label>
-            <input id="comandos-buscar" type="text" placeholder="Ej. almac�n, ganancias, distribuidor, decomiso..." oninput="filtrarModuloComandos()" onkeydown="handleComandosSearchKeydown(event)">
+            <label for="comandos-buscar">Buscar comando o módulo</label>
+            <input id="comandos-buscar" type="text" placeholder="Ej. almacén, ganancias, distribuidor, decomiso..." oninput="filtrarModuloComandos()" onkeydown="handleComandosSearchKeydown(event)">
           </div>
           <div class="comandos-module-runner">
             <label for="comandos-ejecutor-input">Probar comando</label>
             <div class="comandos-module-runner-row">
-              <input id="comandos-ejecutor-input" type="text" placeholder="Ej. abre almac�n, cu�nto he ganado, busca tomate..." onkeydown="handleComandoModuloKeydown(event)">
+              <input id="comandos-ejecutor-input" type="text" placeholder="Ej. abre almacén, cuánto he ganado, busca tomate..." onkeydown="handleComandoModuloKeydown(event)">
               <button class="btn btn-save" type="button" onclick="ejecutarComandoDesdeModulo()">EJECUTAR</button>
             </div>
           </div>
         </div>
 
         <div class="comandos-module-meta">
-          <div id="comandos-resumen" class="comandos-module-summary">Cargando cat�logo de comandos...</div>
+          <div id="comandos-resumen" class="comandos-module-summary">Cargando catálogo de comandos...</div>
           <div id="comandos-estado" class="comandos-module-state">Centro de comandos listo. Escribe una orden o selecciona un ejemplo para prepararlo.</div>
         </div>
 
@@ -1712,26 +1710,26 @@
         <div class="comandos-editor-head">
           <div>
             <span class="comandos-editor-kicker">Editor de comandos</span>
-            <strong>Editar tarjeta del m�dulo</strong>
+            <strong>Editar tarjeta del módulo</strong>
           </div>
           <button type="button" class="btn btn-danger" onclick="cerrarEditorComandosModulo()">X</button>
         </div>
         <div class="comandos-editor-body">
           <input type="hidden" id="comandos-editor-key">
           <label class="comandos-editor-field">
-            <span>T�tulo de la tarjeta</span>
-            <input id="comandos-editor-title" type="text" placeholder="T�tulo visible del m�dulo" oninput="actualizarCabeceraEditorComandoModulo('title', this.value)">
+            <span>Título de la tarjeta</span>
+            <input id="comandos-editor-title" type="text" placeholder="Título visible del módulo" oninput="actualizarCabeceraEditorComandoModulo('title', this.value)">
           </label>
           <label class="comandos-editor-field">
-            <span>Descripci�n</span>
-            <textarea id="comandos-editor-description" rows="3" placeholder="Descripci�n breve de esta tarjeta" oninput="actualizarCabeceraEditorComandoModulo('description', this.value)"></textarea>
+            <span>Descripción</span>
+            <textarea id="comandos-editor-description" rows="3" placeholder="Descripción breve de esta tarjeta" oninput="actualizarCabeceraEditorComandoModulo('description', this.value)"></textarea>
           </label>
           <div class="comandos-editor-list-head">
             <div>
               <strong>Acciones disponibles</strong>
-              <p>Edita el nombre de cada acci�n y la explicaci�n de lo que hace dentro del sistema.</p>
+              <p>Edita el nombre de cada acción y la explicación de lo que hace dentro del sistema.</p>
             </div>
-            <button type="button" class="btn btn-blue" onclick="agregarFilaEditorComandoModulo()">+ ACCI�N</button>
+            <button type="button" class="btn btn-blue" onclick="agregarFilaEditorComandoModulo()">+ ACCIÓN</button>
           </div>
           <div id="comandos-editor-lista" class="comandos-editor-list"></div>
         </div>
@@ -1742,12 +1740,12 @@
         </div>
       </div>
     </div>
-    <div id="decomiso" class="content-section"><div class="card"><h2>??? Registrar Decomiso</h2><select id="tipo-decomiso" onchange="actualizarListaDecomiso()" style="width:100%; margin-bottom:10px;"><option value="plato">Producto Terminado</option><option value="almacen">Ingrediente</option></select><input type="text" id="busqueda-decomiso" onkeyup="actualizarListaDecomiso()" placeholder="Buscar..." style="width:100%; margin-bottom:15px;"><div id="lista-decomiso-items"></div></div></div>
-    <div id="produccion" class="content-section"><div class="card"><h2>?? Departamentos A-B-C</h2><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;"><button class="btn btn-danger" onclick="filtrarPlatosABC('rojo')">SIN STOCK (0)</button><button class="btn btn-warning" onclick="filtrarPlatosABC('amarillo')">POCO STOCK (1-5)</button><button class="btn btn-save" onclick="filtrarPlatosABC('verde')">STOCK OK (+6)</button></div><div id="resultado-filtro-abc"></div></div></div>
+    <div id="decomiso" class="content-section"><div class="card"><h2>🗑️ Registrar Decomiso</h2><select id="tipo-decomiso" onchange="actualizarListaDecomiso()" style="width:100%; margin-bottom:10px;"><option value="plato">Producto Terminado</option><option value="almacen">Ingrediente</option></select><input type="text" id="busqueda-decomiso" onkeyup="actualizarListaDecomiso()" placeholder="Buscar..." style="width:100%; margin-bottom:15px;"><div id="lista-decomiso-items"></div></div></div>
+    <div id="produccion" class="content-section"><div class="card"><h2>📊 Departamentos A-B-C</h2><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;"><button class="btn btn-danger" onclick="filtrarPlatosABC('rojo')">SIN STOCK (0)</button><button class="btn btn-warning" onclick="filtrarPlatosABC('amarillo')">POCO STOCK (1-5)</button><button class="btn btn-save" onclick="filtrarPlatosABC('verde')">STOCK OK (+6)</button></div><div id="resultado-filtro-abc"></div></div></div>
   </div>
 
   <button id="luro-assistant-fab" class="luro-assistant-fab" type="button" onclick="toggleLuroAssistant()" aria-controls="luro-assistant-panel" aria-expanded="false">
-    <span class="luro-assistant-fab-icon">??</span>
+    <span class="luro-assistant-fab-icon">🧠</span>
     <span class="luro-assistant-fab-label">Asistente LuRo</span>
   </button>
 
@@ -1760,7 +1758,7 @@
           <span class="luro-assistant-status">Habla o escribe con naturalidad. LuRo responde y ejecuta tus solicitudes del sistema al momento.</span>
         </div>
         <div class="luro-assistant-head-actions">
-          <button type="button" class="btn luro-assistant-icon-btn" onclick="toggleLuroAssistantMinimize()" aria-label="Minimizar asistente">-</button>
+          <button type="button" class="btn luro-assistant-icon-btn" onclick="toggleLuroAssistantMinimize()" aria-label="Minimizar asistente">─</button>
           <button type="button" class="btn btn-danger luro-assistant-icon-btn" onclick="toggleLuroAssistant(false)" aria-label="Cerrar asistente">X</button>
         </div>
       </div>
@@ -1771,45 +1769,63 @@
       </div>
 
       <div class="luro-assistant-compose">
-        <input id="luro-assistant-input" type="text" placeholder="P�dele algo a LuRo o di 'Hola LuRo'..." onkeydown="handleLuroAssistantKeydown(event)">
-        <button type="button" id="luro-mic-btn-pub" class="btn" onclick="luroVozToggle()" title="Hablar" style="background:#2d3436;color:#fff;padding:8px 12px;font-size:16px;">???</button>
+        <input id="luro-assistant-input" type="text" placeholder="Pídele algo a LuRo o di 'Hola LuRo'..." onkeydown="handleLuroAssistantKeydown(event)">
+        <button type="button" id="luro-mic-btn-pub" class="btn" onclick="luroVozToggle()" title="Hablar" style="background:#2d3436;color:#fff;padding:8px 12px;font-size:16px;">🎙️</button>
         <button type="button" class="btn btn-save" onclick="enviarMensajeAsistente()">ENVIAR</button>
       </div>
       <div id="luro-assistant-runtime-status" style="padding:0 24px 18px;font-size:12px;color:#6b7280;"></div>
     </div>
   </section>
 
-  <script src="assets/js/app.js?v=20260625-login-open-1"></script>
+  <script src="assets/js/app.js?v=20260418-master-pass-3"></script>
   <script src="assets/js/asistencia-module.js?v=20260417-asistencia-sucursal-fix-1"></script>
-  <script src="assets/js/cloud-bridge.js?v=20260625-shell-fix-2"></script>
+  <script src="assets/js/cloud-bridge.js?v=20260413-hotfix-1"></script>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260625-login-open-1';
+      var swVersion = '20260418-master-pass-3';
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'
         }).then(function (registration) {
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+          registration.addEventListener('updatefound', function () {
+            var newWorker = registration.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', function () {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
           registration.update().catch(function () {});
         }).catch(function () {});
+      });
+
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (window.__swRefreshed) return;
+        window.__swRefreshed = true;
+        window.location.reload();
       });
     })();
   </script>
 
-  <!-- -- M�DULO LA FOCA CHERIA � overlay full-screen -- -->
+  <!-- ══ MÓDULO LA FOCA CHERIA — overlay full-screen ══ -->
   <div id="foca-cheria-overlay" style="display:none; position:fixed; inset:0; z-index:4000; background:#0a0a0b;">
     <iframe id="foca-cheria-iframe" src="" style="border:none; width:100%; height:100%; display:block;"></iframe>
     <button onclick="guardarFocaCheria()" id="focaSaveBtn" title="Guardar cambios en La Foca Cheria"
       style="position:fixed; bottom:72px; right:24px; z-index:4001; background:#c9a84c; color:#0a0a0b; border:none; border-radius:50px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.5);">
-      ?? Guardar
+      💾 Guardar
     </button>
     <button onclick="cerrarFocaCheria()" title="Volver a LuRo Control"
       style="position:fixed; bottom:24px; right:24px; z-index:4001; background:#A1DFCB; color:#0a0a0b; border:none; border-radius:50px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.5);">
-      ? LuRo
+      ← LuRo
     </button>
   </div>
 
-<!-- ===== LURO ASISTENTE INTELIGENTE v9 � MANOS LIBRES ===== -->
+<!-- ===== LURO ASISTENTE INTELIGENTE v9 — MANOS LIBRES ===== -->
 <style>
 #luro-estado-badge {
   position: fixed; bottom: 82px; right: 20px; z-index: 10000;
@@ -1836,7 +1852,7 @@
 </style>
 <script>
 (function() {
-  /* -- CONFIG -- */
+  /* ── CONFIG ── */
   // La API key de Groq vive como secreto en functions/ (GROQ_API_KEY). El cliente
   // llama a estos proxys del backend, nunca a api.groq.com directo (no se exponen claves).
   const CLOUD_FN_BASE  = 'https://us-central1-luro-control.cloudfunctions.net';
@@ -1848,23 +1864,23 @@
   const OPENROUTER_MODEL = 'auto:free';
   const WHISPER_MODEL  = 'whisper-large-v3-turbo';
   const MEM_KEY        = 'LURO_MEMORIA_OPERATIVA';
-  const WAKE_WORDS     = ['luro','hola luro','hey luro','oye luro','est�s ah� luro','estas ahi luro','�est�s ah� luro?','estas ah� luro'];
+  const WAKE_WORDS     = ['luro','hola luro','hey luro','oye luro','estás ahí luro','estas ahi luro','¿estás ahí luro?','estas ahí luro'];
   const CRITICAL_TAGS  = ['LIMPIAR','ELIMINAR_DIST','ELIMINAR_ALMACEN','ELIMINAR_PLATO'];
-  const AFIRMAR        = ['s�','si','ok','okay','confirma','confirmo','correcto','adelante','hazlo','dale','claro','venga'];
+  const AFIRMAR        = ['sí','si','ok','okay','confirma','confirmo','correcto','adelante','hazlo','dale','claro','venga'];
   const NEGAR          = ['no','cancela','cancelar','cancel','stop','para'];
   const TAG_RE         = /\[(NAV|MODULO|LIMPIAR|ELIMINAR_DIST|ELIMINAR_ALMACEN|ELIMINAR_PLATO|ENTRADA|DIST_NUEVO|CLIENTE_NUEVO):[^\]]*\]/g;
-  const LURO_API_SYSTEM_PROMPT = 'Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gesti�n para restaurantes. Conoces todos los m�dulos del sistema: Almac�n, Producci�n Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gesti�n de Usuarios, Autorizaciones, Diagn�stico Inteligente y Entrenamientos. Respondes siempre en espa�ol, directo y sin relleno. Eres un copiloto operativo, no un generador de c�digo.';
-  const COMPLEX_AI_HINTS = ['analiza','diagn�stico','diagnostico','reporte','comparar','historial','rentabilidad','tendencia','resumen general'];
+  const LURO_API_SYSTEM_PROMPT = 'Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gestión para restaurantes. Conoces todos los módulos del sistema: Almacén, Producción Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gestión de Usuarios, Autorizaciones, Diagnóstico Inteligente y Entrenamientos. Respondes siempre en español, directo y sin relleno. Eres un copiloto operativo, no un generador de código.';
+  const COMPLEX_AI_HINTS = ['analiza','diagnóstico','diagnostico','reporte','comparar','historial','rentabilidad','tendencia','resumen general'];
   const VOZ_MAX_MS     = 10000;
   const VOZ_MIN_MS     = 1800;
   const VOZ_CONFIRM_MS = 6000;
 
-  // (Sin API key en el cliente: la autenticaci�n contra Groq la hace el backend.)
+  // (Sin API key en el cliente: la autenticación contra Groq la hace el backend.)
 
-  /* -- ESTADO -- */
+  /* ── ESTADO ── */
   // estado: 'idle' | 'wake' | 'voz_grab' | 'voz_proc' | 'voz_tts' | 'txt_proc' | 'confirming'
   let estado        = 'idle';
-  let modoVoz       = false;   // ? true SOLO cuando la sesi�n fue iniciada por voz
+  let modoVoz       = false;   // ← true SOLO cuando la sesión fue iniciada por voz
   let historial     = [];
   let micPermiso    = false;
   let mediaStream   = null;
@@ -1873,7 +1889,7 @@
   let audioCtx      = null;
   let wakeRec       = null;
   let wakeActivo    = false;
-  let accionPend    = null;    // tag cr�tico esperando confirmaci�n
+  let accionPend    = null;    // tag crítico esperando confirmación
   let watchT        = null;
   let vozLoopT      = null;
   let lastVoiceError = '';
@@ -1894,16 +1910,16 @@
 
   function updateVoiceReadyMsg() {
     if (!hasVoiceIO()) {
-      voiceReadyMsg = 'Tu navegador no tiene soporte completo para micr�fono o voz. Prueba en Chrome o Edge actualizados.';
+      voiceReadyMsg = 'Tu navegador no tiene soporte completo para micrófono o voz. Prueba en Chrome o Edge actualizados.';
       setRuntimeStatus(voiceReadyMsg, '#b45309');
       return;
     }
     if (!hasSpeechRecognition()) {
-      voiceReadyMsg = 'La conversaci�n por voz manual est� disponible. El saludo "Hola LuRo" no est� soportado en este navegador.';
+      voiceReadyMsg = 'La conversación por voz manual está disponible. El saludo "Hola LuRo" no está soportado en este navegador.';
       setRuntimeStatus(voiceReadyMsg, '#2563eb');
       return;
     }
-    voiceReadyMsg = 'La conversaci�n por voz est� disponible. Puedes tocar el micr�fono o decir "Hola LuRo".';
+    voiceReadyMsg = 'La conversación por voz está disponible. Puedes tocar el micrófono o decir "Hola LuRo".';
     setRuntimeStatus(voiceReadyMsg, '#0f766e');
   }
 
@@ -1911,15 +1927,15 @@
     try {
       const res = await fetch(AI_CHAT_URL, { method: 'GET' });
       if (res.status === 404) {
-        return { ok: false, text: 'El backend del asistente no est� publicado todav�a. Falta desplegar aiChat y groqTranscribe.', tone: '#b91c1c' };
+        return { ok: false, text: 'El backend del asistente no está publicado todavía. Falta desplegar aiChat y groqTranscribe.', tone: '#b91c1c' };
       }
       if (res.status === 405) {
-        return { ok: true, text: 'La API del asistente est� publicada y lista para recibir mensajes.', tone: '#0f766e' };
+        return { ok: true, text: 'La API del asistente está publicada y lista para recibir mensajes.', tone: '#0f766e' };
       }
       if (res.status === 503) {
-        return { ok: false, text: 'La API del asistente existe, pero falta configurar alg�n secreto de IA en Firebase.', tone: '#b45309' };
+        return { ok: false, text: 'La API del asistente existe, pero falta configurar algún secreto de IA en Firebase.', tone: '#b45309' };
       }
-      return { ok: res.ok, text: `La API respondi� con estado ${res.status}.`, tone: res.ok ? '#0f766e' : '#b45309' };
+      return { ok: res.ok, text: `La API respondió con estado ${res.status}.`, tone: res.ok ? '#0f766e' : '#b45309' };
     } catch (_e) {
       return { ok: false, text: 'No pude verificar la API del asistente desde este navegador.', tone: '#b45309' };
     }
@@ -1933,16 +1949,16 @@
     return backend;
   }
 
-  /* -- BADGE -- */
+  /* ── BADGE ── */
   let badge = null;
   const BCFG = {
     idle:      { d:'none',  col:'#636e72', txt:'' },
-    wake:      { d:'flex',  col:'#00b894', txt:'?? LuRo est� atento' },
-    voz_grab:  { d:'flex',  col:'#e17055', txt:'?? Te escucho...' },
-    voz_proc:  { d:'flex',  col:'#6c5ce7', txt:'?? LuRo est� actuando...' },
-    voz_tts:   { d:'flex',  col:'#0984e3', txt:'?? LuRo responde' },
-    txt_proc:  { d:'flex',  col:'#6c5ce7', txt:'?? LuRo est� actuando...' },
-    confirming:{ d:'flex',  col:'#fdcb6e', txt:'? LuRo necesita confirmaci�n' },
+    wake:      { d:'flex',  col:'#00b894', txt:'👂 LuRo está atento' },
+    voz_grab:  { d:'flex',  col:'#e17055', txt:'👂 Te escucho...' },
+    voz_proc:  { d:'flex',  col:'#6c5ce7', txt:'🧠 LuRo está actuando...' },
+    voz_tts:   { d:'flex',  col:'#0984e3', txt:'💬 LuRo responde' },
+    txt_proc:  { d:'flex',  col:'#6c5ce7', txt:'🧠 LuRo está actuando...' },
+    confirming:{ d:'flex',  col:'#fdcb6e', txt:'⚠ LuRo necesita confirmación' },
   };
   function setE(s) {
     estado = s;
@@ -1952,22 +1968,22 @@
       badge.innerHTML = c.txt
         ? `<span class="ld ld-pulse" style="background:${c.col}"></span>${c.txt}` : '';
     }
-    // Bot�n mic
+    // Botón mic
     const b = $('luro-mic-btn-pub');
     if (b) {
-      const icn = { idle:'??', wake:'??', voz_grab:'??', voz_proc:'??', voz_tts:'??', txt_proc:'??', confirming:'?' };
+      const icn = { idle:'🎙', wake:'👂', voz_grab:'👂', voz_proc:'🧠', voz_tts:'💬', txt_proc:'🧠', confirming:'⚠' };
       const bg  = { idle:'#2d3436', wake:'#00b894', voz_grab:'#e84118', voz_proc:'#6c5ce7', voz_tts:'#0984e3', txt_proc:'#6c5ce7', confirming:'#fdcb6e' };
-      b.textContent = icn[s]||'??'; b.style.background = bg[s]||'#2d3436';
+      b.textContent = icn[s]||'🎙'; b.style.background = bg[s]||'#2d3436';
     }
   }
 
-  /* -- BARRA CONFIRMACI�N -- */
+  /* ── BARRA CONFIRMACIÓN ── */
   let barraC = null;
   function initConfirmBar() {
     barraC = document.createElement('div'); barraC.id = 'luro-confirmar-barra';
-    barraC.innerHTML = `<div id="lcb-txt">�Confirmas esta acci�n?</div>
-      <div class="lcb-btns"><button id="lcb-si" onclick="window.__luroOK(true)">? S�, ejecutar</button>
-      <button id="lcb-no" onclick="window.__luroOK(false)">? Cancelar</button></div>`;
+    barraC.innerHTML = `<div id="lcb-txt">¿Confirmas esta acción?</div>
+      <div class="lcb-btns"><button id="lcb-si" onclick="window.__luroOK(true)">✓ Sí, ejecutar</button>
+      <button id="lcb-no" onclick="window.__luroOK(false)">✗ Cancelar</button></div>`;
     document.body.appendChild(barraC);
   }
   function mostrarConfirm(txt) {
@@ -1981,20 +1997,20 @@
     const pending = accionPend; accionPend = null;
     if (ok && pending) {
       sinDialogos(()=>ejecutarTag(pending));
-      burbuja('assistant','Listo, acci�n ejecutada.');
+      burbuja('assistant','Listo, acción ejecutada.');
       hablarY('Listo, ejecutado.', ()=>{ modoVoz ? vozLoop() : wakeStart(); });
     } else {
-      burbuja('assistant','Acci�n cancelada.');
+      burbuja('assistant','Acción cancelada.');
       hablarY('Cancelado.', ()=>{ modoVoz ? vozLoop() : wakeStart(); });
     }
   };
 
-  /* -- MEMORIA / DB -- */
+  /* ── MEMORIA / DB ── */
   function getDB() { try{return JSON.parse(localStorage.getItem('LURO_CONTROL_DB')||'null')||{};}catch(e){return{};} }
   function getMem(){ try{return JSON.parse(localStorage.getItem(MEM_KEY)||'{}');}catch(e){return{};} }
   function pushMem(u,l){ const m=getMem(); if(!Array.isArray(m.r))m.r=[]; m.r.unshift({t:Date.now(),u,l:l.replace(TAG_RE,'').trim()}); m.r=m.r.slice(0,30); try{localStorage.setItem(MEM_KEY,JSON.stringify(m));}catch(e){} }
 
-  /* -- CONTEXTO -- */
+  /* ── CONTEXTO ── */
   function ctx() {
     try {
       const db=getDB(),L=[];
@@ -2024,36 +2040,36 @@
         L.push(`Clientes(${db.clientes.length}): ${db.clientes.slice(0,6).map(c=>c.nombre).join(', ')}.`);
       const mem=getMem();
       if(Array.isArray(mem.r)&&mem.r.length)
-        L.push(`Memoria: ${mem.r.slice(0,3).map(r=>`"${r.u}"?"${r.l}"`).join(' | ')}.`);
+        L.push(`Memoria: ${mem.r.slice(0,3).map(r=>`"${r.u}"→"${r.l}"`).join(' | ')}.`);
       // Limitar total a ~1500 chars para no exceder tokens del modelo
       const raw=L.join('\n');
-      return raw?'\nDATA:\n'+(raw.length>1500?raw.slice(0,1500)+'�':raw):'';
+      return raw?'\nDATA:\n'+(raw.length>1500?raw.slice(0,1500)+'…':raw):'';
     } catch(e) { return ''; }
   }
 
-  /* -- PROMPT -- */
+  /* ── PROMPT ── */
   function prompt_() {
     const pag=document.querySelector('.content-section.active')?.id||'home';
     const mod=$('current-module-display')?.textContent||'';
-    return `Eres LuRo, asistente oficial de LuRo Control y copiloto operativo del sistema. Hablas en espa�ol, directo, breve y natural, pensado para conversaci�n por voz. Ejecutas solicitudes claras de inmediato, haces solo una pregunta si falta un dato indispensable y no inventas m�dulos ni resultados.
+    return `Eres LuRo, asistente oficial de LuRo Control y copiloto operativo del sistema. Hablas en español, directo, breve y natural, pensado para conversación por voz. Ejecutas solicitudes claras de inmediato, haces solo una pregunta si falta un dato indispensable y no inventas módulos ni resultados.
 
 Usa los tags exactos al final de tu respuesta cuando aplique:
-[NAV:id] navegar � IDs: home,agregar,inventario,distribuidores,produccion-interna,disponibilidad,salida,asistencia,procedimientos,clientes-puntos,historial-produccion,entradas-almacen,ventas,reporte-compras-distribuidor,rnc-dgii,comandas,autorizaciones,historial-decomiso,decomiso,produccion,diagnostico,comandos,configuracion,entrenamientos
-[MODULO:NOMBRE] abrir m�dulo (ADMINISTRADOR,COCINA,CAJERO...)
-[LIMPIAR:tipo] borrar historial (entradas,ventas,produccion,decomisos,autorizaciones,rnc) � CR�TICO
-[ELIMINAR_DIST:nombre] eliminar distribuidor � CR�TICO
-[ELIMINAR_ALMACEN:nombre] eliminar producto almac�n � CR�TICO
-[ELIMINAR_PLATO:nombre] eliminar plato men� � CR�TICO
-[ENTRADA:producto:cantidad:unidad] registrar entrada almac�n (Lb,g,Oz,Litros,Unidad)
+[NAV:id] navegar — IDs: home,agregar,inventario,distribuidores,produccion-interna,disponibilidad,salida,asistencia,procedimientos,clientes-puntos,historial-produccion,entradas-almacen,ventas,reporte-compras-distribuidor,rnc-dgii,comandas,autorizaciones,historial-decomiso,decomiso,produccion,diagnostico,comandos,configuracion,entrenamientos
+[MODULO:NOMBRE] abrir módulo (ADMINISTRADOR,COCINA,CAJERO...)
+[LIMPIAR:tipo] borrar historial (entradas,ventas,produccion,decomisos,autorizaciones,rnc) — CRÍTICO
+[ELIMINAR_DIST:nombre] eliminar distribuidor — CRÍTICO
+[ELIMINAR_ALMACEN:nombre] eliminar producto almacén — CRÍTICO
+[ELIMINAR_PLATO:nombre] eliminar plato menú — CRÍTICO
+[ENTRADA:producto:cantidad:unidad] registrar entrada almacén (Lb,g,Oz,Litros,Unidad)
 [DIST_NUEVO:nombre:contacto:telefono] crear distribuidor
 [CLIENTE_NUEVO:nombre:telefono:puntos] registrar cliente
 
-Antes de LIMPIAR o cualquier ELIMINAR_*, di "Voy a [acci�n]. �Confirmas?" e incluye el tag.
-Sin markdown. Sin listas visibles. No confirmes en pasado una acci�n que todav�a no se ejecuta.
-Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
+Antes de LIMPIAR o cualquier ELIMINAR_*, di "Voy a [acción]. ¿Confirmas?" e incluye el tag.
+Sin markdown. Sin listas visibles. No confirmes en pasado una acción que todavía no se ejecuta.
+Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   }
 
-  /* -- TTS -- */
+  /* ── TTS ── */
   function hablarY(txt, onFin) {
     synth.cancel();
     const clean = txt.replace(TAG_RE,'').replace(/[*_#`>~]/g,'').replace(/\n+/g,' ').trim();
@@ -2071,27 +2087,27 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
     setTimeout(fin, 12000); // fallback 12s
   }
 
-  /* -- BURBUJAS -- */
+  /* ── BURBUJAS ── */
   function burbuja(role, txt) {
     const cont=$('luro-assistant-messages'); if(!cont) return null;
     const w=document.createElement('div');
     w.className='luro-assistant-msg '+(role==='user'?'is-user':'is-assistant');
     const m=document.createElement('span'); m.className='luro-assistant-msg-meta';
-    m.textContent=role==='user'?'T�':'LuRo';
+    m.textContent=role==='user'?'Tú':'LuRo';
     const b=document.createElement('div'); b.className='luro-assistant-bubble';
     b.textContent=txt.replace(TAG_RE,'').trim();
     w.appendChild(m); w.appendChild(b); cont.appendChild(w);
     cont.scrollTop=cont.scrollHeight; return b;
   }
 
-  /* -- sinDialogos -- */
+  /* ── sinDialogos ── */
   function sinDialogos(fn) {
     const _p=window.prompt,_c=window.confirm,_a=window.alert;
     window.prompt=()=>''; window.confirm=()=>true; window.alert=()=>{};
     try{fn();}finally{setTimeout(()=>{window.prompt=_p;window.confirm=_c;window.alert=_a;},100);}
   }
 
-  /* -- EJECUTAR TAG -- */
+  /* ── EJECUTAR TAG ── */
   function ejecutarTag(tag) {
     const nav=tag.match(/\[NAV:([^\]]+)\]/);
     if(nav&&typeof window.showPage==='function'){setTimeout(()=>window.showPage(nav[1].trim()),250);return;}
@@ -2119,7 +2135,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
       const tipo=tag.match(/\[([A-Z_]+):/)?.[1]||'';
       if(CRITICAL_TAGS.includes(tipo)){
         hayCritica=true; accionPend=tag;
-        mostrarConfirm(resp.replace(TAG_RE,'').trim()||'�Confirmas esta acci�n?');
+        mostrarConfirm(resp.replace(TAG_RE,'').trim()||'¿Confirmas esta acción?');
         if(modoVoz) escucharConfirm();
       } else { ejecutarTag(tag); }
     });
@@ -2141,12 +2157,12 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
   function ejecutarResultadoLocal(result) {
     if (typeof result?.action !== 'function') return false;
     setTimeout(() => {
-      try { result.action(); } catch (e) { console.warn('No se pudo ejecutar la acci�n local de LuRo:', e); }
+      try { result.action(); } catch (e) { console.warn('No se pudo ejecutar la acción local de LuRo:', e); }
     }, Number(result?.actionDelay || 240));
     return true;
   }
 
-  /* -- GROQ CHAT -- */
+  /* ── GROQ CHAT ── */
   async function groqCall(model, sysPrompt, msgs) {
     const res = await fetch(AI_CHAT_URL, {
       method:'POST',
@@ -2212,7 +2228,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
 
     let sysPrompt;
     try { sysPrompt = prompt_(); } catch(e) {
-      sysPrompt = `Eres LuRo, asistente oficial de LuRo Control. Responde en espa�ol, directo, breve y natural. Ejecuta solicitudes claras de inmediato, sin markdown, y solo pregunta si falta un dato indispensable.`;
+      sysPrompt = `Eres LuRo, asistente oficial de LuRo Control. Responde en español, directo, breve y natural. Ejecuta solicitudes claras de inmediato, sin markdown, y solo pregunta si falta un dato indispensable.`;
     }
 
     let res;
@@ -2220,31 +2236,31 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
       res = await apiRouter(msg, sysPrompt, historial);
     } catch(netErr) {
       historial = historial.slice(0, snapLen);
-      throw new Error('Sin conexi�n a internet');
+      throw new Error('Sin conexión a internet');
     }
 
     if (!res.ok) {
       historial = historial.slice(0, snapLen);
       let detail = '';
       try { const d=await res.json(); detail=d.error?.message||''; } catch(e){}
-      if (res.status === 404) throw new Error('El backend del asistente no est� publicado');
-      if (res.status === 503) throw new Error('LuRo est� recargando, intenta en un momento...');
-      throw new Error(`Error ${res.status}${detail?' � '+detail.slice(0,80):''}`);
+      if (res.status === 404) throw new Error('El backend del asistente no está publicado');
+      if (res.status === 503) throw new Error('LuRo está recargando, intenta en un momento...');
+      throw new Error(`Error ${res.status}${detail?' — '+detail.slice(0,80):''}`);
     }
 
     const d = await res.json();
     const r = (d.choices?.[0]?.message?.content||'').trim();
-    if (!r) { historial = historial.slice(0, snapLen); throw new Error('Respuesta vac�a'); }
+    if (!r) { historial = historial.slice(0, snapLen); throw new Error('Respuesta vacía'); }
     historial.push({role:'assistant', content:r});
     return r;
   }
 
-  /* -- WHISPER -- */
+  /* ── WHISPER ── */
   async function whisper(blob,ext) {
     // Enviamos el audio crudo al proxy; el backend arma el multipart y agrega la API key.
     const res=await fetch(GROQ_AUDIO_URL,{method:'POST',headers:{'Content-Type':blob.type||'audio/webm'},body:blob});
     if(!res.ok){
-      if(res.status===404)throw new Error('El transcriptor de voz no est� publicado');
+      if(res.status===404)throw new Error('El transcriptor de voz no está publicado');
       const detail = await res.text().catch(()=> '');
       if(res.status===503 && /GROQ_API_KEY/i.test(detail))throw new Error('Falta configurar GROQ_API_KEY en Firebase');
       throw new Error('Whisper '+res.status);
@@ -2288,13 +2304,13 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
         };
         rec.onerror = (e) => {
           if (e?.error === 'no-speech') { finish((finalTxt || '').trim()); return; }
-          finish('', new Error(`Reconocimiento de voz: ${e?.error || 'fall�'}`));
+          finish('', new Error(`Reconocimiento de voz: ${e?.error || 'falló'}`));
         };
         rec.onend = () => {
           const txt = finalTxt.trim();
           if (txt) finish(txt);
           else if (heardSomething) finish('');
-          else reject(new Error('No detect� voz clara'));
+          else reject(new Error('No detecté voz clara'));
         };
         rec.start();
       } catch (e) {
@@ -2310,7 +2326,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
     });
   }
 
-  /* -- MediaRecorder -- */
+  /* ── MediaRecorder ── */
   function getMime(){return['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t))||'';}
 
   function silencio(stream, onQ) {
@@ -2320,14 +2336,14 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
       const anl=audioCtx.createAnalyser(); anl.fftSize=512;
       src.connect(anl);
       const buf=new Float32Array(anl.fftSize);
-      let quietSince=null,habl�=false;
+      let quietSince=null,habló=false;
       const startedAt=Date.now();
       const tick=()=>{
         if(estado!=='voz_grab'){try{audioCtx.close();}catch(e){}audioCtx=null;return;}
         anl.getFloatTimeDomainData(buf);
         const rms=Math.sqrt(buf.reduce((s,v)=>s+v*v,0)/buf.length);
-        if(rms>0.008)habl�=true;
-        if(habl�){
+        if(rms>0.008)habló=true;
+        if(habló){
           if(rms<0.006){
             if(!quietSince)quietSince=Date.now();
             else if(Date.now()-quietSince>1400 && Date.now()-startedAt>VOZ_MIN_MS){onQ();return;}
@@ -2345,7 +2361,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
     // Reusar stream si sigue vivo
     if(!mediaStream||mediaStream.getTracks().every(t=>t.readyState==='ended')){
       try{mediaStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});}
-      catch(e){lastVoiceError='No pude acceder al micr�fono'; return null;}
+      catch(e){lastVoiceError='No pude acceder al micrófono'; return null;}
     }
     return new Promise(resolve=>{
       audioChunks=[];
@@ -2354,7 +2370,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
       try{mr=new MediaRecorder(mediaStream,mime?{mimeType:mime}:{});}
       catch(e){
         try{mr=new MediaRecorder(mediaStream);}
-        catch(_e){lastVoiceError='Este navegador no pudo iniciar la grabaci�n'; resolve(null); return;}
+        catch(_e){lastVoiceError='Este navegador no pudo iniciar la grabación'; resolve(null); return;}
       }
       mr.ondataavailable=e=>{if(e.data&&e.data.size>0)audioChunks.push(e.data);};
       mr.onstop=async()=>{
@@ -2367,7 +2383,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
           if(!txt)lastVoiceError='No pude entender lo que dijiste';
           resolve(txt);
         }catch(e){
-          lastVoiceError = e?.message || 'Fall� la transcripci�n de voz';
+          lastVoiceError = e?.message || 'Falló la transcripción de voz';
           resolve(null);
         }
       };
@@ -2385,7 +2401,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
         const txt = await escucharConSpeechRecognition(maxMs);
         if (txt) return txt;
       } catch (e) {
-        lastVoiceError = e?.message || 'Fall� el reconocimiento de voz';
+        lastVoiceError = e?.message || 'Falló el reconocimiento de voz';
       }
     }
     return await grabar(maxMs);
@@ -2393,15 +2409,15 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
 
   function stopGrab(){if(mediaRecorder&&mediaRecorder.state!=='inactive')try{mediaRecorder.stop();}catch(e){}}
 
-  /* ---------------------------------------
+  /* ═══════════════════════════════════════
      WAKE WORD ENGINE (SpeechRecognition)
-  --------------------------------------- */
+  ═══════════════════════════════════════ */
   function esWake(t){ const lc=t.toLowerCase(); return WAKE_WORDS.some(w=>lc.includes(w)); }
 
   function wakeStart() {
     if(wakeActivo||!micPermiso||modoVoz)return;
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR){ updateVoiceReadyMsg(); return; } // sin SR, solo funciona bot�n
+    if(!SR){ updateVoiceReadyMsg(); return; } // sin SR, solo funciona botón
     wakeActivo=true;
     wakeRec=new SR();
     wakeRec.lang='es-ES'; wakeRec.continuous=true; wakeRec.interimResults=true;
@@ -2418,13 +2434,13 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
 
   function wakeStop(){wakeActivo=false;if(wakeRec){try{wakeRec.stop();}catch(e){}wakeRec=null;}}
 
-  /* ---------------------------------------
-     MODO VOZ � loop de conversaci�n
-  --------------------------------------- */
+  /* ═══════════════════════════════════════
+     MODO VOZ — loop de conversación
+  ═══════════════════════════════════════ */
   async function activarPorVoz() {
     if(modoVoz||estado==='voz_grab'||estado==='voz_proc')return;
     if(!hasVoiceIO()){
-      burbuja('assistant','Este navegador no tiene soporte completo para conversaci�n por voz. Usa Chrome o Edge.');
+      burbuja('assistant','Este navegador no tiene soporte completo para conversación por voz. Usa Chrome o Edge.');
       updateVoiceReadyMsg();
       return;
     }
@@ -2432,7 +2448,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
     // Abrir panel
     if(!panelOpen()&&typeof window.toggleLuroAssistant==='function')
       window.toggleLuroAssistant(true);
-    await hablarYP('Dime, �en qu� te puedo ayudar?');
+    await hablarYP('Dime, ¿en qué te puedo ayudar?');
     vozLoop();
   }
 
@@ -2448,13 +2464,13 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
         burbuja('assistant',`No pude entenderte bien. ${lastVoiceError}.`);
         setRuntimeStatus(`${lastVoiceError}. Puedes volver a hablar de inmediato.`, '#b45309');
       }
-      // Silencio/error ? preguntar una vez m�s
-      await hablarYP('�Sigues ah�?');
+      // Silencio/error → preguntar una vez más
+      await hablarYP('¿Sigues ahí?');
       const txt2=await capturarVoz(8000);
       if(!txt2||!txt2.trim()){
         // Salir de modo voz
         modoVoz=false;
-        burbuja('assistant','Sesi�n de voz cerrada. Dime "Hola LuRo" para volver.');
+        burbuja('assistant','Sesión de voz cerrada. Dime "Hola LuRo" para volver.');
         hablarY('Hasta luego.', wakeStart);
         return;
       }
@@ -2466,7 +2482,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
   async function procesarVoz(txt) {
     if(!modoVoz)return;
 
-    // Detectar si/no si hay acci�n pendiente
+    // Detectar si/no si hay acción pendiente
     if(accionPend){
       const lc=txt.toLowerCase().trim();
       if(AFIRMAR.some(a=>lc.includes(a))){ window.__luroOK(true); return; }
@@ -2492,7 +2508,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
       pushMem(txt,resp);
       const hayCritica=ejecutar(resp);
       if(hayCritica){
-        // Esperar confirmaci�n verbal o bot�n
+        // Esperar confirmación verbal o botón
         escucharConfirm();
       } else {
         await hablarYP(resp);
@@ -2508,7 +2524,7 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
   }
 
   function escucharConfirm() {
-    // Graba brevemente para capturar "s�" o "no"
+    // Graba brevemente para capturar "sí" o "no"
     setTimeout(async()=>{
       if(estado==='confirming'||accionPend){
         const txt=await capturarVoz(VOZ_CONFIRM_MS);
@@ -2522,9 +2538,9 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
 
   function hablarYP(txt){ return new Promise(r=>hablarY(txt,r)); }
 
-  /* ---------------------------------------
-     MOTOR TEXTO (escrito) � independiente
-  --------------------------------------- */
+  /* ═══════════════════════════════════════
+     MOTOR TEXTO (escrito) — independiente
+  ═══════════════════════════════════════ */
   function initMotor() {
     window.enviarMensajeAsistente = async function() {
       const inp=$('luro-assistant-input'); if(!inp)return;
@@ -2565,13 +2581,13 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
     };
   }
 
-  /* -- BOT�N MIC (respaldo y activador manual) -- */
+  /* ── BOTÓN MIC (respaldo y activador manual) ── */
   window.luroVozToggle = async function() {
     if(estado==='voz_grab'){stopGrab();return;}
     if(estado==='voz_proc'||estado==='voz_tts')return;
     if(estado==='confirming'){return;}
     if(!hasVoiceIO()){
-      burbuja('assistant','Este navegador no soporta micr�fono y respuesta por voz de forma completa. Prueba con Chrome o Edge.');
+      burbuja('assistant','Este navegador no soporta micrófono y respuesta por voz de forma completa. Prueba con Chrome o Edge.');
       updateVoiceReadyMsg();
       return;
     }
@@ -2581,15 +2597,15 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
     wakeStop();
 
     if(!micPermiso){
-      // Primer uso � pedir permiso
+      // Primer uso — pedir permiso
       const ok=await pedirMic();
-      if(!ok){burbuja('assistant','Necesito permiso de micr�fono para escucharte.');return;}
+      if(!ok){burbuja('assistant','Necesito permiso de micrófono para escucharte.');return;}
       localStorage.setItem('LURO_MIC_AUTORIZADO','1');
     }
     await activarPorVoz();
   };
 
-  /* -- PERMISO MIC -- */
+  /* ── PERMISO MIC ── */
   async function pedirMic() {
     try{
       mediaStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
@@ -2601,18 +2617,18 @@ Secci�n: ${pag}${mod?' | M�dulo: '+mod:''}.${ctx()}`;
     if($('luro-activar-mic-btn'))return;
     const btn=document.createElement('button');
     btn.id='luro-activar-mic-btn';
-    btn.innerHTML='?? Activar voz de LuRo';
+    btn.innerHTML='🎙 Activar voz de LuRo';
     btn.style.cssText='position:fixed;bottom:138px;right:20px;z-index:10000;background:linear-gradient(135deg,#6c5ce7,#00b894);color:#fff;border:none;border-radius:24px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(108,92,231,0.4);animation:ldPulse 2s ease-in-out infinite;';
     btn.onclick=async()=>{
-      btn.textContent='? Solicitando permiso...';
+      btn.textContent='⏳ Solicitando permiso...';
       const ok=await pedirMic();
       if(ok){btn.remove();localStorage.setItem('LURO_MIC_AUTORIZADO','1');wakeStart();}
-      else btn.textContent='? Permiso denegado � reintenta';
+      else btn.textContent='❌ Permiso denegado — reintenta';
     };
     document.body.appendChild(btn);
   }
 
-  /* -- ARRANQUE -- */
+  /* ── ARRANQUE ── */
   window.addEventListener('load',async function(){
     // Badge de estado
     badge=document.createElement('div'); badge.id='luro-estado-badge';

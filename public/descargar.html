@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -21,28 +21,46 @@
 </head>
 <body>
   <div class="card">
-    <h1>?? Descargar LuRo Control</h1>
-    <p>Inst�lala como app m�vil desde este enlace:</p>
+    <h1>📲 Descargar LuRo Control</h1>
+    <p>Instálala como app móvil desde este enlace:</p>
     <div class="row">
       <a class="btn" href="/">ABRIR LURO CONTROL</a>
       <button id="btn-instalar" class="btn secondary" type="button" style="display:none;">INSTALAR APP</button>
     </div>
-    <div id="install-status">Si no ves "Instalar app", abre primero la app principal y vuelve aqu�.</div>
+    <div id="install-status">Si no ves "Instalar app", abre primero la app principal y vuelve aquí.</div>
     <ul class="list">
-      <li>Android (Chrome): men� ? ? Instalar app</li>
-      <li>iPhone (Safari): Compartir ? A�adir a pantalla de inicio</li>
+      <li>Android (Chrome): menú ⋮ → Instalar app</li>
+      <li>iPhone (Safari): Compartir → Añadir a pantalla de inicio</li>
     </ul>
   </div>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260625-login-open-1';
+      var swVersion = '20260414-cachefix-2';
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'
         }).then(function (registration) {
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+          registration.addEventListener('updatefound', function () {
+            var newWorker = registration.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', function () {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
           registration.update().catch(function () {});
         }).catch(function () {});
+      });
+
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (window.__swRefreshed) return;
+        window.__swRefreshed = true;
+        window.location.reload();
       });
     })();
 
@@ -61,7 +79,7 @@
 
       btn.addEventListener('click', async function () {
         if (!deferredPrompt) {
-          status.textContent = 'Tu navegador no mostr� el instalador autom�tico. Usa men� ? ? Instalar app.';
+          status.textContent = 'Tu navegador no mostró el instalador automático. Usa menú ⋮ → Instalar app.';
           return;
         }
         deferredPrompt.prompt();
@@ -70,7 +88,7 @@
         } catch (_) {}
         deferredPrompt = null;
         btn.style.display = 'none';
-        status.textContent = 'Si aceptaste, la app ya qued� instalada.';
+        status.textContent = 'Si aceptaste, la app ya quedó instalada.';
       });
 
       window.addEventListener('appinstalled', function () {
