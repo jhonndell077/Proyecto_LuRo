@@ -6042,6 +6042,10 @@ async function intentarLogin() {
                 asignacionesEntradasSesion = ['manual', 'automatica', 'historial'];
             }
 
+            mostrarShellPostLogin();
+            document.getElementById('session-user').innerText = usuarioSesionLabel;
+            document.getElementById('btn-config-nav').style.display = esColaboradorSesion ? 'none' : 'block';
+
             if (!esColaboradorSesion) {
                 const keyReg = String((sesionUser?.owner || sesionUser?.user || found.user || '')).trim().toLowerCase();
                 const esMasterGlobal = keyReg === MASTER_USER;
@@ -6057,12 +6061,7 @@ async function intentarLogin() {
                     return;
                 }
             }
-            document.getElementById('login-overlay').style.display = 'none'; 
             setLoginInlineStatus('', true);
-            renderModuleSelectorCards();
-            document.getElementById('module-selector').style.display = 'flex'; 
-            document.getElementById('session-user').innerText = usuarioSesionLabel; 
-            document.getElementById('btn-config-nav').style.display = esColaboradorSesion ? 'none' : 'block';
             window.__accesoRevocadoActual = false;
             aplicarPermisosSidebar();
             iniciarCalendarioCobros();
@@ -7553,6 +7552,7 @@ function toggleDetallesProduccion(idx) {
 
     function renderModuleSelectorCards() {
         const grid = document.getElementById('module-cards-grid');
+        const summary = document.getElementById('module-selector-summary');
         const btnNuevo = document.querySelector('#module-selector .btn-add-module-float');
         if (!grid) return;
         if (btnNuevo) btnNuevo.style.display = esColaboradorSesion ? 'none' : 'inline-block';
@@ -7594,6 +7594,27 @@ function toggleDetallesProduccion(idx) {
         }
 
         grid.innerHTML = html;
+        if (summary) {
+            const ownerLabel = String(sesionUser?.user || cuentaLoginActual || '---').trim().toUpperCase();
+            const roleLabel = esColaboradorSesion ? 'COLABORADOR' : (String(sesionUser?.role || '').toLowerCase() === 'super-master' ? 'SUPER MASTER' : 'ADMINISTRADOR');
+            summary.innerHTML = [
+                `<span class="module-badge" style="background:rgba(255,255,255,.08); color:#fff;">USUARIO · ${ownerLabel}</span>`,
+                `<span class="module-badge" style="background:rgba(5,196,107,.16); color:#dff6e8;">ROL · ${roleLabel}</span>`,
+                `<span class="module-badge" style="background:rgba(52,152,219,.18); color:#dceeff;">MÓDULOS · ${modulos.length}</span>`
+            ].join('');
+        }
+    }
+
+    function mostrarShellPostLogin() {
+        const login = document.getElementById('login-overlay');
+        const selector = document.getElementById('module-selector');
+        const sidebar = document.getElementById('sidebar');
+        const main = document.getElementById('main-content');
+        if (login) login.style.display = 'none';
+        if (selector) selector.style.display = 'flex';
+        if (sidebar) sidebar.style.display = 'none';
+        if (main) main.style.display = 'none';
+        renderModuleSelectorCards();
     }
 
     function renderAdminModuleLinks() {
