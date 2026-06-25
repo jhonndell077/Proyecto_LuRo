@@ -10081,24 +10081,6 @@ function renderDispoTable() {
         document.getElementById('tabla-historial-autorizaciones').innerHTML = filas || '<tr><td colspan="5" style="text-align:center; color:gray;">Sin registros</td></tr>';
     }
 
-    function validarPermiso() {
-        if (esModoBasicoColaborador()) {
-            alert("⛔ Los colaboradores no tienen permisos administrativos.");
-            return false;
-        }
-        const p = prompt("Contraseña de seguridad:");
-        return (p === sesionUser.pass);
-    }
-    function regresarAModulos() { document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; renderModuleSelectorCards(); document.getElementById('module-selector').style.display = 'flex'; }
-    function cambiarUsuario() { document.getElementById('log_user').value = ""; document.getElementById('log_user').disabled = false; document.getElementById('log_pass').value = ""; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('sidebar').style.display = 'none'; document.getElementById('main-content').style.display = 'none'; detenerAutoRefreshBovedaMaster(); if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva(); if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal(); if (typeof window.cerrarSesionBackend === 'function') window.cerrarSesionBackend(); }
-    function cerrarSesion() {
-      guardarDatos();
-      detenerAutoRefreshBovedaMaster();
-      if (typeof window.detenerGuardiaSesionActiva === 'function') window.detenerGuardiaSesionActiva();
-      if (typeof window.detenerListenerCloudTiempoReal === 'function') window.detenerListenerCloudTiempoReal();
-      location.reload();
-    }
-
     // Variables para el control de cambios
 let backupPrecios = null;
 

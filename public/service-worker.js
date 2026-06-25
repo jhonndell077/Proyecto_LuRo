@@ -1,4 +1,4 @@
-const SW_VERSION = 'luro-pwa-stable-20260625-1';
+const SW_VERSION = 'luro-pwa-stable-20260625-2';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -10,7 +10,7 @@ const CORE_ASSETS = [
   '/assets/saas/js/landing.js?v=20260412-1200',
   '/assets/saas/js/access.js?v=20260306-1205',
   '/assets/css/styles.css?v=20260611-modulos-separados',
-  '/assets/js/app.js?v=20260625-shell-fix-2',
+  '/assets/js/app.js?v=20260625-shell-fix-3',
   '/assets/js/cloud-bridge.js?v=20260625-shell-fix-2',
   '/assets/brand/logo-luro.png',
   '/assets/icons/icon-192.png',
