@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -21,22 +21,22 @@
 </head>
 <body>
   <div class="card">
-    <h1>📲 Descargar LuRo Control</h1>
-    <p>Instálala como app móvil desde este enlace:</p>
+    <h1>?? Descargar LuRo Control</h1>
+    <p>Inst�lala como app m�vil desde este enlace:</p>
     <div class="row">
       <a class="btn" href="/">ABRIR LURO CONTROL</a>
       <button id="btn-instalar" class="btn secondary" type="button" style="display:none;">INSTALAR APP</button>
     </div>
-    <div id="install-status">Si no ves "Instalar app", abre primero la app principal y vuelve aquí.</div>
+    <div id="install-status">Si no ves "Instalar app", abre primero la app principal y vuelve aqu�.</div>
     <ul class="list">
-      <li>Android (Chrome): menú ⋮ → Instalar app</li>
-      <li>iPhone (Safari): Compartir → Añadir a pantalla de inicio</li>
+      <li>Android (Chrome): men� ? ? Instalar app</li>
+      <li>iPhone (Safari): Compartir ? A�adir a pantalla de inicio</li>
     </ul>
   </div>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260625-shell-fix-4';
+      var swVersion = '20260625-login-open-1';
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'
@@ -61,7 +61,7 @@
 
       btn.addEventListener('click', async function () {
         if (!deferredPrompt) {
-          status.textContent = 'Tu navegador no mostró el instalador automático. Usa menú ⋮ → Instalar app.';
+          status.textContent = 'Tu navegador no mostr� el instalador autom�tico. Usa men� ? ? Instalar app.';
           return;
         }
         deferredPrompt.prompt();
@@ -70,7 +70,7 @@
         } catch (_) {}
         deferredPrompt = null;
         btn.style.display = 'none';
-        status.textContent = 'Si aceptaste, la app ya quedó instalada.';
+        status.textContent = 'Si aceptaste, la app ya qued� instalada.';
       });
 
       window.addEventListener('appinstalled', function () {

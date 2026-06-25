@@ -6093,6 +6093,12 @@ async function intentarLogin() {
             if (typeof window.rememberCloudAuth === 'function' && authUser && passLogin) {
                 window.rememberCloudAuth(authUser, passLogin, { owner: authOwner, role: sesionUser?.role || found.role });
             }
+            try {
+                seleccionarModulo('COCINA', { skipAdminPassword: true });
+            } catch (moduleError) {
+                console.warn('No se pudo abrir el modulo inicial automaticamente.', moduleError);
+                mostrarShellPostLogin();
+            }
             window.__cloudSyncBootstrapping = true;
             if (typeof window.iniciarListenerCloudTiempoReal === 'function') {
                 window.iniciarListenerCloudTiempoReal(window.usuarioActivoCloud);
