@@ -6,7 +6,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const MASTER_USER = String(process.env.MASTER_USER || "jssantana077").trim().toLowerCase();
-const MASTER_PASS = String(process.env.MASTER_PASS || "160623");
+const MASTER_PASS = String(process.env.MASTER_PASS || "").trim() || null;
 const FORCED_REMOVED_USER = "__forced_removed_user_disabled__";
 const INACTIVE_MSG = "Usuario Inactivo o eliminado. Comuníquese con su proveedor.";
 const PAYPAL_RECEIVER = String(process.env.PAYPAL_RECEIVER || "Jssantana077@gmail.com").trim();
@@ -129,7 +129,8 @@ function isMasterPasswordAccepted(password, masterEntry = null) {
   const provided = String(password || "");
   if (!provided) return false;
   const ownerPass = String(masterEntry?.data?.pass || "");
-  return provided === ownerPass || provided === MASTER_PASS;
+  if (ownerPass && provided === ownerPass) return true;
+  return MASTER_PASS !== null && provided === MASTER_PASS;
 }
 
 function hasManualPayPalLink() {
@@ -2877,6 +2878,160 @@ exports.triggerGithubDeploy = onCall(GITHUB_DEPLOY_RUNTIME_OPTS, async (request)
 // ============================
 const GROQ_CHAT_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_AUDIO_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions";
+const GEMINI_CHAT_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const OPENROUTER_CHAT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+const LURO_SYSTEM_PROMPT = "Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gestión para restaurantes. Conoces todos los módulos del sistema: Almacén, Producción Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gestión de Usuarios, Autorizaciones, Diagnóstico Inteligente y Entrenamientos. Respondes siempre en español, directo y sin relleno. Eres un copiloto operativo, no un generador de código.";
+const AI_TIMEOUT_MS = 8000;
+const COMPLEX_AI_HINTS = [
+  "analiza",
+  "diagnóstico",
+  "diagnostico",
+  "reporte",
+  "comparar",
+  "historial",
+  "rentabilidad",
+  "tendencia",
+  "resumen general"
+];
+
+function normalizeAiText(v) {
+  return String(v || "").trim().toLowerCase();
+}
+
+function mergeSystemPrompt(messages = []) {
+  const list = Array.isArray(messages) ? messages.filter((item) => item && typeof item === "object") : [];
+  const firstSystem = list.find((item) => String(item.role || "").toLowerCase() === "system");
+  const mergedSystem = firstSystem?.content
+    ? `${LURO_SYSTEM_PROMPT}\n\n${String(firstSystem.content || "").trim()}`
+    : LURO_SYSTEM_PROMPT;
+  const withoutSystem = list.filter((item) => String(item.role || "").toLowerCase() !== "system");
+  return [{ role: "system", content: mergedSystem }, ...withoutSystem];
+}
+
+function selectAPI(userMessage) {
+  const text = normalizeAiText(userMessage);
+  if (COMPLEX_AI_HINTS.some((keyword) => text.includes(keyword))) return "gemini";
+  return "groq";
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = AI_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error("timeout")), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function parseVendorResponse(resp) {
+  const text = await resp.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch (_e) {}
+  return { text, json };
+}
+
+async function callGroq(message, systemPrompt, options = {}) {
+  const key = String(process.env.GROQ_API_KEY || "").trim();
+  if (!key) throw new Error("GROQ_API_KEY no configurada en el backend");
+  const messages = mergeSystemPrompt(options.messages || [{ role: "user", content: message }]).map((item, index) => (
+    index === 0 ? { ...item, content: systemPrompt || item.content } : item
+  ));
+  return await fetchWithTimeout(GROQ_CHAT_ENDPOINT, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: String(options.model || "llama-3.3-70b-versatile"),
+      messages,
+      temperature: typeof options.temperature === "number" ? options.temperature : 0.65,
+      max_tokens: typeof options.max_tokens === "number" ? options.max_tokens : 350
+    })
+  }, AI_TIMEOUT_MS);
+}
+
+async function callGemini(message, systemPrompt, options = {}) {
+  const key = String(process.env.GEMINI_API_KEY || "").trim();
+  if (!key) throw new Error("GEMINI_API_KEY no configurada en el backend");
+  const messages = mergeSystemPrompt(options.messages || [{ role: "user", content: message }]).map((item, index) => (
+    index === 0 ? { ...item, content: systemPrompt || item.content } : item
+  ));
+  return await fetchWithTimeout(GEMINI_CHAT_ENDPOINT, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: String(options.model || "gemini-2.5-flash"),
+      messages,
+      temperature: typeof options.temperature === "number" ? options.temperature : 0.65,
+      max_tokens: typeof options.max_tokens === "number" ? options.max_tokens : 500
+    })
+  }, AI_TIMEOUT_MS);
+}
+
+async function callOpenRouter(message, systemPrompt, options = {}) {
+  const key = String(process.env.OPENROUTER_API_KEY || "").trim();
+  if (!key) throw new Error("OPENROUTER_API_KEY no configurada en el backend");
+  const messages = mergeSystemPrompt(options.messages || [{ role: "user", content: message }]).map((item, index) => (
+    index === 0 ? { ...item, content: systemPrompt || item.content } : item
+  ));
+  return await fetchWithTimeout(OPENROUTER_CHAT_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://luro-control.web.app",
+      "X-Title": "LuRo Control"
+    },
+    body: JSON.stringify({
+      model: String(options.model || "auto:free"),
+      messages,
+      temperature: typeof options.temperature === "number" ? options.temperature : 0.65,
+      max_tokens: typeof options.max_tokens === "number" ? options.max_tokens : 500
+    })
+  }, AI_TIMEOUT_MS);
+}
+
+async function apiRouter(userMessage, options = {}) {
+  const forced = normalizeAiText(options.providerHint);
+  const selected = forced === "gemini" || forced === "openrouter" || forced === "groq"
+    ? forced
+    : selectAPI(userMessage);
+  const systemPrompt = String(options.systemPrompt || LURO_SYSTEM_PROMPT);
+  const commonOptions = {
+    messages: options.messages,
+    temperature: options.temperature,
+    max_tokens: options.max_tokens
+  };
+  const providersByPriority = {
+    groq: ["groq", "openrouter", "gemini"],
+    gemini: ["gemini", "openrouter", "groq"],
+    openrouter: ["openrouter", "groq", "gemini"]
+  };
+  const callers = {
+    groq: () => callGroq(userMessage, systemPrompt, commonOptions),
+    gemini: () => callGemini(userMessage, systemPrompt, commonOptions),
+    openrouter: () => callOpenRouter(userMessage, systemPrompt, commonOptions)
+  };
+  const queue = providersByPriority[selected] || providersByPriority.groq;
+  let lastError = null;
+  for (let index = 0; index < queue.length; index += 1) {
+    const provider = queue[index];
+    try {
+      if (index > 0) {
+        console.warn("API primaria no disponible, usando fallback", {
+          selected,
+          provider,
+          previousError: String(lastError?.message || lastError || "")
+        });
+      }
+      const resp = await callers[provider]();
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return { provider, response: resp, fallback: index > 0 };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("Ningún proveedor de IA está disponible");
+}
 
 exports.groqChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
   if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
@@ -2899,6 +3054,36 @@ exports.groqChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (r
     res.status(r.status).set("Content-Type", "application/json").send(text);
   } catch (e) {
     res.status(502).json({ ok: false, error: String((e && e.message) || e) });
+  }
+});
+
+exports.aiChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
+  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
+  try {
+    const body = (req.body && typeof req.body === "object") ? req.body : {};
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    const lastUserMessage = [...messages].reverse().find((item) => String(item?.role || "").toLowerCase() === "user");
+    const userMessage = String(body.userMessage || lastUserMessage?.content || "").trim();
+    if (!userMessage) {
+      res.status(400).json({ ok: false, error: "Mensaje vacío" });
+      return;
+    }
+    const { provider, response, fallback } = await apiRouter(userMessage, {
+      messages,
+      providerHint: body.providerHint,
+      systemPrompt: String(body.systemPrompt || LURO_SYSTEM_PROMPT),
+      temperature: typeof body.temperature === "number" ? body.temperature : 0.65,
+      max_tokens: typeof body.max_tokens === "number" ? body.max_tokens : 350
+    });
+    const payload = await parseVendorResponse(response);
+    res
+      .status(response.status)
+      .set("Content-Type", "application/json")
+      .set("X-LuRo-AI-Provider", provider)
+      .set("X-LuRo-AI-Fallback", fallback ? "1" : "0")
+      .send(payload.text);
+  } catch (_e) {
+    res.status(503).json({ ok: false, error: "LuRo está recargando, intenta en un momento..." });
   }
 });
 

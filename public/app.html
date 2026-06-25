@@ -1755,7 +1755,7 @@
         <div class="luro-assistant-head-copy">
           <span class="luro-assistant-kicker">Centro de comandos</span>
           <strong>Asistente LuRo</strong>
-          <span class="luro-assistant-status">Ejecuta órdenes reales, consulta datos del sistema y navega entre módulos con comandos escritos.</span>
+          <span class="luro-assistant-status">Habla o escribe con naturalidad. LuRo responde y ejecuta tus solicitudes del sistema al momento.</span>
         </div>
         <div class="luro-assistant-head-actions">
           <button type="button" class="btn luro-assistant-icon-btn" onclick="toggleLuroAssistantMinimize()" aria-label="Minimizar asistente">─</button>
@@ -1769,10 +1769,11 @@
       </div>
 
       <div class="luro-assistant-compose">
-        <input id="luro-assistant-input" type="text" placeholder="Escribe un comando o di 'Hola Luro'..." onkeydown="handleLuroAssistantKeydown(event)">
+        <input id="luro-assistant-input" type="text" placeholder="Pídele algo a LuRo o di 'Hola LuRo'..." onkeydown="handleLuroAssistantKeydown(event)">
         <button type="button" id="luro-mic-btn-pub" class="btn" onclick="luroVozToggle()" title="Hablar" style="background:#2d3436;color:#fff;padding:8px 12px;font-size:16px;">🎙️</button>
-        <button type="button" class="btn btn-save" onclick="enviarMensajeAsistente()">EJECUTAR</button>
+        <button type="button" class="btn btn-save" onclick="enviarMensajeAsistente()">ENVIAR</button>
       </div>
+      <div id="luro-assistant-runtime-status" style="padding:0 24px 18px;font-size:12px;color:#6b7280;"></div>
     </div>
   </section>
 
@@ -1855,18 +1856,24 @@
   // La API key de Groq vive como secreto en functions/ (GROQ_API_KEY). El cliente
   // llama a estos proxys del backend, nunca a api.groq.com directo (no se exponen claves).
   const CLOUD_FN_BASE  = 'https://us-central1-luro-control.cloudfunctions.net';
+  const AI_CHAT_URL    = `${CLOUD_FN_BASE}/aiChat`;
   const GROQ_CHAT_URL  = `${CLOUD_FN_BASE}/groqChat`;
   const GROQ_AUDIO_URL = `${CLOUD_FN_BASE}/groqTranscribe`;
   const GROQ_MODEL     = 'llama-3.3-70b-versatile';
-  const GROQ_FAST      = 'llama-3.1-8b-instant';   // fallback en 429
+  const GEMINI_MODEL   = 'gemini-2.5-flash';
+  const OPENROUTER_MODEL = 'auto:free';
   const WHISPER_MODEL  = 'whisper-large-v3-turbo';
-  const MASTER_PASS    = '160623';
   const MEM_KEY        = 'LURO_MEMORIA_OPERATIVA';
-  const WAKE_WORDS     = ['luro','hola luro','hey luro','oye luro','estás ahí luro'];
+  const WAKE_WORDS     = ['luro','hola luro','hey luro','oye luro','estás ahí luro','estas ahi luro','¿estás ahí luro?','estas ahí luro'];
   const CRITICAL_TAGS  = ['LIMPIAR','ELIMINAR_DIST','ELIMINAR_ALMACEN','ELIMINAR_PLATO'];
   const AFIRMAR        = ['sí','si','ok','okay','confirma','confirmo','correcto','adelante','hazlo','dale','claro','venga'];
   const NEGAR          = ['no','cancela','cancelar','cancel','stop','para'];
   const TAG_RE         = /\[(NAV|MODULO|LIMPIAR|ELIMINAR_DIST|ELIMINAR_ALMACEN|ELIMINAR_PLATO|ENTRADA|DIST_NUEVO|CLIENTE_NUEVO):[^\]]*\]/g;
+  const LURO_API_SYSTEM_PROMPT = 'Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gestión para restaurantes. Conoces todos los módulos del sistema: Almacén, Producción Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gestión de Usuarios, Autorizaciones, Diagnóstico Inteligente y Entrenamientos. Respondes siempre en español, directo y sin relleno. Eres un copiloto operativo, no un generador de código.';
+  const COMPLEX_AI_HINTS = ['analiza','diagnóstico','diagnostico','reporte','comparar','historial','rentabilidad','tendencia','resumen general'];
+  const VOZ_MAX_MS     = 10000;
+  const VOZ_MIN_MS     = 1800;
+  const VOZ_CONFIRM_MS = 6000;
 
   // (Sin API key en el cliente: la autenticación contra Groq la hace el backend.)
 
@@ -1885,21 +1892,73 @@
   let accionPend    = null;    // tag crítico esperando confirmación
   let watchT        = null;
   let vozLoopT      = null;
+  let lastVoiceError = '';
   const synth       = window.speechSynthesis;
+  let voiceReadyMsg = '';
 
   const $          = id => document.getElementById(id);
   const panelOpen  = () => { const p=$('luro-assistant-panel'); return !!(p&&p.classList.contains('is-open')); };
+  const hasSpeechRecognition = () => Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const hasVoiceIO = () => Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.speechSynthesis);
+
+  function setRuntimeStatus(txt, tone) {
+    const el = $('luro-assistant-runtime-status');
+    if (!el) return;
+    el.textContent = txt || '';
+    el.style.color = tone || '#6b7280';
+  }
+
+  function updateVoiceReadyMsg() {
+    if (!hasVoiceIO()) {
+      voiceReadyMsg = 'Tu navegador no tiene soporte completo para micrófono o voz. Prueba en Chrome o Edge actualizados.';
+      setRuntimeStatus(voiceReadyMsg, '#b45309');
+      return;
+    }
+    if (!hasSpeechRecognition()) {
+      voiceReadyMsg = 'La conversación por voz manual está disponible. El saludo "Hola LuRo" no está soportado en este navegador.';
+      setRuntimeStatus(voiceReadyMsg, '#2563eb');
+      return;
+    }
+    voiceReadyMsg = 'La conversación por voz está disponible. Puedes tocar el micrófono o decir "Hola LuRo".';
+    setRuntimeStatus(voiceReadyMsg, '#0f766e');
+  }
+
+  async function pingAssistantBackend() {
+    try {
+      const res = await fetch(AI_CHAT_URL, { method: 'GET' });
+      if (res.status === 404) {
+        return { ok: false, text: 'El backend del asistente no está publicado todavía. Falta desplegar aiChat y groqTranscribe.', tone: '#b91c1c' };
+      }
+      if (res.status === 405) {
+        return { ok: true, text: 'La API del asistente está publicada y lista para recibir mensajes.', tone: '#0f766e' };
+      }
+      if (res.status === 503) {
+        return { ok: false, text: 'La API del asistente existe, pero falta configurar algún secreto de IA en Firebase.', tone: '#b45309' };
+      }
+      return { ok: res.ok, text: `La API respondió con estado ${res.status}.`, tone: res.ok ? '#0f766e' : '#b45309' };
+    } catch (_e) {
+      return { ok: false, text: 'No pude verificar la API del asistente desde este navegador.', tone: '#b45309' };
+    }
+  }
+
+  async function diagnosticarAsistente() {
+    updateVoiceReadyMsg();
+    const backend = await pingAssistantBackend();
+    const base = voiceReadyMsg ? `${voiceReadyMsg} ` : '';
+    setRuntimeStatus(`${base}${backend.text}`.trim(), backend.tone);
+    return backend;
+  }
 
   /* ── BADGE ── */
   let badge = null;
   const BCFG = {
     idle:      { d:'none',  col:'#636e72', txt:'' },
-    wake:      { d:'flex',  col:'#00b894', txt:'👂 Escuchando wake word...' },
-    voz_grab:  { d:'flex',  col:'#e17055', txt:'⏺ Grabando...' },
-    voz_proc:  { d:'flex',  col:'#6c5ce7', txt:'⋯ Procesando...' },
-    voz_tts:   { d:'flex',  col:'#0984e3', txt:'🔊 Respondiendo...' },
-    txt_proc:  { d:'flex',  col:'#6c5ce7', txt:'⋯ Procesando...' },
-    confirming:{ d:'flex',  col:'#fdcb6e', txt:'⚠ Confirma la acción' },
+    wake:      { d:'flex',  col:'#00b894', txt:'👂 LuRo está atento' },
+    voz_grab:  { d:'flex',  col:'#e17055', txt:'👂 Te escucho...' },
+    voz_proc:  { d:'flex',  col:'#6c5ce7', txt:'🧠 LuRo está actuando...' },
+    voz_tts:   { d:'flex',  col:'#0984e3', txt:'💬 LuRo responde' },
+    txt_proc:  { d:'flex',  col:'#6c5ce7', txt:'🧠 LuRo está actuando...' },
+    confirming:{ d:'flex',  col:'#fdcb6e', txt:'⚠ LuRo necesita confirmación' },
   };
   function setE(s) {
     estado = s;
@@ -1912,7 +1971,7 @@
     // Botón mic
     const b = $('luro-mic-btn-pub');
     if (b) {
-      const icn = { idle:'🎙', wake:'👂', voz_grab:'⏹', voz_proc:'⋯', voz_tts:'🔊', txt_proc:'⋯', confirming:'⚠' };
+      const icn = { idle:'🎙', wake:'👂', voz_grab:'👂', voz_proc:'🧠', voz_tts:'💬', txt_proc:'🧠', confirming:'⚠' };
       const bg  = { idle:'#2d3436', wake:'#00b894', voz_grab:'#e84118', voz_proc:'#6c5ce7', voz_tts:'#0984e3', txt_proc:'#6c5ce7', confirming:'#fdcb6e' };
       b.textContent = icn[s]||'🎙'; b.style.background = bg[s]||'#2d3436';
     }
@@ -1992,10 +2051,9 @@
   function prompt_() {
     const pag=document.querySelector('.content-section.active')?.id||'home';
     const mod=$('current-module-display')?.textContent||'';
-    return `Eres LuRo, núcleo IA de LuRo Control. Sesión ADMINISTRADOR.
-Responde en español, breve (máx 2 oraciones), SIN markdown — texto para leer en voz alta.
+    return `Eres LuRo, asistente oficial de LuRo Control y copiloto operativo del sistema. Hablas en español, directo, breve y natural, pensado para conversación por voz. Ejecutas solicitudes claras de inmediato, haces solo una pregunta si falta un dato indispensable y no inventas módulos ni resultados.
 
-ACCIONES (tag exacto AL FINAL de tu respuesta):
+Usa los tags exactos al final de tu respuesta cuando aplique:
 [NAV:id] navegar — IDs: home,agregar,inventario,distribuidores,produccion-interna,disponibilidad,salida,asistencia,procedimientos,clientes-puntos,historial-produccion,entradas-almacen,ventas,reporte-compras-distribuidor,rnc-dgii,comandas,autorizaciones,historial-decomiso,decomiso,produccion,diagnostico,comandos,configuracion,entrenamientos
 [MODULO:NOMBRE] abrir módulo (ADMINISTRADOR,COCINA,CAJERO...)
 [LIMPIAR:tipo] borrar historial (entradas,ventas,produccion,decomisos,autorizaciones,rnc) — CRÍTICO
@@ -2006,8 +2064,8 @@ ACCIONES (tag exacto AL FINAL de tu respuesta):
 [DIST_NUEVO:nombre:contacto:telefono] crear distribuidor
 [CLIENTE_NUEVO:nombre:telefono:puntos] registrar cliente
 
-CRÍTICAS: antes de ejecutar LIMPIAR o ELIMINAR_*, di "Voy a [acción]. ¿Confirmas?" — incluye el tag igualmente, el sistema intercepta.
-REGLAS: Habla en presente/futuro. NUNCA confirmes en pasado. Sin asteriscos. Sin listas.
+Antes de LIMPIAR o cualquier ELIMINAR_*, di "Voy a [acción]. ¿Confirmas?" e incluye el tag.
+Sin markdown. Sin listas visibles. No confirmes en pasado una acción que todavía no se ejecuta.
 Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   }
 
@@ -2045,7 +2103,7 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   /* ── sinDialogos ── */
   function sinDialogos(fn) {
     const _p=window.prompt,_c=window.confirm,_a=window.alert;
-    window.prompt=()=>MASTER_PASS; window.confirm=()=>true; window.alert=()=>{};
+    window.prompt=()=>''; window.confirm=()=>true; window.alert=()=>{};
     try{fn();}finally{setTimeout(()=>{window.prompt=_p;window.confirm=_c;window.alert=_a;},100);}
   }
 
@@ -2084,14 +2142,83 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     return hayCritica;
   }
 
+  async function resolverComandoLocal(txt) {
+    if (typeof window.procesarComando !== 'function') return null;
+    try {
+      const result = await window.procesarComando(txt);
+      const msg = String(result?.message || '').trim();
+      if (!msg || /comando no reconocido/i.test(msg)) return null;
+      return result;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  function ejecutarResultadoLocal(result) {
+    if (typeof result?.action !== 'function') return false;
+    setTimeout(() => {
+      try { result.action(); } catch (e) { console.warn('No se pudo ejecutar la acción local de LuRo:', e); }
+    }, Number(result?.actionDelay || 240));
+    return true;
+  }
+
   /* ── GROQ CHAT ── */
   async function groqCall(model, sysPrompt, msgs) {
-    const res = await fetch(GROQ_CHAT_URL, {
+    const res = await fetch(AI_CHAT_URL, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model, messages:[{role:'system',content:sysPrompt},...msgs], temperature:0.65, max_tokens:350})
+      body: JSON.stringify({model, userMessage:String(msgs?.[msgs.length - 1]?.content || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:sysPrompt},...msgs], temperature:0.65, max_tokens:350})
     });
     return res;
+  }
+
+  function selectAPI(userMessage) {
+    const txt = String(userMessage || '').trim().toLowerCase();
+    if (COMPLEX_AI_HINTS.some((keyword) => txt.includes(keyword))) return 'gemini';
+    return 'groq';
+  }
+
+  async function callGroq(message, systemPrompt, msgs) {
+    const res = await fetch(AI_CHAT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({providerHint:'groq', model:GROQ_MODEL, userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:350})
+    });
+    return res;
+  }
+
+  async function callGemini(message, systemPrompt, msgs) {
+    const res = await fetch(AI_CHAT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({providerHint:'gemini', model:GEMINI_MODEL, userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:500})
+    });
+    return res;
+  }
+
+  async function callOpenRouter(message, systemPrompt, msgs) {
+    const res = await fetch(AI_CHAT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({providerHint:'openrouter', model:OPENROUTER_MODEL, userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:500})
+    });
+    return res;
+  }
+
+  async function apiRouter(userMessage, sysPrompt, msgs) {
+    const selected = selectAPI(userMessage);
+    let res;
+    try {
+      res = selected === 'gemini'
+        ? await callGemini(userMessage, sysPrompt, msgs)
+        : await callGroq(userMessage, sysPrompt, msgs);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res;
+    } catch (_e) {
+      console.warn('API primaria no disponible, usando fallback');
+      res = await callOpenRouter(userMessage, sysPrompt, msgs);
+      return res;
+    }
   }
 
   async function groq(msg) {
@@ -2101,36 +2228,23 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
 
     let sysPrompt;
     try { sysPrompt = prompt_(); } catch(e) {
-      sysPrompt = `Eres LuRo, asistente de LuRo Control. Sesión ADMINISTRADOR. Responde en español, breve, sin markdown.`;
+      sysPrompt = `Eres LuRo, asistente oficial de LuRo Control. Responde en español, directo, breve y natural. Ejecuta solicitudes claras de inmediato, sin markdown, y solo pregunta si falta un dato indispensable.`;
     }
 
     let res;
     try {
-      // Intentar con modelo principal
-      res = await groqCall(GROQ_MODEL, sysPrompt, historial);
+      res = await apiRouter(msg, sysPrompt, historial);
     } catch(netErr) {
       historial = historial.slice(0, snapLen);
       throw new Error('Sin conexión a internet');
-    }
-
-    if (res.status === 429) {
-      // Rate limit → esperar 3s y reintentar con modelo rápido
-      burbuja('assistant','⏳ Límite de velocidad, reintentando...');
-      await new Promise(r => setTimeout(r, 3000));
-      try {
-        // Usar prompt reducido para ahorrar tokens
-        const shortPrompt = sysPrompt.split('\nDATA:')[0]; // sin contexto de DB
-        res = await groqCall(GROQ_FAST, shortPrompt, historial);
-      } catch(e2) {
-        historial = historial.slice(0, snapLen);
-        throw new Error('Sin conexión a internet');
-      }
     }
 
     if (!res.ok) {
       historial = historial.slice(0, snapLen);
       let detail = '';
       try { const d=await res.json(); detail=d.error?.message||''; } catch(e){}
+      if (res.status === 404) throw new Error('El backend del asistente no está publicado');
+      if (res.status === 503) throw new Error('LuRo está recargando, intenta en un momento...');
       throw new Error(`Error ${res.status}${detail?' — '+detail.slice(0,80):''}`);
     }
 
@@ -2145,8 +2259,71 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   async function whisper(blob,ext) {
     // Enviamos el audio crudo al proxy; el backend arma el multipart y agrega la API key.
     const res=await fetch(GROQ_AUDIO_URL,{method:'POST',headers:{'Content-Type':blob.type||'audio/webm'},body:blob});
-    if(!res.ok)throw new Error('Whisper '+res.status);
+    if(!res.ok){
+      if(res.status===404)throw new Error('El transcriptor de voz no está publicado');
+      const detail = await res.text().catch(()=> '');
+      if(res.status===503 && /GROQ_API_KEY/i.test(detail))throw new Error('Falta configurar GROQ_API_KEY en Firebase');
+      throw new Error('Whisper '+res.status);
+    }
     return((await res.json()).text||'').trim();
+  }
+
+  function escucharConSpeechRecognition(maxMs=VOZ_MAX_MS) {
+    return new Promise((resolve, reject) => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { reject(new Error('SpeechRecognition no disponible')); return; }
+      let rec;
+      let done = false;
+      let finalTxt = '';
+      let heardSomething = false;
+      const stopSafe = () => { try { if (rec) rec.stop(); } catch (_e) {} };
+      const finish = (value, err) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        if (err) reject(err);
+        else resolve(String(value || '').trim());
+      };
+      try {
+        rec = new SR();
+        rec.lang = 'es-ES';
+        rec.continuous = false;
+        rec.interimResults = true;
+        rec.maxAlternatives = 1;
+        rec.onresult = (e) => {
+          let interim = '';
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const text = String(e.results[i][0]?.transcript || '').trim();
+            if (!text) continue;
+            heardSomething = true;
+            if (e.results[i].isFinal) finalTxt += `${text} `;
+            else interim += `${text} `;
+          }
+          const combined = (finalTxt || interim).trim();
+          if (combined) setRuntimeStatus(`Te escucho: ${combined}`, '#2563eb');
+        };
+        rec.onerror = (e) => {
+          if (e?.error === 'no-speech') { finish((finalTxt || '').trim()); return; }
+          finish('', new Error(`Reconocimiento de voz: ${e?.error || 'falló'}`));
+        };
+        rec.onend = () => {
+          const txt = finalTxt.trim();
+          if (txt) finish(txt);
+          else if (heardSomething) finish('');
+          else reject(new Error('No detecté voz clara'));
+        };
+        rec.start();
+      } catch (e) {
+        reject(e);
+        return;
+      }
+      const timer = setTimeout(() => {
+        stopSafe();
+        const txt = finalTxt.trim();
+        if (txt) finish(txt);
+        else finish('');
+      }, maxMs);
+    });
   }
 
   /* ── MediaRecorder ── */
@@ -2160,13 +2337,17 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
       src.connect(anl);
       const buf=new Float32Array(anl.fftSize);
       let quietSince=null,habló=false;
+      const startedAt=Date.now();
       const tick=()=>{
         if(estado!=='voz_grab'){try{audioCtx.close();}catch(e){}audioCtx=null;return;}
         anl.getFloatTimeDomainData(buf);
         const rms=Math.sqrt(buf.reduce((s,v)=>s+v*v,0)/buf.length);
-        if(rms>0.015)habló=true;
+        if(rms>0.008)habló=true;
         if(habló){
-          if(rms<0.013){if(!quietSince)quietSince=Date.now();else if(Date.now()-quietSince>1800){onQ();return;}}
+          if(rms<0.006){
+            if(!quietSince)quietSince=Date.now();
+            else if(Date.now()-quietSince>1400 && Date.now()-startedAt>VOZ_MIN_MS){onQ();return;}
+          }
           else quietSince=null;
         }
         requestAnimationFrame(tick);
@@ -2175,30 +2356,55 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     }catch(e){}
   }
 
-  async function grabar(maxMs=10000) {
+  async function grabar(maxMs=VOZ_MAX_MS) {
+    lastVoiceError = '';
     // Reusar stream si sigue vivo
     if(!mediaStream||mediaStream.getTracks().every(t=>t.readyState==='ended')){
       try{mediaStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});}
-      catch(e){return null;}
+      catch(e){lastVoiceError='No pude acceder al micrófono'; return null;}
     }
     return new Promise(resolve=>{
       audioChunks=[];
       const mime=getMime();
       let mr;
       try{mr=new MediaRecorder(mediaStream,mime?{mimeType:mime}:{});}
-      catch(e){mr=new MediaRecorder(mediaStream);}
+      catch(e){
+        try{mr=new MediaRecorder(mediaStream);}
+        catch(_e){lastVoiceError='Este navegador no pudo iniciar la grabación'; resolve(null); return;}
+      }
       mr.ondataavailable=e=>{if(e.data&&e.data.size>0)audioChunks.push(e.data);};
       mr.onstop=async()=>{
         if(!audioChunks.length){resolve(null);return;}
         const bType=mime||audioChunks[0]?.type||'audio/webm';
         const ext=bType.includes('mp4')?'audio.mp4':bType.includes('ogg')?'audio.ogg':'audio.webm';
         const blob=new Blob(audioChunks,{type:bType}); audioChunks=[];
-        try{resolve(await whisper(blob,ext));}catch(e){resolve(null);}
+        try{
+          const txt = await whisper(blob,ext);
+          if(!txt)lastVoiceError='No pude entender lo que dijiste';
+          resolve(txt);
+        }catch(e){
+          lastVoiceError = e?.message || 'Falló la transcripción de voz';
+          resolve(null);
+        }
       };
       setE('voz_grab'); mr.start(200); mediaRecorder=mr;
       silencio(mediaStream,()=>{if(mr.state!=='inactive')mr.stop();});
       setTimeout(()=>{if(mr.state!=='inactive')mr.stop();},maxMs);
     });
+  }
+
+  async function capturarVoz(maxMs=VOZ_MAX_MS) {
+    lastVoiceError = '';
+    if (hasSpeechRecognition()) {
+      try {
+        setE('voz_grab');
+        const txt = await escucharConSpeechRecognition(maxMs);
+        if (txt) return txt;
+      } catch (e) {
+        lastVoiceError = e?.message || 'Falló el reconocimiento de voz';
+      }
+    }
+    return await grabar(maxMs);
   }
 
   function stopGrab(){if(mediaRecorder&&mediaRecorder.state!=='inactive')try{mediaRecorder.stop();}catch(e){}}
@@ -2211,7 +2417,7 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   function wakeStart() {
     if(wakeActivo||!micPermiso||modoVoz)return;
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR)return; // sin SR, solo funciona botón
+    if(!SR){ updateVoiceReadyMsg(); return; } // sin SR, solo funciona botón
     wakeActivo=true;
     wakeRec=new SR();
     wakeRec.lang='es-ES'; wakeRec.continuous=true; wakeRec.interimResults=true;
@@ -2233,6 +2439,11 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   ═══════════════════════════════════════ */
   async function activarPorVoz() {
     if(modoVoz||estado==='voz_grab'||estado==='voz_proc')return;
+    if(!hasVoiceIO()){
+      burbuja('assistant','Este navegador no tiene soporte completo para conversación por voz. Usa Chrome o Edge.');
+      updateVoiceReadyMsg();
+      return;
+    }
     wakeStop(); modoVoz=true;
     // Abrir panel
     if(!panelOpen()&&typeof window.toggleLuroAssistant==='function')
@@ -2245,12 +2456,17 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     if(!modoVoz)return;
     clearTimeout(vozLoopT);
 
-    const txt=await grabar(11000);
+    setRuntimeStatus('Te escucho. Habla con naturalidad.', '#2563eb');
+    const txt=await capturarVoz(VOZ_MAX_MS);
 
     if(!txt||!txt.trim()){
+      if(lastVoiceError){
+        burbuja('assistant',`No pude entenderte bien. ${lastVoiceError}.`);
+        setRuntimeStatus(`${lastVoiceError}. Puedes volver a hablar de inmediato.`, '#b45309');
+      }
       // Silencio/error → preguntar una vez más
       await hablarYP('¿Sigues ahí?');
-      const txt2=await grabar(8000);
+      const txt2=await capturarVoz(8000);
       if(!txt2||!txt2.trim()){
         // Salir de modo voz
         modoVoz=false;
@@ -2276,6 +2492,17 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     burbuja('user',txt);
     setE('voz_proc');
     try{
+      const localResult = await resolverComandoLocal(txt);
+      if (localResult) {
+        const localMsg = String(localResult.message || '').trim();
+        burbuja('assistant',localMsg);
+        pushMem(txt,localMsg);
+        ejecutarResultadoLocal(localResult);
+        await hablarYP(localMsg);
+        vozLoopT=setTimeout(vozLoop,400);
+        return;
+      }
+
       const resp=await groq(txt);
       burbuja('assistant',resp);
       pushMem(txt,resp);
@@ -2291,6 +2518,7 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
       console.error('[LuRo voz]',e);
       const msg='Error: '+(e.message||'desconocido');
       burbuja('assistant',msg);
+      setRuntimeStatus(msg, '#b91c1c');
       hablarY('Hubo un error, intenta de nuevo.',()=>{ vozLoopT=setTimeout(vozLoop,1500); });
     }
   }
@@ -2299,7 +2527,7 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     // Graba brevemente para capturar "sí" o "no"
     setTimeout(async()=>{
       if(estado==='confirming'||accionPend){
-        const txt=await grabar(6000);
+        const txt=await capturarVoz(VOZ_CONFIRM_MS);
         if(!txt)return;
         const lc=txt.toLowerCase().trim();
         if(AFIRMAR.some(a=>lc.includes(a)))window.__luroOK(true);
@@ -2325,6 +2553,17 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
       setE('txt_proc');
 
       try{
+        const localResult = await resolverComandoLocal(txt);
+        if (localResult) {
+          const localMsg = String(localResult.message || '').trim();
+          if(ph)ph.textContent=localMsg;
+          pushMem(txt,localMsg);
+          ejecutarResultadoLocal(localResult);
+          watchT=setTimeout(()=>{ if(!modoVoz)setE('wake'); },600);
+          hablarY(localMsg, ()=>{ if(!modoVoz){ setE('wake'); } });
+          return;
+        }
+
         const resp=await groq(txt);
         if(ph)ph.textContent=resp.replace(TAG_RE,'').trim();
         pushMem(txt,resp);
@@ -2347,6 +2586,11 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     if(estado==='voz_grab'){stopGrab();return;}
     if(estado==='voz_proc'||estado==='voz_tts')return;
     if(estado==='confirming'){return;}
+    if(!hasVoiceIO()){
+      burbuja('assistant','Este navegador no soporta micrófono y respuesta por voz de forma completa. Prueba con Chrome o Edge.');
+      updateVoiceReadyMsg();
+      return;
+    }
 
     accionPend=null; ocultarConfirm();
     clearTimeout(watchT); clearTimeout(vozLoopT);
@@ -2391,10 +2635,15 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     document.body.appendChild(badge);
     initConfirmBar();
     initMotor();
+    updateVoiceReadyMsg();
 
     // Interceptar toggleLuroAssistant
     const _orig=window.toggleLuroAssistant;
-    window.toggleLuroAssistant=function(forceOpen){if(_orig)_orig(forceOpen);};
+    window.toggleLuroAssistant=function(forceOpen){
+      if(_orig)_orig(forceOpen);
+      const abierto = typeof forceOpen === 'boolean' ? forceOpen : panelOpen();
+      if(abierto)diagnosticarAsistente();
+    };
 
     const yaAuth=localStorage.getItem('LURO_MIC_AUTORIZADO')==='1';
     if(yaAuth){

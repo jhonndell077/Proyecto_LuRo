@@ -190,6 +190,7 @@ function borrarTodoElAlmacen() {
     const normalizar = (u) => {
         if (u === 'Lt') return 'Litros';
         if (u === 'Unid') return 'Unidad';
+        if (u === 'Kg') return 'Kg';
         return u;
     };
     unidadOrigen = normalizar(unidadOrigen);
@@ -199,6 +200,7 @@ function borrarTodoElAlmacen() {
 
     const unidades = {
         'g': 1,
+        'Kg': 1000,
         'Lb': 453.59,
         'Oz': 28.35,
         'mL': 1,
@@ -206,7 +208,7 @@ function borrarTodoElAlmacen() {
         'Unidad': 1
     };
 
-    const esPeso = ['g', 'Lb', 'Oz'].includes(unidadOrigen) && ['g', 'Lb', 'Oz'].includes(unidadDestino);
+    const esPeso = ['g', 'Kg', 'Lb', 'Oz'].includes(unidadOrigen) && ['g', 'Kg', 'Lb', 'Oz'].includes(unidadDestino);
     const esVolumen = ['mL', 'Litros'].includes(unidadOrigen) && ['mL', 'Litros'].includes(unidadDestino);
     
     if (!esPeso && !esVolumen && unidadOrigen !== unidadDestino) {
@@ -1598,7 +1600,7 @@ function limpiarClientesPuntosMasivo() {
     if (!confirm('⚠️ Esta acción eliminará TODOS los clientes y sus puntos. ¿Desea continuar?')) return;
     const clave = prompt('Ingrese contraseña para confirmar eliminación masiva:');
     if (clave === null) return;
-    const valida = (sesionUser && sesionUser.pass && clave === sesionUser.pass) || clave === MASTER_PASS;
+    const valida = (sesionUser && sesionUser.pass && clave === sesionUser.pass) || passwordMatchesMaster(clave);
     if (!valida) return alert('Contraseña incorrecta.');
     db.clientesFidelizacion = [];
     guardarDatos();
@@ -3575,7 +3577,7 @@ function ajustarPrecioManual() {
     }
 }
     let db = {
-        usuarios: [{user: "Jssantana077", pass: "160623", role: "super-master", activo: true, colab: [], parentOwner: '', canCreateAdmins: true}],
+        usuarios: [{user: "Jssantana077", pass: MASTER_PASS, role: "super-master", activo: true, colab: [], parentOwner: '', canCreateAdmins: true}],
         platos: [], almacen: [], entradas: [], ventas: [], decomisos: [], autorizaciones: [], produccion_stock: [], historial_prod: [],
         distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: [], asistenciaRegistros: [], asistenciaAutorizaciones: [], asistenciaConfig: []
     };
@@ -3585,7 +3587,10 @@ function ajustarPrecioManual() {
     let asignacionesEntradasSesion = [];
     let copiasRegistroDesbloqueadas = false;
     const MASTER_USER = "jssantana077";
-    const MASTER_PASS = "160623";
+    const MASTER_PASS = null;
+    function passwordMatchesMaster(pass) {
+        return MASTER_PASS !== null && String(pass || '').trim() !== '' && String(pass) === String(MASTER_PASS);
+    }
     const USUARIO_ELIMINADO_FORZOSO = "__forced_removed_user_disabled__";
     const LOCAL_DB_META_KEY = "LURO_CONTROL_DB_META";
 
@@ -5227,7 +5232,7 @@ async function iniciarCambioMembresiaDesdeInicio() {
 function validarPasswordSeguridad(mensaje) {
     const pass = prompt(mensaje || "Ingrese su contraseña:");
     if (pass === null) return false;
-    return pass === (sesionUser && sesionUser.pass ? sesionUser.pass : "") || pass === MASTER_PASS || pass === loginClave;
+    return pass === (sesionUser && sesionUser.pass ? sesionUser.pass : "") || passwordMatchesMaster(pass) || pass === loginClave;
 }
 
 function crearCopiaSeguridadRegistroInicial(motivo, fechaEliminado, eliminadoPor) {
@@ -5885,7 +5890,7 @@ async function intentarLogin() {
         const p = document.getElementById('log_pass').value;
         const esMasterInput = (u === MASTER_USER);
         const passLogin = esMasterInput ? (p || MASTER_PASS) : p;
-        if (!u || (!esMasterInput && !p)) {
+        if (!u || !passLogin) {
             return alert("Datos incorrectos, verifique e intente nuevamente.");
         }
 
@@ -5900,7 +5905,7 @@ async function intentarLogin() {
                 new Promise(resolve => setTimeout(() => resolve(null), 2500))
             ]);
         }
-        if (!backendSession && esMasterInput) {
+        if (!backendSession && esMasterInput && passwordMatchesMaster(passLogin)) {
             backendSession = {
                 ok: true,
                 role: 'super-master',
@@ -6797,7 +6802,7 @@ function intentarEliminarItem(index) {
     }
     const pass = prompt("🔐 AUTORIZACIÓN REQUERIDA: Ingrese clave maestra de 6 dígitos:");
     
-    if (pass === MASTER_PASS) {
+    if (passwordMatchesMaster(pass)) {
         const carritoActual = obtenerCarritoMesaActiva();
         let idxActual = carritoActual.findIndex(it => keyItemVenta(it) === itemKey);
         if (idxActual < 0 && index >= 0 && index < carritoActual.length) idxActual = index;
@@ -6886,7 +6891,7 @@ async function finalizarVenta() {
                 return;
             }
             let pass = prompt("SEGURIDAD: Ingrese CONTRASEÑA para autorizar:");
-            if (pass !== MASTER_PASS) {
+            if (!passwordMatchesMaster(pass)) {
                 alert("❌ Contraseña incorrecta. Venta cancelada.");
                 return;
             }
@@ -7672,7 +7677,7 @@ function toggleDetallesProduccion(idx) {
         if (esAdminModulo && opts.skipAdminPassword !== true) {
             const passAdmin = prompt("🔐 Ingrese la contraseña del administrador para abrir este módulo:");
             if (passAdmin === null) return;
-            const accesoAutorizado = passAdmin === (sesionUser && sesionUser.pass ? sesionUser.pass : "") || passAdmin === MASTER_PASS || passAdmin === loginClave;
+            const accesoAutorizado = passAdmin === (sesionUser && sesionUser.pass ? sesionUser.pass : "") || passwordMatchesMaster(passAdmin) || passAdmin === loginClave;
             if (!accesoAutorizado) {
                 alert("❌ Contraseña incorrecta.");
                 return;
@@ -10307,7 +10312,7 @@ async function borrarBaseDatosConPassword() {
 
     const pass = prompt("🔐 Ingrese su contraseña para confirmar BORRAR BASE DE DATOS:");
     if (pass === null) return;
-    const passValida = String(pass) === String(sesionUser.pass || '') || String(pass) === String(MASTER_PASS);
+    const passValida = String(pass) === String(sesionUser.pass || '') || passwordMatchesMaster(pass);
     if (!passValida) {
         return alert("❌ Contraseña incorrecta. Operación cancelada.");
     }
@@ -12926,17 +12931,19 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   function normalizarUnidadAsistente(texto) {
     const valor = normalizarTextoAsistente(texto);
     if (!valor) return '';
+    if (['kg', 'kgs', 'kilo', 'kilos', 'kilogramo', 'kilogramos'].includes(valor)) return 'Kg';
     if (['lb', 'lbr', 'libra', 'libras'].includes(valor)) return 'Lb';
     if (['g', 'gr', 'grs', 'gramo', 'gramos'].includes(valor)) return 'g';
     if (['oz', 'onza', 'onzas'].includes(valor)) return 'Oz';
     if (['lt', 'lts', 'litro', 'litros', 'l'].includes(valor)) return 'Litros';
-    if (['unidad', 'unidades', 'ud', 'uds', 'u'].includes(valor)) return 'Unidad';
+    if (['unidad', 'unidades', 'ud', 'uds', 'u', 'uni'].includes(valor)) return 'Unidad';
     if (['ml', 'mililitro', 'mililitros'].includes(valor)) return 'Litros';
     return '';
   }
 
   function etiquetaUnidadAsistente(unidad) {
     switch (unidad) {
+      case 'Kg': return 'kilogramos';
       case 'Lb': return 'libras';
       case 'g': return 'gramos';
       case 'Oz': return 'onzas';
@@ -16123,6 +16130,197 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     };
   }
 
+  const LURO_AGENT_SKILLS = Object.freeze({
+    inventario: { id: 'inventario', label: 'Inventario', pages: ['inventario', 'entradas-almacen'] },
+    produccion: { id: 'produccion', label: 'Producción Interna', pages: ['produccion-interna', 'historial-produccion'] },
+    disponibilidad: { id: 'disponibilidad', label: 'Disponibilidad', pages: ['disponibilidad'] },
+    salida: { id: 'salida', label: 'Registrar Salida', pages: ['salida', 'comandas', 'ventas', 'rnc-dgii'] },
+    decomiso: { id: 'decomiso', label: 'Registrar Decomiso', pages: ['decomiso', 'historial-decomiso'] },
+    costos: { id: 'costos', label: 'Costos', pages: ['inventario', 'agregar', 'produccion-interna'] },
+    usuarios: { id: 'usuarios', label: 'Usuarios', pages: ['asistencia', 'autorizaciones', 'configuracion'] },
+    reportes: { id: 'reportes', label: 'Reportes', pages: ['ventas', 'historial-produccion', 'historial-decomiso', 'reporte-compras-distribuidor', 'rnc-dgii', 'diagnostico'] }
+  });
+
+  function detectarSkillAsistente(textoNormalizado = '', intencion = null) {
+    const txt = String(textoNormalizado || '');
+    if (/inventario|almacen|entrada|insumo|ingrediente|stock/.test(txt)) return LURO_AGENT_SKILLS.inventario;
+    if (/produccion|semielaborado|lote/.test(txt)) return LURO_AGENT_SKILLS.produccion;
+    if (/disponibilidad|plato bloqueado|menu disponible/.test(txt)) return LURO_AGENT_SKILLS.disponibilidad;
+    if (/venta|salida|factura|facturacion|comanda|mesa|cobro/.test(txt)) return LURO_AGENT_SKILLS.salida;
+    if (/decomiso|perdida|perdidas/.test(txt)) return LURO_AGENT_SKILLS.decomiso;
+    if (/costo|rentabilidad|ganancia/.test(txt)) return LURO_AGENT_SKILLS.costos;
+    if (/usuario|usuarios|colaborador|colaboradores|permiso|autorizacion/.test(txt)) return LURO_AGENT_SKILLS.usuarios;
+    if (/reporte|reportes|historial|diagnostico|resumen/.test(txt)) return LURO_AGENT_SKILLS.reportes;
+    const modulo = resolverModuloAsistente(intencion || {});
+    if (!modulo?.page) return null;
+    return Object.values(LURO_AGENT_SKILLS).find((skill) => Array.isArray(skill.pages) && skill.pages.includes(modulo.page)) || null;
+  }
+
+  function registrarAuditoriaLuRoAsistente(entry = {}, save = true) {
+    if (!db || typeof db !== 'object') return null;
+    if (!Array.isArray(db.luroAgentAudit)) db.luroAgentAudit = [];
+    const payload = {
+      id: `luro-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      fecha: new Date().toLocaleString(),
+      ts: Date.now(),
+      owner: sesionUser?.user || '',
+      usuario: typeof operadorActual !== 'undefined' ? operadorActual : (sesionUser?.user || 'LuRo'),
+      modulo: moduloActual || '',
+      ...entry
+    };
+    db.luroAgentAudit.push(payload);
+    db.luroAgentAudit = db.luroAgentAudit.slice(-800);
+    if (save && typeof guardarDatos === 'function') {
+      guardarDatos({ source: 'luro-agent-audit' });
+    }
+    return payload;
+  }
+
+  function inicioSemanaAsistente(baseDate = new Date()) {
+    const d = new Date(baseDate);
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+
+  function detectarRangoRelativoAsistente(textoNormalizado = '') {
+    const txt = String(textoNormalizado || '');
+    const now = new Date();
+    const crear = (label, start, end) => ({ label, start, end });
+    if (/\banteayer\b/.test(txt)) {
+      const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 2);
+      const end = new Date(start); end.setDate(end.getDate() + 1);
+      return crear('anteayer', start, end);
+    }
+    if (/\bayer\b/.test(txt)) {
+      const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 1);
+      const end = new Date(start); end.setDate(end.getDate() + 1);
+      return crear('ayer', start, end);
+    }
+    if (/\bhoy\b/.test(txt)) {
+      const start = new Date(now); start.setHours(0, 0, 0, 0);
+      const end = new Date(start); end.setDate(end.getDate() + 1);
+      return crear('hoy', start, end);
+    }
+    if (/esta semana/.test(txt)) {
+      const start = inicioSemanaAsistente(now);
+      const end = new Date(now); end.setHours(23, 59, 59, 999);
+      return crear('esta semana', start, end);
+    }
+    if (/semana pasada/.test(txt)) {
+      const end = inicioSemanaAsistente(now);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 7);
+      return crear('semana pasada', start, end);
+    }
+    return null;
+  }
+
+  function registroDentroRangoRelativoAsistente(registro, rango) {
+    if (!rango?.start || !rango?.end) return true;
+    const ts = obtenerTsAsistente(registro);
+    return ts >= rango.start.getTime() && ts < rango.end.getTime();
+  }
+
+  function resumenVentasPorRangoAsistente(rango) {
+    const ventas = obtenerVentasAsistente().filter((venta) => registroDentroRangoRelativoAsistente(venta, rango));
+    return {
+      count: ventas.length,
+      total: ventas.reduce((acc, venta) => acc + Number(venta.totalVenta || 0), 0),
+      ganancia: ventas.reduce((acc, venta) => acc + Number(venta.ganancia || 0), 0)
+    };
+  }
+
+  function resumenFacturasPorRangoAsistente(rango) {
+    const facturas = obtenerFacturasAsistente().filter((factura) => registroDentroRangoRelativoAsistente(factura, rango));
+    return {
+      count: facturas.length,
+      total: facturas.reduce((acc, factura) => acc + Number(factura.total || 0), 0)
+    };
+  }
+
+  function resumenDecomisosPorRangoAsistente(rango) {
+    const decomisos = (db.decomisos || []).filter((registro) =>
+      registro.owner === sesionUser?.user &&
+      moduloPerteneceVista(registro.modulo) &&
+      registroDentroRangoRelativoAsistente(registro, rango)
+    );
+    return {
+      count: decomisos.length,
+      total: decomisos.reduce((acc, registro) => acc + Number(registro.perdida || 0), 0)
+    };
+  }
+
+  function resumenProduccionPorRangoAsistente(rango) {
+    const items = (db.historial_prod || []).filter((registro) =>
+      registro.owner === sesionUser?.user &&
+      registro.modulo === moduloActual &&
+      registroDentroRangoRelativoAsistente(registro, rango)
+    );
+    return {
+      count: items.length,
+      totalCosto: items.reduce((acc, registro) => acc + Number(registro.costoOp || 0), 0)
+    };
+  }
+
+  function resolverConsultaUniversalAsistente(textoNormalizado, rawText) {
+    const rango = detectarRangoRelativoAsistente(textoNormalizado);
+    if (!rango) return null;
+    if (/(venta|vendi|vendido|ventas|ganancia)/.test(textoNormalizado)) {
+      const data = resumenVentasPorRangoAsistente(rango);
+      return {
+        intent: { kind: 'universal-query', topic: 'ventas-rango', range: rango.label },
+        response: {
+          message: `${capitalizarTextoAsistente(rango.label)} registras ${formatearMontoRespuestaAsistente(data.total)} en ventas y ${formatearMontoRespuestaAsistente(data.ganancia)} de ganancia, con ${data.count} movimiento(s).`,
+          role: 'assistant'
+        }
+      };
+    }
+    if (/(factura|facturas|facturacion|ncf|rnc)/.test(textoNormalizado)) {
+      const data = resumenFacturasPorRangoAsistente(rango);
+      return {
+        intent: { kind: 'universal-query', topic: 'facturas-rango', range: rango.label },
+        response: {
+          message: `${capitalizarTextoAsistente(rango.label)} hay ${data.count} factura(s) por ${formatearMontoRespuestaAsistente(data.total)}.`,
+          role: 'assistant'
+        }
+      };
+    }
+    if (/(decomiso|decomisos|perdida|perdidas)/.test(textoNormalizado)) {
+      const data = resumenDecomisosPorRangoAsistente(rango);
+      return {
+        intent: { kind: 'universal-query', topic: 'decomisos-rango', range: rango.label },
+        response: {
+          message: `${capitalizarTextoAsistente(rango.label)} registras ${data.count} decomiso(s) por ${formatearMontoRespuestaAsistente(data.total)} en pérdidas.`,
+          role: 'assistant'
+        }
+      };
+    }
+    if (/(produccion|producciones|historial produccion)/.test(textoNormalizado)) {
+      const data = resumenProduccionPorRangoAsistente(rango);
+      return {
+        intent: { kind: 'universal-query', topic: 'produccion-rango', range: rango.label },
+        response: {
+          message: `${capitalizarTextoAsistente(rango.label)} tienes ${data.count} registro(s) de producción con costo acumulado de ${formatearMontoRespuestaAsistente(data.totalCosto)}.`,
+          role: 'assistant'
+        }
+      };
+    }
+    registrarDebugAsistente('universal-scan', { rawText, range: rango.label });
+    return null;
+  }
+
+  window.LuroUniversalAgent = Object.freeze({
+    version: 'v1',
+    skills: LURO_AGENT_SKILLS,
+    parseRelativeDateRange: detectarRangoRelativoAsistente,
+    normalizeUnit: normalizarUnidadAsistente
+  });
+
+  window.luroAgentSkills = LURO_AGENT_SKILLS;
+
   async function resolverIntencionAsistente(textoCrudo) {
     const unresolvedTemplate = esPlantillaComandoAsistente(textoCrudo);
     const rawText = normalizarTextoPlantillaAsistente(textoCrudo).trim();
@@ -16164,6 +16362,28 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       return finalizarRespuestaAsistente({ message: ASSISTANT_GREETING, role: 'assistant' }, { stage: 'greeting' });
     }
 
+    const consultaUniversal = resolverConsultaUniversalAsistente(normalizedText, rawText);
+    if (consultaUniversal?.response) {
+      const skillUniversal = detectarSkillAsistente(normalizedText, consultaUniversal.intent);
+      registrarAuditoriaLuRoAsistente({
+        tipo: 'consulta-luro',
+        etapa: 'resuelta',
+        comando: rawText,
+        skill: skillUniversal?.id || '',
+        skillLabel: skillUniversal?.label || '',
+        intentKind: consultaUniversal.intent?.kind || '',
+        topic: consultaUniversal.intent?.topic || '',
+        rango: consultaUniversal.intent?.range || '',
+        respuesta: consultaUniversal.response?.message || ''
+      });
+      return finalizarRespuestaAsistente(consultaUniversal.response, {
+        stage: 'universal-query',
+        skill: skillUniversal?.id || '',
+        topic: consultaUniversal.intent?.topic || '',
+        range: consultaUniversal.intent?.range || ''
+      });
+    }
+
     const explicitNavigation = detectarNavegacionExplicitaAsistente(normalizedText);
     if (explicitNavigation) {
       return finalizarRespuestaAsistente(responderModulo(explicitNavigation, false, false), {
@@ -16183,11 +16403,29 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
     const intencion = detectarIntencionAsistente(normalizedText);
     const datos = extraerEntidadesAsistente(normalizedText, intencion);
+    const skillDetectada = detectarSkillAsistente(normalizedText, intencion);
     registrarDebugAsistente('intent-detected', { intencion });
     registrarDebugAsistente('entities-extracted', { datos });
     const respuestaInteligente = construirRespuestaAsistente(intencion, datos, normalizedText);
     registrarDebugAsistente('smart-response', { handled: !!respuestaInteligente, respuesta: respuestaInteligente });
-    if (respuestaInteligente) return finalizarRespuestaAsistente(respuestaInteligente, { stage: 'smart-response' });
+    if (respuestaInteligente) {
+      registrarAuditoriaLuRoAsistente({
+        tipo: 'consulta-luro',
+        etapa: 'intencion-operativa',
+        comando: rawText,
+        skill: skillDetectada?.id || '',
+        skillLabel: skillDetectada?.label || '',
+        intentKind: intencion?.kind || '',
+        intentPage: intencion?.page || '',
+        actionReady: typeof respuestaInteligente?.action === 'function',
+        respuesta: respuestaInteligente?.message || ''
+      });
+      return finalizarRespuestaAsistente(respuestaInteligente, {
+        stage: 'smart-response',
+        skill: skillDetectada?.id || '',
+        intentKind: intencion?.kind || ''
+      });
+    }
 
     const actionMatch = buscarAccionAsistente(normalizedText);
     if (actionMatch) {
@@ -16219,11 +16457,25 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (typeof result?.action === 'function') {
       setTimeout(() => {
         try {
+          registrarAuditoriaLuRoAsistente({
+            tipo: 'accion-luro',
+            etapa: 'inicio',
+            skill: result?.skill || '',
+            mensaje: result?.message || '',
+            role: result?.role || 'assistant'
+          });
           registrarDebugAsistente('action-run-start', {
             message: result?.message || '',
             role: result?.role || 'assistant'
           });
           result.action();
+          registrarAuditoriaLuRoAsistente({
+            tipo: 'accion-luro',
+            etapa: 'completada',
+            skill: result?.skill || '',
+            mensaje: result?.message || '',
+            role: result?.role || 'assistant'
+          });
           registrarDebugAsistente('action-run-complete', {
             message: result?.message || '',
             role: result?.role || 'assistant'
@@ -16234,6 +16486,13 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
             message: result?.message || '',
             error: e?.message || String(e)
           });
+          registrarAuditoriaLuRoAsistente({
+            tipo: 'accion-luro',
+            etapa: 'error',
+            skill: result?.skill || '',
+            mensaje: result?.message || '',
+            error: e?.message || String(e)
+          });
           registrarMensajeAsistente('assistant', 'No se pudo ejecutar el comando automáticamente.');
           actualizarEstadoModuloComandos('No se pudo ejecutar el comando automáticamente.');
         }
@@ -16242,6 +16501,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   }
 
   window.procesarComando = resolverIntencionAsistente;
+  window.procesarComandoUniversal = resolverIntencionAsistente;
   window.interpretarComandoAsistente = resolverIntencionAsistente;
 
   window.enviarMensajeAsistente = async function () {
