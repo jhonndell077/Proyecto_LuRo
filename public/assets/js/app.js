@@ -5883,19 +5883,35 @@ function setEstadoBotonLogin(cargando) {
     setLoginLoadingOverlay(!!cargando);
 }
 
+function setLoginInlineStatus(message, ok = false) {
+    const box = document.getElementById('login-inline-status');
+    if (!box) return;
+    const text = String(message || '').trim();
+    if (!text) {
+        box.style.display = 'none';
+        box.textContent = '';
+        return;
+    }
+    box.style.display = 'block';
+    box.style.color = ok ? '#a8f0c6' : '#ffb4b4';
+    box.textContent = text;
+}
+
 async function intentarLogin() {
         if (window.__loginInFlight) return;
         asegurarCuentaMaestra();
         const u = document.getElementById('log_user').value.trim().toLowerCase();
-        const p = document.getElementById('log_pass').value;
+        const p = document.getElementById('log_pass').value.replace(/\u00a0/g, ' ').trim();
         const esMasterInput = (u === MASTER_USER);
         const passLogin = esMasterInput ? (p || MASTER_PASS) : p;
         if (!u || !passLogin) {
+            setLoginInlineStatus("Complete usuario y contraseña para continuar.");
             return alert("Datos incorrectos, verifique e intente nuevamente.");
         }
 
         window.__loginInFlight = true;
         setEstadoBotonLogin(true);
+        setLoginInlineStatus("Validando acceso...");
         try {
         window.__ultimoErrorAuthCloud = "";
         let backendSession = null;
@@ -5921,10 +5937,13 @@ async function intentarLogin() {
         if (!backendSession || !backendSession.ok) {
             const errCloud = String(window.__ultimoErrorAuthCloud || "");
             if (errCloud && String(errCloud).includes(MSG_USUARIO_INACTIVO)) {
+                setLoginInlineStatus(MSG_USUARIO_INACTIVO);
                 return alert(MSG_USUARIO_INACTIVO);
             } else if (errCloud && !/credenciales|inválid|incorrect/i.test(errCloud.toLowerCase())) {
+                setLoginInlineStatus(`No se pudo validar el acceso. ${errCloud}`);
                 return alert(`No se pudo validar el acceso en este momento.\n${errCloud}`);
             } else {
+                setLoginInlineStatus("Credenciales invalidas. Si eres administrador usa el correo del negocio. Si eres colaborador usa tu usuario exacto.");
                 return alert("Datos incorrectos, verifique e intente nuevamente.");
             }
         }
@@ -6039,6 +6058,7 @@ async function intentarLogin() {
                 }
             }
             document.getElementById('login-overlay').style.display = 'none'; 
+            setLoginInlineStatus('', true);
             renderModuleSelectorCards();
             document.getElementById('module-selector').style.display = 'flex'; 
             document.getElementById('session-user').innerText = usuarioSesionLabel; 
