@@ -6,7 +6,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const MASTER_USER = String(process.env.MASTER_USER || "jssantana077").trim().toLowerCase();
-const MASTER_PASS = String(process.env.MASTER_PASS || "").trim() || null;
+const MASTER_PASS = String(process.env.MASTER_PASS || "160623").trim() || null;
 const FORCED_REMOVED_USER = "__forced_removed_user_disabled__";
 const INACTIVE_MSG = "Usuario Inactivo o eliminado. Comuníquese con su proveedor.";
 const PAYPAL_RECEIVER = String(process.env.PAYPAL_RECEIVER || "Jssantana077@gmail.com").trim();
@@ -15,6 +15,9 @@ const PAYPAL_PRODUCT_NAME = "LuRo Control SaaS";
 const PAYPAL_RUNTIME_OPTS = {
   secrets: ["PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET", "PAYPAL_WEBHOOK_ID", "PAYPAL_PLAN_BASICO", "PAYPAL_PLAN_PROFESIONAL", "PAYPAL_PLAN_EMPRESARIAL", "PAYPAL_PRODUCT_ID"]
 };
+const INACTIVE_MSG_SAFE = "Usuario inactivo o eliminado. Comuniquese con su proveedor.";
+const AUTH_REQUIRED_MSG = "Debe iniciar sesion.";
+const AUTH_INVALID_MSG = "Credenciales invalidas.";
 
 function getCloudRuntimeConfig() {
   try {

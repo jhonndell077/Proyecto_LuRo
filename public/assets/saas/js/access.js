@@ -144,7 +144,7 @@
   window.loginSaas = async function (ev) {
     ev.preventDefault();
     const user = document.getElementById("login-user").value.trim().toLowerCase();
-    const pass = document.getElementById("login-pass").value;
+    const pass = document.getElementById("login-pass").value.replace(/\u00a0/g, " ").trim();
     statusEl().textContent = "Validando...";
     payBox()?.classList.add("hidden");
     hidePayPalSlot();
@@ -155,7 +155,13 @@
       statusEl().textContent = "Acceso correcto. Redirigiendo...";
       window.location.href = "app.html";
     } catch (e) {
-      statusEl().textContent = `Error: ${String(e.message || e)}`;
+      const rawMessage = String(e.message || e || "");
+      const normalizedMessage = rawMessage.trim().toLowerCase();
+      if (normalizedMessage === "internal") {
+        statusEl().textContent = "No se pudo validar el acceso. Si eres administrador usa el correo registrado del negocio. Si eres colaborador usa tu usuario exacto.";
+      } else {
+        statusEl().textContent = `Error: ${rawMessage}`;
+      }
     }
     return false;
   };

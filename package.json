@@ -9,7 +9,8 @@
     "deploy:analyze": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Analyze",
     "deploy:functions": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target functions",
     "deploy:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target all",
-    "Deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target hosting"
+    "Deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target hosting",
+    "audit:structure": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/validate-structure.ps1"
   },
   "keywords": ["firebase", "hosting", "luro-control"],
   "author": "jhonndell077",
