@@ -1783,7 +1783,7 @@
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260418-master-pass-3';
+      var swVersion = '20260624-reloadfix-1';
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'
@@ -1802,12 +1802,6 @@
           });
           registration.update().catch(function () {});
         }).catch(function () {});
-      });
-
-      navigator.serviceWorker.addEventListener('controllerchange', function () {
-        if (window.__swRefreshed) return;
-        window.__swRefreshed = true;
-        window.location.reload();
       });
     })();
   </script>
