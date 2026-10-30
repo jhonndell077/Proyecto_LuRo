@@ -4,6 +4,7 @@
   const site = 'https://the-proyect-menu-mobile.jhonndell077.chatgpt.site/';
   const el = id => document.getElementById(id);
   const esc = x => String(x ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let selectedDish = null, dirty = false, savingDish = false;
   let list = [], busy = false, polling = false, previousScope = '', seen = new Set();
   const owner = () => String(window.obtenerOwnerSesionActual?.() || '').trim().toLowerCase();
   const moduleName = () => typeof moduloActual === 'string' ? moduloActual : '';
@@ -28,7 +29,10 @@
       <label>Instagram oficial<input type="url" id="menu-instagram"></label>
       <button class="btn btn-save" type="submit">Guardar y sincronizar con la app</button></form>
       <p><a id="menu-live-link" target="_blank" rel="noopener">Abrir menú conectado a LURO</a> · <a id="menu-local-link" target="_blank" rel="noopener">Abrir sitio externo</a></p>
-      <h3>Presentación, ofertas y nutrición de los platos</h3><p>El precio y la existencia se administran en Disponibilidad. Los nutrientes se registran por porción preparada; un dato vacío se muestra como pendiente.</p>
+      <h3>Editor visual del menú</h3><p>El precio y la existencia se administran en Disponibilidad. Los nutrientes se registran por porción preparada; un dato vacío se muestra como pendiente.</p>
+      <label>Buscar un plato<input id="menu-dish-search" type="search" placeholder="Nombre o categoría"></label>
+      <div id="menu-visual-catalog" class="menu-visual-catalog" aria-label="Platos del módulo"></div>
+      <div class="menu-editor-layout"><div>
       <label>Plato<select id="menu-dish-select"><option value="">Seleccionar</option></select></label>
       <form id="menu-dish-form" class="menu-admin-grid" hidden>
       <label>Categoría<input id="menu-category" maxlength="60"></label><label>Fotografía (URL HTTPS)<input id="menu-image" type="url"></label>
@@ -36,13 +40,22 @@
       <label>Descuento (%)<input id="menu-offer" type="number" min="0" max="100" step="0.01"></label><label>Oferta válida hasta<input id="menu-offer-until" type="datetime-local"></label>
       <label>Porción preparada<input id="menu-portion" placeholder="Ej. 250 g · 1 plato" maxlength="100"></label>
       ${[['energiaKcal','Energía (kcal)'],['proteinasG','Proteínas (g)'],['carbohidratosG','Carbohidratos (g)'],['grasasG','Grasas (g)'],['fibraG','Fibra (g)'],['sodioMg','Sodio (mg)']].map(([k,label])=>`<label>${label}<input id="menu-n-${k}" type="number" min="0" step="0.01"></label>`).join('')}
-      <label>Alérgenos declarados<textarea id="menu-allergens" maxlength="400"></textarea></label><button class="btn btn-save" type="submit">Guardar ficha del plato</button></form>
+      <label>Alérgenos declarados<textarea id="menu-allergens" maxlength="400"></textarea></label><div class="menu-editor-actions"><p id="menu-draft-status" role="status" aria-live="polite">Selecciona un plato para editar.</p><button class="btn btn-save" type="submit">Guardar ficha del plato</button><button class="btn" id="menu-discard-draft" type="button">Descartar cambios</button></div></form>
+      </div><aside id="menu-preview-panel" hidden><h3>Así se verá en el menú</h3><p>Vista previa de esta ficha · formato teléfono</p><iframe id="menu-dish-preview" title="Vista previa del plato en teléfono" sandbox="" referrerpolicy="no-referrer"></iframe><p>El precio y stock corresponden a Disponibilidad; las reservas pueden reducir el stock público.</p></aside></div>
       <h3>Acceso privado del cliente</h3><p>Selecciona un cliente de Clientes y puntos. El enlace privado permite consultar sus puntos e historial durante 30 días; entrégaselo únicamente a ese cliente.</p><select id="menu-customer-select"></select><button id="menu-customer-link" class="btn btn-blue" type="button">Generar enlace privado</button><input id="menu-customer-url" readonly aria-label="Enlace privado del cliente" hidden>
       <h3>Pedidos de la app <button id="menu-refresh" class="btn btn-blue" type="button">Actualizar</button></h3><div id="menu-orders-list">Conecta tu sesión cloud para consultar pedidos.</div>`;
     host.prepend(card);
     const style=document.createElement('style');style.textContent='.menu-admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.menu-admin-grid label{display:flex;flex-direction:column;gap:5px}.menu-admin-grid input,.menu-admin-grid textarea,#menu-customer-url{width:100%;padding:9px;box-sizing:border-box}.menu-admin-order{border:1px solid #bbcbd9;padding:12px;margin:10px 0;border-radius:10px}.menu-admin-order button{margin:5px}.menu-admin-grid[hidden]{display:none}';document.head.append(style);
     el('menu-settings-form').addEventListener('submit',saveSettings);
-    el('menu-dish-select').addEventListener('change',loadDish);
+    el('menu-dish-select').addEventListener('change',()=>{
+      if(dirty&&!confirm('Hay cambios sin sincronizar. ¿Descartarlos y cambiar de plato?')){el('menu-dish-select').value=String(db.platos.indexOf(selectedDish));return;}
+      selectedDish=null;loadDish();
+    });
+    el('menu-dish-search').addEventListener('input',renderCatalog);
+    el('menu-visual-catalog').addEventListener('click',e=>{const b=e.target.closest('[data-edit-dish]');if(!b||savingDish)return;el('menu-dish-select').value=b.dataset.editDish;el('menu-dish-select').dispatchEvent(new Event('change'));el('menu-dish-form').scrollIntoView({behavior:'smooth',block:'start'});});
+    el('menu-dish-form').addEventListener('input',()=>{dirty=true;draftStatus('Cambios pendientes · guarda para sincronizar.');renderPreview();});
+    el('menu-discard-draft').addEventListener('click',()=>{if(!dirty||confirm('¿Descartar los cambios de este plato?')){dirty=false;loadDish();}});
+    window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
     el('menu-dish-form').addEventListener('submit',saveDish);
     el('menu-customer-link').addEventListener('click',customerLink);
     el('menu-refresh').addEventListener('click',()=>refresh(true));
@@ -55,7 +68,10 @@
     el('menu-enabled').checked=config.enabled===true;el('menu-business').value=config.business||obtenerNombreNegocioActual?.()||'';
     el('menu-logo').value=config.logo||'';el('menu-hero').value=config.heroImage||'';el('menu-instagram').value=config.instagram||'';
     el('menu-live-link').href=url().href;el('menu-local-link').href=url(true).href;
+    const selectedIndex=selectedDish?db.platos.indexOf(selectedDish):-1;
     el('menu-dish-select').innerHTML='<option value="">Seleccionar plato</option>'+(db.platos||[]).map((p,i)=>p.owner?.toLowerCase()===owner()&&p.modulo===m?`<option value="${i}">${esc(p.nombre)}</option>`:'').join('');
+    if(selectedIndex>=0)el('menu-dish-select').value=String(selectedIndex);
+    renderCatalog();
     el('menu-customer-select').innerHTML=(db.clientesFidelizacion||[]).map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('');
   }
   async function upload() {
@@ -68,10 +84,34 @@
     try{const logo=el('menu-logo').value.trim(),heroImage=el('menu-hero').value.trim(),instagram=el('menu-instagram').value.trim();if(!secureImage(logo)||!secureImage(heroImage)||instagram&&!/^https:\/\/(www\.)?instagram\.com\//i.test(instagram))throw Error('Usa imágenes HTTPS y un enlace oficial de Instagram.');
       db.menuIntegration ||= {};db.menuIntegration[moduleName()]={enabled:el('menu-enabled').checked,business:el('menu-business').value.trim(),logo,heroImage,instagram};await upload();status('Configuración sincronizada. La app consulta la disponibilidad de este módulo.');loadSettings();
     }catch(e){status(e.message,true);}}
-  function chosen(){const raw=el('menu-dish-select').value;if(raw==='')return null;const p=db.platos[Number(raw)];return p&&p.owner?.toLowerCase()===owner()&&p.modulo===moduleName()?p:null;}
-  function loadDish(){const p=chosen();el('menu-dish-form').hidden=!p;if(!p)return;const m=p.menu||{},n=m.nutrition||{};el('menu-category').value=m.category||'';el('menu-image').value=m.image||'';el('menu-description').value=m.description||'';el('menu-hidden').checked=m.hidden===true;el('menu-offer').value=m.offerPercent||0;el('menu-offer-until').value=m.offerUntil?new Date(Date.parse(m.offerUntil)-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';el('menu-portion').value=n.portion||'';el('menu-allergens').value=m.allergens||'';for(const k of ['energiaKcal','proteinasG','carbohidratosG','grasasG','fibraG','sodioMg'])el('menu-n-'+k).value=n[k]??'';}
-  async function saveDish(e){e.preventDefault();if(!authorized())return;const p=chosen();if(!p)return;try{const image=el('menu-image').value.trim();if(!secureImage(image))throw Error('La foto debe usar HTTPS.');const discount=Number(el('menu-offer').value);const end=el('menu-offer-until').value;if(discount>0&&(!end||Date.parse(end)<=Date.now()))throw Error('Indica una fecha futura para la oferta.');const nutrition={portion:el('menu-portion').value.trim()};for(const k of ['energiaKcal','proteinasG','carbohidratosG','grasasG','fibraG','sodioMg'])nutrition[k]=el('menu-n-'+k).value===''?null:Number(el('menu-n-'+k).value);
-    p.menu={category:el('menu-category').value.trim(),image,description:el('menu-description').value.trim(),hidden:el('menu-hidden').checked,offerPercent:discount,offerUntil:end?new Date(end).toISOString():'',allergens:el('menu-allergens').value.trim(),nutrition};await upload();status('Ficha, oferta y nutrición sincronizadas.');}catch(e){status(e.message,true);}}
+  function chosen(){if(selectedDish)return db.platos.includes(selectedDish)&&selectedDish.owner?.toLowerCase()===owner()&&selectedDish.modulo===moduleName()?selectedDish:null;const raw=el('menu-dish-select').value;if(raw==='')return null;const p=db.platos[Number(raw)];return p&&p.owner?.toLowerCase()===owner()&&p.modulo===moduleName()?p:null;}
+  function loadDish(){const p=chosen();selectedDish=p;dirty=false;el('menu-dish-form').hidden=!p;el('menu-preview-panel').hidden=!p;if(!p)return;const m=p.menu||{},n=m.nutrition||{};el('menu-category').value=m.category||'';el('menu-image').value=m.image||'';el('menu-description').value=m.description||'';el('menu-hidden').checked=m.hidden===true;el('menu-offer').value=m.offerPercent||0;el('menu-offer-until').value=Number.isFinite(Date.parse(m.offerUntil))?new Date(Date.parse(m.offerUntil)-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';el('menu-portion').value=n.portion||'';el('menu-allergens').value=m.allergens||'';for(const k of ['energiaKcal','proteinasG','carbohidratosG','grasasG','fibraG','sodioMg'])el('menu-n-'+k).value=n[k]??'';draftStatus('Ficha cargada · vista previa local.');renderPreview();renderCatalog();}
+  async function saveDish(e){e.preventDefault();if(!authorized()||savingDish)return;const p=chosen();if(!p)return;try{const image=el('menu-image').value.trim();if(!secureImage(image))throw Error('La foto debe usar HTTPS.');const discount=Number(el('menu-offer').value);if(!Number.isFinite(discount)||discount<0||discount>100)throw Error('El descuento debe estar entre 0 y 100.');const end=el('menu-offer-until').value;if(discount>0&&(!end||!Number.isFinite(Date.parse(end))||Date.parse(end)<=Date.now()))throw Error('Indica una fecha futura para la oferta.');const nutrition={portion:el('menu-portion').value.trim()};for(const k of ['energiaKcal','proteinasG','carbohidratosG','grasasG','fibraG','sodioMg'])nutrition[k]=el('menu-n-'+k).value===''?null:Number(el('menu-n-'+k).value);
+    savingDish=true;el('menu-dish-form').querySelectorAll('input,textarea,button').forEach(x=>x.disabled=true);el('menu-dish-select').disabled=true;draftStatus('Sincronizando ficha…');
+    p.menu={...p.menu,category:el('menu-category').value.trim(),image,description:el('menu-description').value.trim(),hidden:el('menu-hidden').checked,offerPercent:discount,offerUntil:end?new Date(end).toISOString():'',allergens:el('menu-allergens').value.trim(),nutrition};await upload();dirty=false;draftStatus('Sincronizado con la app · '+new Date().toLocaleTimeString('es-DO'));renderCatalog();renderPreview();status('Ficha, oferta y nutrición sincronizadas.');}catch(e){dirty=true;draftStatus('No sincronizado: '+e.message);status(e.message,true);}finally{savingDish=false;el('menu-dish-form').querySelectorAll('input,textarea,button').forEach(x=>x.disabled=false);el('menu-dish-select').disabled=false;}}
+  const priceText=n=>'RD$'+(Number.isFinite(Number(n))?Number(n):0).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const previewPlaceholder='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#111b29"/><text x="300" y="210" fill="#91bde5" text-anchor="middle" font-size="26">Fotografía pendiente</text></svg>');
+  const imageUrl=value=>secureImage(value)&&value?value:previewPlaceholder;
+  function draftStatus(message){el('menu-draft-status').textContent=message;}
+  function cardMarkup(p,meta,editing=false,index=0){
+    const discount=Number(meta.offerPercent)||0,active=discount>0&&discount<=100&&Date.parse(meta.offerUntil)>Date.now();
+    const price=active?Math.round(Number(p.precio)*(1-discount/100)*100)/100:p.precio;
+    const stock=Math.max(0,Math.floor(Number(p.stock)||0));
+    const badge=meta.hidden?'Oculto en el menú':!stock?'Agotado':active?'Oferta '+discount+'%':stock<=3?'Quedan pocas porciones':'Disponible';
+    return `<article class="card"><div class="card-photo"><img src="${esc(imageUrl(meta.image))}" alt="${esc(p.nombre)}" loading="lazy"><span class="badge">${esc(badge)}</span></div><div class="card-body"><small>${esc(meta.category||'Platos')}</small><h3>${esc(p.nombre)}</h3><p>${esc(meta.description||'')}</p><div class="card-bottom"><span class="price">${active?'<del>'+priceText(p.precio)+'</del> ':''}${priceText(price)}</span>${editing?`<button type="button" class="order-button" data-edit-dish="${index}" ${savingDish?'disabled':''}>Editar plato</button>`:'<button type="button" class="order-button" disabled>Pedir</button>'}</div></div></article>`;
+  }
+  function renderCatalog(){
+    const q=(el('menu-dish-search').value||'').toLocaleLowerCase('es').trim();
+    el('menu-visual-catalog').innerHTML=(db.platos||[]).map((p,i)=>p.owner?.toLowerCase()===owner()&&p.modulo===moduleName()&&`${p.nombre} ${p.menu?.category||''}`.toLocaleLowerCase('es').includes(q)?cardMarkup(p,p.menu||{},true,i):'').join('')||'<p>No hay platos para mostrar. Registra tus platos en LURO o cambia la búsqueda.</p>';
+    el('menu-visual-catalog').querySelectorAll('img').forEach(img=>img.addEventListener('error',()=>{img.src=previewPlaceholder;},{once:true}));
+  }
+  function renderPreview(){
+    const p=chosen();if(!p)return;
+    const meta={category:el('menu-category').value,image:el('menu-image').value.trim(),description:el('menu-description').value,hidden:el('menu-hidden').checked,offerPercent:Number(el('menu-offer').value),offerUntil:el('menu-offer-until').value};
+    const styles=['styles.css','luro-connection.css'].map(file=>`<link rel="stylesheet" href="${esc(new URL('menu/'+file,location.href).href)}">`).join('');
+    const nutrients=[['energiaKcal','Energía','kcal'],['proteinasG','Proteínas','g'],['carbohidratosG','Carbohidratos','g'],['grasasG','Grasas','g'],['fibraG','Fibra','g'],['sodioMg','Sodio','mg']];
+    el('menu-dish-preview').srcdoc=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styles}<style>body{margin:0;padding:16px;color:#f2f8ff;font-family:Arial,sans-serif}*{box-sizing:border-box}.card{width:100%;margin:16px 0}.card-photo{height:220px}.card-photo img{width:100%;height:100%;object-fit:cover}.card-body{padding:16px}.card h3{font-size:22px}.card p{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;min-height:0}.card-bottom{display:flex;justify-content:space-between}.price{font-size:22px}table{width:100%;font-size:14px}td,th{text-align:left;padding:8px 0;border-bottom:1px solid #294052}p{line-height:1.5}h1{font-size:19px}small{color:#a7bdcf}h2{font-size:18px}</style></head><body><small>VISTA PREVIA · ${esc(moduleName())}</small><h1>${esc(el('menu-business').value||'Menú del restaurante')}</h1>${meta.hidden?'<p>Este plato está oculto y no aparecerá en el catálogo público.</p>':''}${cardMarkup(p,meta)}<h2>Información del plato</h2><p>Porción: ${esc(el('menu-portion').value||'Pendiente de registrar')}</p><table>${nutrients.map(([k,label,unit])=>`<tr><th>${label}</th><td>${el('menu-n-'+k).value===''?'Pendiente':esc(el('menu-n-'+k).value)+' '+unit}</td></tr>`).join('')}</table><h2>Alérgenos declarados</h2><p>${esc(el('menu-allergens').value||'Pendientes de confirmar con cocina.')}</p><small>Vista previa local. Los botones de pedido están desactivados.</small></body></html>`;
+  }
   async function customerLink(){if(!authorized())return;try{const r=await window.luroMenuAdminCall('menuCreateCustomerLink',{module:moduleName(),customerId:el('menu-customer-select').value});const u=url();u.hash='access='+r.accessToken;el('menu-customer-url').hidden=false;el('menu-customer-url').value=u.href;el('menu-customer-url').select();status('Enlace privado creado. Entrégalo únicamente al cliente seleccionado.');}catch(e){status(e.message,true);}}
   const labels={pending:'Esperando aceptación de caja',accepted:'Aceptado · pendiente de cocina',preparing:'En preparación',ready:'Listo',delivered:'Entregado',rejected:'Rechazado'};
   function renderOrders(){const pending=list.filter(o=>o.status==='pending').length;const banner=el('menu-cashier-banner');if(banner){banner.hidden=!pending;el('menu-pending-count').textContent=`${pending} pedido(s) de la app esperan aceptación de caja.`;}
@@ -82,11 +122,11 @@
   document.addEventListener('DOMContentLoaded',()=>{
     mount();
     const navigate=window.showPage;
-    window.showPage=function(id){const result=navigate?.(id);if(['salida','comandas'].includes(id)&&el(id)&&el('menu-operations'))el(id).prepend(el('menu-operations'));return result;};
+    window.showPage=function(id){const result=navigate?.(id);if(id==='configuracion'&&authorized()&&!dirty){loadSettings();if(selectedDish&&!chosen()){selectedDish=null;el('menu-dish-form').hidden=true;el('menu-preview-panel').hidden=true;}}if(['salida','comandas'].includes(id)&&el(id)&&el('menu-operations'))el(id).prepend(el('menu-operations'));return result;};
     // The existing kitchen completion control updates the same canonical web order.
     const finish=window.finalizarComanda;
     window.finalizarComanda=async function(id){const c=(db.comandasActivas||[]).find(x=>x.id===id);if(!c?.menuOrderId)return finish?.(id);let o=list.find(x=>x.id===c.menuOrderId);if(!o){await refresh(true);o=list.find(x=>x.id===c.menuOrderId);}if(o?.status==='accepted'){await transition(o.id,'preparing');o=list.find(x=>x.id===c.menuOrderId);}if(o?.status==='preparing')await transition(o.id,'ready');};
-    setInterval(()=>{if(!el('luro-menu-admin'))return;el('luro-menu-admin').hidden=!authorized();if(el('menu-operations'))el('menu-operations').hidden=!operator();const scope=owner()+'|'+moduleName();if(operator()&&scope!==previousScope){previousScope=scope;seen=new Set();loadSettings();refresh();}},1500);
+    setInterval(()=>{if(!el('luro-menu-admin'))return;el('luro-menu-admin').hidden=!authorized();if(el('menu-operations'))el('menu-operations').hidden=!operator();const scope=owner()+'|'+moduleName();if(operator()&&scope!==previousScope){previousScope=scope;selectedDish=null;dirty=false;el('menu-dish-form').hidden=true;el('menu-preview-panel').hidden=true;el('menu-dish-search').value='';seen=new Set();loadSettings();refresh();}},1500);
     setInterval(()=>refresh(),12000);
   });
 })();

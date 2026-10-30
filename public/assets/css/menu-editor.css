@@ -1,0 +1,39 @@
+/* Editor visual del catálogo, aislado de los estilos generales del POS. */
+#luro-menu-admin { padding:24px; }
+#luro-menu-admin .menu-admin-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));align-items:start; }
+#luro-menu-admin input[type=checkbox] { width:22px;min-height:22px;height:22px;align-self:flex-start; }
+#luro-menu-admin input:not([type=checkbox]),#luro-menu-admin textarea,#luro-menu-admin select { min-height:44px;max-width:100%;font-size:16px; }
+#luro-menu-admin .menu-visual-catalog { display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:16px;margin:18px 0 28px; }
+#luro-menu-admin .menu-visual-catalog .card { overflow:hidden;background:#0c1420;color:#f2f8ff;border:1px solid #164363;border-radius:18px;padding:0!important;margin:0!important;box-shadow:0 8px 24px #07111d12; }
+#luro-menu-admin .card-photo { position:relative;height:180px;background:#111b29; }
+#luro-menu-admin .card-photo img { width:100%;height:100%;object-fit:cover; }
+#luro-menu-admin .badge { position:absolute;top:12px;left:12px;max-width:90%;background:#092334;color:#a5dcff;padding:6px 10px;border-radius:20px;font-size:12px; }
+#luro-menu-admin .card-body { padding:18px; }
+#luro-menu-admin .card-body h3 { font-size:20px;color:#fff;margin:8px 0;overflow-wrap:anywhere; }
+#luro-menu-admin .card-body p { color:#a7bdcf;font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere; }
+#luro-menu-admin .card-body small { color:#8dcfff; }
+#luro-menu-admin .card-bottom { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:16px; }
+#luro-menu-admin .price { color:#8dcfff;font-size:20px;font-weight:700; }
+#luro-menu-admin .price del { color:#a7bdcf;font-size:13px; }
+#luro-menu-admin .order-button { min-height:44px;padding:10px 14px;border:1px solid #71c6ff;border-radius:12px;background:#66beff;color:#06121d;font-weight:700;cursor:pointer; }
+#luro-menu-admin .menu-editor-layout { display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,390px);gap:28px;align-items:start;margin-bottom:28px; }
+#luro-menu-admin .menu-editor-layout:has(#menu-preview-panel[hidden]) { grid-template-columns:1fr; }
+#luro-menu-admin .menu-editor-layout>*,#luro-menu-admin .menu-admin-grid>* { min-width:0; }
+#luro-menu-admin #menu-dish-form { margin-top:18px; }
+#luro-menu-admin .menu-editor-actions { grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap; }
+#luro-menu-admin #menu-draft-status { flex-basis:100%;font-weight:600;line-height:1.5; }
+#luro-menu-admin #menu-preview-panel { position:sticky;top:20px;background:#edf4fa;padding:16px;border-radius:24px;border:1px solid #c4d5e3; }
+#luro-menu-admin #menu-preview-panel[hidden] { display:none; }
+#luro-menu-admin #menu-preview-panel p { font-size:13px;line-height:1.5; }
+#luro-menu-admin #menu-dish-preview { display:block;box-sizing:border-box;width:100%;height:740px;max-height:80dvh;border:6px solid #172331;border-radius:26px;background:#05080d; }
+#luro-menu-admin button:focus-visible,#luro-menu-admin a:focus-visible { outline:3px solid #167abe;outline-offset:3px; }
+@media(max-width:900px) {
+ #luro-menu-admin .menu-editor-layout { grid-template-columns:minmax(0,1fr); }
+ #luro-menu-admin #menu-preview-panel { position:static;width:100%;max-width:430px;box-sizing:border-box;justify-self:center; }
+}
+@media(max-width:480px) {
+ #luro-menu-admin { padding:16px!important; }
+ #luro-menu-admin .menu-visual-catalog { grid-template-columns:minmax(0,1fr); }
+ #luro-menu-admin .menu-editor-actions button { width:100%;min-height:48px; }
+ #luro-menu-admin #menu-preview-panel { padding:10px; }
+}

@@ -18,3 +18,22 @@ test('dish nutrition and promotions are persisted without replacing recipe or pr
 test('cashier can see orders but cannot edit restaurant configuration',async()=>{const a=await app(true);try{assert.equal(a.w.document.getElementById('luro-menu-admin').hidden,true);assert.equal(a.w.document.getElementById('menu-operations').hidden,false);assert.ok(a.w.__apiCalls.some(x=>x.name==='menuListOrders'));}finally{a.w.close();}});
 
  test('menu opens on the LURO origin and automatic refresh errors stay visible to cashiers',async()=>{const a=await app(true);try{assert.equal(new URL(a.w.document.getElementById('menu-live-link').href).origin,'http://fixture.local');assert.equal(new URL(a.w.document.getElementById('menu-live-link').href).pathname,'/menu/index.html');assert.match(a.w.document.getElementById('menu-orders-status').textContent,/Conectado a LURO/);a.w.luroMenuAdminCall=async()=>{throw Error('Sin conexión cloud');};await a.calls[1]();assert.match(a.w.document.getElementById('menu-orders-status').textContent,/Sin conexión cloud/);}finally{a.w.close();}});
+test('visual editor previews drafts without mutating dishes and preserves unrelated metadata on save',async()=>{const a=await app();try{
+ a.w.eval("db.platos[0].menu={tracking:'keep'}");
+ a.w.document.querySelector('[data-edit-dish="0"]').click();
+ const desc=a.w.document.getElementById('menu-description');desc.value='Descripción <segura> del mangú';desc.dispatchEvent(new a.w.Event('input',{bubbles:true}));
+ const frame=a.w.document.getElementById('menu-dish-preview');assert.match(frame.srcdoc,/Descripción &lt;segura&gt;/);assert.equal(frame.getAttribute('sandbox'),'');
+ assert.equal(a.w.eval('db.platos[0].menu.description'),undefined);assert.match(a.w.document.getElementById('menu-draft-status').textContent,/pendientes/);
+ a.w.document.getElementById('menu-dish-form').dispatchEvent(new a.w.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setImmediate(r));
+ assert.equal(a.w.eval('db.platos[0].menu.description'),'Descripción <segura> del mangú');assert.equal(a.w.eval('db.platos[0].menu.tracking'),'keep');assert.match(a.w.document.getElementById('menu-draft-status').textContent,/Sincronizado/);
+}finally{a.w.close();}});
+test('draft discard, search and failed uploads keep clear state',async()=>{const a=await app();try{
+ a.w.confirm=()=>true;a.w.document.querySelector('[data-edit-dish="0"]').click();
+ const desc=a.w.document.getElementById('menu-description');desc.value='Borrador';desc.dispatchEvent(new a.w.Event('input',{bubbles:true}));a.w.document.getElementById('menu-discard-draft').click();assert.equal(desc.value,'');
+ a.w.subirBaseActualAlCloud=async()=>false;desc.value='Sin subir';desc.dispatchEvent(new a.w.Event('input',{bubbles:true}));a.w.document.getElementById('menu-dish-form').dispatchEvent(new a.w.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setImmediate(r));assert.match(a.w.document.getElementById('menu-draft-status').textContent,/No sincronizado/);assert.equal(desc.disabled,false);
+ const search=a.w.document.getElementById('menu-dish-search');search.value='inexistente';search.dispatchEvent(new a.w.Event('input'));assert.equal(a.w.document.querySelectorAll('[data-edit-dish]').length,0);
+}finally{a.w.close();}});
+test('catalog isolates owners and modules and expired discounts do not change preview price',async()=>{const a=await app();try{
+ a.w.eval("db.platos.push({owner:'other',modulo:'COCINA',nombre:'Privado'},{owner:'owner',modulo:'BAR',nombre:'Otro módulo'})");a.w.document.getElementById('menu-dish-search').dispatchEvent(new a.w.Event('input'));assert.equal(a.w.document.querySelectorAll('[data-edit-dish]').length,1);
+ a.w.document.querySelector('[data-edit-dish="0"]').click();a.w.document.getElementById('menu-offer').value='50';a.w.document.getElementById('menu-offer-until').value='2020-01-01T10:00';a.w.document.getElementById('menu-offer').dispatchEvent(new a.w.Event('input',{bubbles:true}));const html=a.w.document.getElementById('menu-dish-preview').srcdoc;assert.match(html,/RD\$250/);assert.doesNotMatch(html,/<del>/);
+}finally{a.w.close();}});
