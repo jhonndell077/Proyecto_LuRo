@@ -1,0 +1,25 @@
+/* Four-edge fade: the centre of each food photograph remains fully opaque. */
+img:not(.brand-logo-img){
+ --photo-edge:8%;
+ -webkit-mask-image:linear-gradient(to right,transparent,#000 var(--photo-edge),#000 calc(100% - var(--photo-edge)),transparent),linear-gradient(to bottom,transparent,#000 var(--photo-edge),#000 calc(100% - var(--photo-edge)),transparent)!important;
+ mask-image:linear-gradient(to right,transparent,#000 var(--photo-edge),#000 calc(100% - var(--photo-edge)),transparent),linear-gradient(to bottom,transparent,#000 var(--photo-edge),#000 calc(100% - var(--photo-edge)),transparent)!important;
+ -webkit-mask-composite:source-in!important;
+ mask-composite:intersect!important;
+ -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+ background:transparent!important;
+}
+.hero-photo,.card-photo,.detail-photo{background:#14110e!important}
+.signature-grid button{background:#14110e}
+img.dish-views-sheet{--photo-edge:5%;background:transparent!important}
+.nutrition-dish img,.cart-item img,.chat-food-suggestions img,.recommendation img{--photo-edge:6%}
+/* Stronger lateral blending with a clear centre. */
+img:not(.brand-logo-img){
+ -webkit-mask-image:linear-gradient(to right,transparent 0%,#000 16%,#000 84%,transparent 100%),linear-gradient(to bottom,transparent 0%,#000 8%,#000 92%,transparent 100%)!important;
+ mask-image:linear-gradient(to right,transparent 0%,#000 16%,#000 84%,transparent 100%),linear-gradient(to bottom,transparent 0%,#000 8%,#000 92%,transparent 100%)!important;
+}
+.hero h1{color:#ffd095}
+@supports ((background-clip:text) or (-webkit-background-clip:text)){
+ .hero h1{background:linear-gradient(115deg,#fff9ee 5%,#ffe5bd 32%,#ffbb62 62%,#ff861c 90%);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent;width:fit-content;max-width:100%;padding-bottom:.08em}
+ .hero h1 em{color:inherit;-webkit-text-fill-color:inherit;background:none}
+}
+@media(forced-colors:active){.hero h1,.hero h1 em{background:none;color:CanvasText;-webkit-text-fill-color:CanvasText}}

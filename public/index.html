@@ -315,7 +315,7 @@
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260624-reloadfix-1';
+      var swVersion = '20261030-menu-integration-1';
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'
@@ -335,6 +335,8 @@
           registration.update().catch(function () {});
         }).catch(function () {});
       });
+
+
     })();
   </script>
 </body>

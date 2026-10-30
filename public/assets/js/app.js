@@ -1,4 +1,4 @@
-﻿
+
 function normalizarClaveProductoOperacion(valor) {
     return String(valor || '').trim().toLowerCase();
 }
@@ -2369,7 +2369,7 @@ function calcularDetallePreciosVenta(carritoVenta, cliente) {
         const precioVenta = Number(item.precio || platoRef?.precio || 0);
         const costoProduccion = Number(platoRef?.costo || 0);
         const cantidad = Math.max(0, Number(item.cantidad || 0));
-        const premiumActivo = !!(cliente && cliente.premiumActivo);
+        const premiumActivo = !item.menuOrderId && !!(cliente && cliente.premiumActivo);
         const precioDescuento = precioVenta * (1 - descuentoPlan);
         let cantidadBeneficio = 0;
         let subtotal = cantidad * (premiumActivo ? precioDescuento : precioVenta);
@@ -2473,7 +2473,7 @@ function asegurarModalMembresiaCliente() {
     if (document.getElementById('modal-membresia-cliente')) return;
     const modal = document.createElement('div');
     modal.id = 'modal-membresia-cliente';
-    modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:3350; align-items:center; justify-content:center; padding:16px;';
+    modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:var(--z-modal-membership); align-items:center; justify-content:center; padding:16px;';
     modal.innerHTML = `
       <div style="width:min(720px,96vw); max-height:92vh; overflow:auto; background:#fff; border-radius:12px; border-top:6px solid var(--blue);">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
@@ -3576,8 +3576,10 @@ function ajustarPrecioManual() {
         renderDispoTable();
     }
 }
+    const MASTER_USER = "jssantana077";
+    const MASTER_PASS = "160623";
     let db = {
-        usuarios: [{user: "Jssantana077", pass: MASTER_PASS, role: "super-master", activo: true, colab: [], parentOwner: '', canCreateAdmins: true}],
+        usuarios: [{user: MASTER_USER, pass: MASTER_PASS, role: "super-master", owner: MASTER_USER, activo: true, colab: [], parentOwner: '', canCreateAdmins: true}],
         platos: [], almacen: [], entradas: [], ventas: [], decomisos: [], autorizaciones: [], produccion_stock: [], historial_prod: [],
         distribuidores: [], catalogoDistribuidores: [], facturasResumen: [], codigosClienteRNC: {}, contadorCodigoCliente: 1, contadorCodigoFacturaBusqueda: 1, registroInicial: null, registroInicialUsuarios: {}, recuperacionClave: null, registroInicialBackups: [], clientesFidelizacion: [], configMembresia: { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 }, qrClienteLinks: {}, entrenamientos: [], modulosCustom: [], asistenciaRegistros: [], asistenciaAutorizaciones: [], asistenciaConfig: []
     };
@@ -3586,8 +3588,6 @@ function ajustarPrecioManual() {
     let esColaboradorSesion = false; let permisosSesion = []; let usuarioSesionLabel = ""; let cuentaLoginActual = "";
     let asignacionesEntradasSesion = [];
     let copiasRegistroDesbloqueadas = false;
-    const MASTER_USER = "jssantana077";
-    const MASTER_PASS = "160623";
     function passwordMatchesMaster(pass) {
         return MASTER_PASS !== null && String(pass || '').trim() !== '' && String(pass) === String(MASTER_PASS);
     }
@@ -3726,164 +3726,8 @@ function baseTieneContenido(dbRef) {
 
 window.baseTieneContenido = baseTieneContenido;
 
-    const LAFO_PUBLIC_URL = 'https://lafocacheria-default-rtdb.firebaseio.com/lafo_public.json';
-    const LAFO_PUBLIC_OWNER = MASTER_USER;
-    const LAFO_PUBLIC_MODULES = new Set(['COCINA', 'LA FOCA CHERIA']);
-
-    function normalizarTextoLafo(valor) {
-        return String(valor || '').trim().toLowerCase();
-    }
-
-    function coincideContextoLafo(item, ownerObjetivo) {
-        if (!item || typeof item !== 'object') return false;
-        const ownerItem = normalizarTextoLafo(item.owner);
-        const moduloItem = String(item.modulo || '').trim().toUpperCase();
-        return ownerItem === ownerObjetivo && LAFO_PUBLIC_MODULES.has(moduloItem);
-    }
-
-    function cantidadSalidasLafo(nombrePlato, ownerObjetivo) {
-        return (Array.isArray(db.salidas) ? db.salidas : [])
-            .filter((item) => coincideContextoLafo(item, ownerObjetivo) && normalizarTextoLafo(item.plato) === normalizarTextoLafo(nombrePlato))
-            .reduce((acc, item) => acc + (Number(item.cantidad || 0) || 0), 0);
-    }
-
-    function calcularCapacidadRecetaLafo(plato, ownerObjetivo) {
-        const receta = Array.isArray(plato?.receta) ? plato.receta : [];
-        if (!receta.length) return { capacidad: Number(plato?.stock || 0) || 0, faltantes: [] };
-        let capacidad = Infinity;
-        const faltantes = [];
-
-        receta.forEach((ing) => {
-            const itemStock = (Array.isArray(db.almacen) ? db.almacen : []).find((item) =>
-                coincideContextoLafo(item, ownerObjetivo) &&
-                normalizarTextoLafo(item.nombre) === normalizarTextoLafo(ing.nombre)
-            ) || (Array.isArray(db.produccion_stock) ? db.produccion_stock : []).find((item) =>
-                coincideContextoLafo(item, ownerObjetivo) &&
-                normalizarTextoLafo(item.nombre) === normalizarTextoLafo(ing.nombre)
-            );
-
-            if (!itemStock) {
-                capacidad = 0;
-                faltantes.push({ nombre: String(ing.nombre || ''), actual: 0, requerido: Number(ing.cantidad || 0), unidad: String(ing.unidad || '') });
-                return;
-            }
-
-            let requerido = Number(ing.cantidad || 0);
-            const disponible = Number(itemStock.actual || 0);
-            const unidadBase = String(itemStock.unidad || ing.unidad || '').trim();
-
-            if (typeof convertirUnidad === 'function') {
-                try {
-                    requerido = convertirUnidad(Number(ing.cantidad || 0), ing.unidad, unidadBase);
-                } catch (_) {}
-            }
-
-            if (!(requerido > 0)) return;
-            const raciones = disponible / requerido;
-            capacidad = Math.min(capacidad, Math.floor(Math.max(0, raciones)));
-            if (disponible < requerido) {
-                faltantes.push({
-                    nombre: String(ing.nombre || ''),
-                    actual: disponible,
-                    requerido,
-                    unidad: unidadBase
-                });
-            }
-        });
-
-        if (!Number.isFinite(capacidad)) capacidad = 0;
-        return { capacidad: Math.max(0, capacidad), faltantes };
-    }
-
-    function construirSnapshotPublicoLafo() {
-        const ownerObjetivo = LAFO_PUBLIC_OWNER;
-        const producciones = (Array.isArray(db.produccion_stock) ? db.produccion_stock : [])
-            .filter((item) => coincideContextoLafo(item, ownerObjetivo))
-            .map((item) => {
-                const actual = Number(item.actual || 0);
-                const ideal = Number(item.ideal || 0);
-                return {
-                    nombre: String(item.nombre || ''),
-                    actual,
-                    unidad: String(item.unidad || ''),
-                    ideal,
-                    estado: actual <= 0 ? 'agotado' : (ideal > 0 && actual <= (ideal * 0.35) ? 'limitado' : 'ok')
-                };
-            })
-            .sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-        const platos = (Array.isArray(db.platos) ? db.platos : [])
-            .filter((item) => coincideContextoLafo(item, ownerObjetivo))
-            .map((plato) => {
-                const salidas = cantidadSalidasLafo(plato.nombre, ownerObjetivo);
-                const stockManual = Math.max(0, Number(plato.stock || 0) || 0);
-                const stockDisponibilidad = Math.max(0, stockManual - salidas);
-                const recetaInfo = calcularCapacidadRecetaLafo(plato, ownerObjetivo);
-                const stockReal = Math.max(0, Math.min(stockDisponibilidad, recetaInfo.capacidad));
-                const estado = stockReal <= 0 ? 'agotado' : (stockReal <= 3 ? 'limitado' : 'disponible');
-                return {
-                    nombre: String(plato.nombre || ''),
-                    precio: Number(plato.precio || 0),
-                    costo: Number(plato.costo || 0),
-                    stock: stockReal,
-                    stockDisponibilidad,
-                    stockReceta: recetaInfo.capacidad,
-                    salidas,
-                    estado,
-                    receta: Array.isArray(plato.receta) ? plato.receta : [],
-                    faltantes: recetaInfo.faltantes
-                };
-            })
-            .sort((a, b) => b.stock - a.stock || a.nombre.localeCompare(b.nombre));
-
-        return {
-            _updated: Date.now(),
-            owner: ownerObjetivo,
-            modules: Array.from(LAFO_PUBLIC_MODULES),
-            summary: {
-                disponibles: platos.filter((item) => item.estado === 'disponible').length,
-                limitados: platos.filter((item) => item.estado === 'limitado').length,
-                agotados: platos.filter((item) => item.estado === 'agotado').length,
-                produccionesCriticas: producciones.filter((item) => item.estado !== 'ok').length
-            },
-            platos,
-            producciones
-        };
-    }
-
-    function publicarSnapshotPublicoLafo(opts = {}) {
-        try {
-            const body = JSON.stringify(construirSnapshotPublicoLafo());
-            if (!opts.force && body === String(window.__lafoPublicLastSnapshot || '')) {
-                return Promise.resolve(false);
-            }
-            window.__lafoPublicLastSnapshot = body;
-            return fetch(LAFO_PUBLIC_URL, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body
-            }).catch((err) => {
-                console.warn('No se pudo publicar snapshot de Lafo:', err);
-                window.__lafoPublicLastSnapshot = '';
-                return false;
-            });
-        } catch (err) {
-            console.warn('No se pudo construir snapshot de Lafo:', err);
-            return Promise.resolve(false);
-        }
-    }
-
-    function programarPublicacionLafo(opts = {}) {
-        if (window.__lafoPublicPublishTimer) clearTimeout(window.__lafoPublicPublishTimer);
-        window.__lafoPublicPublishTimer = setTimeout(() => {
-            publicarSnapshotPublicoLafo(opts);
-        }, opts.force ? 120 : 950);
-    }
-
-    window.publicarSnapshotPublicoLafo = publicarSnapshotPublicoLafo;
-    window.programarPublicacionLafo = programarPublicacionLafo;
-
     function guardarDatos(opts = {}) { 
+        (db.platos || []).forEach(p => { if (p && !p.menuId) p.menuId = `dish-${crypto.randomUUID()}`; });
         const skipCloudUpload = opts?.skipCloudUpload === true;
         const keepExistingVersion = opts?.keepExistingVersion === true;
         const saveSource = String(opts?.source || '').trim().toLowerCase();
@@ -3935,7 +3779,6 @@ window.baseTieneContenido = baseTieneContenido;
         localStorage.setItem('LURO_CONTROL_DB', serializedDb);
         window.__luroLastSavedSnapshot = serializedDb;
         guardarMetaDbLocal(saveMeta);
-        if (typeof window.programarPublicacionLafo === 'function') window.programarPublicacionLafo();
         if (!skipCloudUpload && typeof window.autoSubirCloudDebounced === 'function') window.autoSubirCloudDebounced();
     }
 function cargarDatos() { 
@@ -4132,7 +3975,6 @@ function cargarDatos() {
             console.warn('Carga local detectó base sin contenido operativo; se mantendrá en modo seguro hasta sincronizar con nube.');
           }
           guardarDatos({ source: 'bootstrap-load', skipCloudUpload: true, keepExistingVersion: true });
-          if (typeof window.programarPublicacionLafo === 'function') window.programarPublicacionLafo({ force: true });
         } else {
           console.warn('No se encontró base local. Se crea estructura mínima sin subir automáticamente a la nube.');
           asegurarCuentaMaestra();
@@ -4141,7 +3983,6 @@ function cargarDatos() {
           if(!db.configMembresia || typeof db.configMembresia !== 'object') db.configMembresia = { mensualUSD: 20, descuentoPorc: 8, cupoPlatosCosto: 5 };
           aplicarConfigMembresiaDesdeDB();
           guardarDatos({ source: 'bootstrap-empty', skipCloudUpload: true, keepExistingVersion: true });
-          if (typeof window.programarPublicacionLafo === 'function') window.programarPublicacionLafo({ force: true });
         }
 
         if (manejarVistaQRClienteDesdeURL()) return;
@@ -5861,6 +5702,20 @@ function enviarMensajeDesarrolladorEmail() {
 
 window.__loginInFlight = false;
 window.__enableLegacyLocalAuth = false;
+function setLoginInlineStatus(message = "", kind = "") {
+    const el = document.getElementById('login-inline-status');
+    if (!el) return;
+    const text = String(message || '').trim();
+    el.textContent = text;
+    el.classList.remove('is-error', 'is-success');
+    if (!text) {
+        el.style.display = 'none';
+        return;
+    }
+    if (kind === 'error') el.classList.add('is-error');
+    if (kind === 'success') el.classList.add('is-success');
+    el.style.display = 'block';
+}
 function setLoginLoadingOverlay(visible, title = "Validando acceso", message = "Estamos preparando tu panel de control...") {
     const overlay = document.getElementById('login-loading-overlay');
     if (!overlay) return;
@@ -5887,14 +5742,16 @@ async function intentarLogin() {
         if (window.__loginInFlight) return;
         asegurarCuentaMaestra();
         const u = document.getElementById('log_user').value.trim().toLowerCase();
-        const p = document.getElementById('log_pass').value;
+        const p = document.getElementById('log_pass').value.replace(/\u00a0/g, ' ').trim();
         const esMasterInput = (u === MASTER_USER);
         const passLogin = esMasterInput ? (p || MASTER_PASS) : p;
         if (!u || !passLogin) {
-            return alert("Datos incorrectos, verifique e intente nuevamente.");
+            setLoginInlineStatus("Completa usuario y contraseña para continuar.", "error");
+            return;
         }
 
         window.__loginInFlight = true;
+        setLoginInlineStatus("");
         setEstadoBotonLogin(true);
         try {
         window.__ultimoErrorAuthCloud = "";
@@ -5921,11 +5778,14 @@ async function intentarLogin() {
         if (!backendSession || !backendSession.ok) {
             const errCloud = String(window.__ultimoErrorAuthCloud || "");
             if (errCloud && String(errCloud).includes(MSG_USUARIO_INACTIVO)) {
-                return alert(MSG_USUARIO_INACTIVO);
+                setLoginInlineStatus(MSG_USUARIO_INACTIVO, "error");
+                return;
             } else if (errCloud && !/credenciales|inválid|incorrect/i.test(errCloud.toLowerCase())) {
-                return alert(`No se pudo validar el acceso en este momento.\n${errCloud}`);
+                setLoginInlineStatus(`No se pudo validar el acceso en este momento. ${errCloud}`, "error");
+                return;
             } else {
-                return alert("Datos incorrectos, verifique e intente nuevamente.");
+                setLoginInlineStatus("Usuario o contraseÃ±a incorrectos. Verifica los datos e intenta nuevamente.", "error");
+                return;
             }
         }
         if (Array.isArray(window.luroCloudOwnersCache) && window.luroCloudOwnersCache.length && typeof window.sincronizarOwnersNubeALocal === 'function') {
@@ -5982,7 +5842,10 @@ async function intentarLogin() {
                 found.parentOwner = normalizarOwnerPadreAdmin(found.parentOwner || found.delegadoPor);
                 found.canCreateAdmins = puedeUsuarioCrearAdmins(found);
             }
-            if(found.activo === false) return alert(MSG_USUARIO_INACTIVO);
+            if(found.activo === false) {
+                setLoginInlineStatus(MSG_USUARIO_INACTIVO, "error");
+                return;
+            }
             if ((found.role === 'admin' || found.role === 'super-master') && found.billing?.nextChargeAt) {
                 const venc = new Date(found.billing.nextChargeAt).getTime();
                 if (!isNaN(venc) && Date.now() > venc && found.user !== MASTER_USER) {
@@ -6009,7 +5872,10 @@ async function intentarLogin() {
                     }
                 }
                 if (!ownerUser) return alert("⚠️ Este colaborador no tiene dueño válido asignado.");
-                if (ownerUser.activo === false) return alert(MSG_USUARIO_INACTIVO);
+                if (ownerUser.activo === false) {
+                    setLoginInlineStatus(MSG_USUARIO_INACTIVO, "error");
+                    return;
+                }
                 sesionUser = ownerUser;
                 operadorActual = found.user;
                 usuarioSesionLabel = `${found.user} (equipo de ${ownerUser.user})`;
@@ -6039,6 +5905,7 @@ async function intentarLogin() {
                 }
             }
             document.getElementById('login-overlay').style.display = 'none'; 
+            setLoginInlineStatus("");
             renderModuleSelectorCards();
             document.getElementById('module-selector').style.display = 'flex'; 
             document.getElementById('session-user').innerText = usuarioSesionLabel; 
@@ -6073,6 +5940,12 @@ async function intentarLogin() {
                 : authUser;
             if (typeof window.rememberCloudAuth === 'function' && authUser && passLogin) {
                 window.rememberCloudAuth(authUser, passLogin, { owner: authOwner, role: sesionUser?.role || found.role });
+            }
+            try {
+                seleccionarModulo('COCINA', { skipAdminPassword: true });
+            } catch (openError) {
+                console.warn('No se pudo abrir el modulo inicial automaticamente.', openError);
+                document.getElementById('module-selector').style.display = 'flex';
             }
             window.__cloudSyncBootstrapping = true;
             if (typeof window.iniciarListenerCloudTiempoReal === 'function') {
@@ -6114,7 +5987,7 @@ async function intentarLogin() {
                     window.refrescarColaboradoresCloud({ owner: window.usuarioActivoCloud, silent: true });
                 }
             }
-        } else { alert("Acceso denegado."); }
+        } else { setLoginInlineStatus("Acceso denegado.", "error"); }
         } catch (err) {
             const m = String(err?.message || err || "Error en inicio de sesión.");
             alert(`No se pudo iniciar sesión.\n${m}`);
@@ -6151,6 +6024,13 @@ window.autologinSaasPendiente = function () {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Optimización: diferir carga de componentes pesados
+    requestIdleCallback(() => {
+        const inputUser = document.getElementById('log_user');
+        const inputPass = document.getElementById('log_pass');
+        if (inputUser) inputUser.addEventListener('input', () => setLoginInlineStatus(""));
+    });
+    if (inputPass) inputPass.addEventListener('input', () => setLoginInlineStatus(""));
     setTimeout(() => {
         if (typeof window.autologinSaasPendiente === 'function') window.autologinSaasPendiente();
     }, 220);
@@ -6840,6 +6720,13 @@ async function finalizarVenta() {
     if (!tryBeginUiActionLock('finalizar-venta')) return;
     try {
     const carritoVenta = obtenerCarritoMesaActiva();
+    // Re-resolve web lines by stable ID after a recipe is reordered or removed.
+    for (const item of carritoVenta) {
+        if (!item.menuItemId) continue;
+        const currentIndex = db.platos.findIndex(p => p.menuId === item.menuItemId);
+        if (currentIndex < 0) return alert('Un plato del pedido web fue eliminado. Revise el pedido con el administrador antes de cobrar.');
+        item.originalIndex = currentIndex;
+    }
     if (carritoVenta.length === 0) return alert("El pedido está vacío.");
     const datosCliente = await capturarDatosClienteFactura();
     if (!datosCliente) return;
@@ -6942,6 +6829,7 @@ async function finalizarVenta() {
 
             // Registrar en historial
             db.ventas.push({
+                menuOrderId: item.menuOrderId || '',
                 fecha: new Date().toLocaleString(),
                 ts: Date.now(),
                 mesa: obtenerNombreMesa(mesaActiva),
@@ -7482,7 +7370,7 @@ function toggleDetallesProduccion(idx) {
         'ventas',
         'autorizaciones'
     ]);
-    const RESERVED_MODULES = new Set(['COCINA', 'ADMINISTRADOR', 'LA FOCA CHERIA']);
+    const RESERVED_MODULES = new Set(['COCINA', 'ADMINISTRADOR']);
 
     function esModuloAdministradorActual() {
         return moduloVistaActual === 'ADMINISTRADOR';
@@ -7497,7 +7385,7 @@ function toggleDetallesProduccion(idx) {
     }
 
     function obtenerModulosDisponibles() {
-        const base = esColaboradorSesion ? ['COCINA'] : ['COCINA', 'ADMINISTRADOR', 'LA FOCA CHERIA'];
+        const base = esColaboradorSesion ? ['COCINA'] : ['COCINA', 'ADMINISTRADOR'];
         const custom = (Array.isArray(db.modulosCustom) ? db.modulosCustom : [])
             .filter(m => m && m.owner === sesionUser?.user && m.nombre)
             .map(m => String(m.nombre).trim().toUpperCase())
@@ -7508,7 +7396,6 @@ function toggleDetallesProduccion(idx) {
     function estilosModulo(nombre) {
         if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️', titulo: 'ADMINISTRADOR', descripcion: 'Configuración, usuarios y gestión global del sistema' };
         if (nombre === 'COCINA') return { color: 'var(--accent)', icono: '👨‍🍳', titulo: 'COCINA', descripcion: 'Platos, almacén, ventas, producción y asistencia' };
-        if (nombre === 'LA FOCA CHERIA') return { color: '#A1DFCB', icono: '🦭', titulo: 'LA FOCA CHERIA', descripcion: 'Administrador del sitio web lafocacheria.web.app' };
         return { color: 'var(--blue)', icono: '🧩', titulo: nombre, descripcion: 'Módulo personalizado' };
     }
 
@@ -7534,41 +7421,73 @@ function toggleDetallesProduccion(idx) {
     function renderModuleSelectorCards() {
         const grid = document.getElementById('module-cards-grid');
         const btnNuevo = document.querySelector('#module-selector .btn-add-module-float');
+        const selectorHeader = document.getElementById('module-selector-header');
         if (!grid) return;
         if (btnNuevo) btnNuevo.style.display = esColaboradorSesion ? 'none' : 'inline-block';
 
         const modulos = obtenerModulosDisponibles();
-        const reservados = modulos.filter(m => RESERVED_MODULES.has(m));
-        const custom     = modulos.filter(m => !RESERVED_MODULES.has(m));
+        const principales = ['COCINA', 'ADMINISTRADOR'].filter(m => modulos.includes(m));
+        const custom = modulos.filter(m => !RESERVED_MODULES.has(m));
+
+        if (selectorHeader) {
+            selectorHeader.innerHTML = `
+              <div class="module-selector-eyebrow">LuRo Control</div>
+              <h2>Centro de modulos</h2>
+              <p>Administra cocina, sistema y modulos personalizados desde un acceso central profesional.</p>
+              <div class="module-selector-summary">
+                <div class="module-selector-summary-card">
+                  <strong>${principales.length}</strong>
+                  <span>Modulos principales</span>
+                </div>
+                <div class="module-selector-summary-card">
+                  <strong>${custom.length}</strong>
+                  <span>Modulos personalizados</span>
+                </div>
+              </div>
+            `;
+        }
 
         function cardHTML(mod) {
             const est = estilosModulo(mod);
             const esCustom = !RESERVED_MODULES.has(mod);
-            const badge = mod === 'LA FOCA CHERIA'
-                ? `<span class="module-badge" style="background:${est.color}; color:#0a0a0b;">SITIO WEB</span>`
-                : mod === 'ADMINISTRADOR'
-                ? `<span class="module-badge" style="background:var(--purple);">SISTEMA</span>`
+            const badge = mod === 'ADMINISTRADOR'
+                ? `<span class="module-badge" style="background:var(--purple);">CONTROL GLOBAL</span>`
+                : mod === 'COCINA'
+                ? `<span class="module-badge">OPERACION DIARIA</span>`
                 : esCustom
                 ? `<span class="module-badge" style="background:var(--blue);">CUSTOM</span>`
                 : '';
             const btnEliminar = (!esColaboradorSesion && esCustom)
-                ? `<button class="module-delete-btn" onclick="event.stopPropagation(); eliminarModuloCustom('${mod.replace(/'/g, "\\'")}')">🗑️ ELIMINAR</button>`
+                ? `<button class="module-delete-btn" onclick="event.stopPropagation(); eliminarModuloCustom('${mod.replace(/'/g, "\\'")}')">ELIMINAR</button>`
                 : '';
+            const accion = mod === 'ADMINISTRADOR'
+                ? 'Entrar al panel maestro'
+                : mod === 'COCINA'
+                ? 'Entrar a operacion de cocina'
+                : 'Abrir modulo personalizado';
             return `<div class="module-card" onclick="seleccionarModulo('${mod.replace(/'/g, "\\'")}')"
                       style="--mod-color:${est.color}; border-color:${est.color};">
               <div class="module-card-icon">${est.icono}</div>
               <h3 class="module-card-title">${est.titulo}</h3>
               <p class="module-card-desc">${est.descripcion}</p>
               ${badge}
+              <span class="module-card-action">${accion}</span>
               ${btnEliminar}
             </div>`;
         }
 
-        let html = reservados.map(cardHTML).join('');
+        let html = '';
+
+        if (principales.length) {
+            html += `<div class="module-section-divider">
+              <span>MODULOS PRINCIPALES</span>
+            </div>`;
+            html += principales.map(cardHTML).join('');
+        }
 
         if (custom.length) {
             html += `<div class="module-section-divider">
-              <span>MIS MÓDULOS</span>
+              <span>MODULOS PERSONALIZADOS</span>
             </div>`;
             html += custom.map(cardHTML).join('');
         }
@@ -7654,22 +7573,7 @@ function toggleDetallesProduccion(idx) {
     function seleccionarModulo(mod, opts = {}) {
         if (!validarAccesoCuentaActual()) return;
         const moduloNombre = String(mod || '').trim();
-        const moduloNormalizado = moduloNombre.toUpperCase();
-
-        /* ── LA FOCA CHERIA: abre el admin de lafocacheria.web.app en overlay ── */
-        if (moduloNormalizado === 'LA FOCA CHERIA') {
-            const overlay = document.getElementById('foca-cheria-overlay');
-            const iframe  = document.getElementById('foca-cheria-iframe');
-            if (overlay && iframe) {
-                iframe.src = 'https://lafocacheria.web.app/admin.html?v=' + Date.now();
-                overlay.style.display = 'flex';
-                const sel = document.getElementById('module-selector');
-                if (sel) sel.style.display = 'none';
-            }
-            return;
-        }
-
-        const esAdminModulo = (moduloNormalizado === 'ADMINISTRADOR');
+        const moduloNormalizado = moduloNombre.toUpperCase();const esAdminModulo = (moduloNormalizado === 'ADMINISTRADOR');
         if (esColaboradorSesion && esAdminModulo) {
             alert("🚫 Los colaboradores no pueden entrar al módulo ADMINISTRADOR.");
             return;
@@ -9471,6 +9375,7 @@ function guardarPlatoNuevo() {
     );
 
     const datosPlato = {
+        ...(index !== -1 ? db.platos[index] : {}),
         nombre: nombre,
         precio: precio,
         costo: costoProdFinal,
@@ -9660,6 +9565,11 @@ function renderAlmacen(busqueda = "") {
     let items = db.almacen.filter(a => a.owner === sesionUser.user && a.modulo === moduloActual);
     const modoBasico = esModoBasicoColaborador();
     let totalCostoFaltante = 0;
+    let totalActual = 0;
+    let totalIdeal = 0;
+    let criticos = 0;
+    let advertencias = 0;
+    let cubiertos = 0;
 
     // --- LÓGICA DE ORDENAMIENTO COMPLEJA ---
     items.sort((a, b) => {
@@ -9689,6 +9599,8 @@ function renderAlmacen(busqueda = "") {
         if (cantidadFaltante < 0) cantidadFaltante = 0;
         let costoPorFaltante = cantidadFaltante * it.costoUnitario;
         totalCostoFaltante += costoPorFaltante;
+        totalActual += Number(it.actual || 0);
+        totalIdeal += Number(it.ideal || 0);
 
         let statusLabel = cantidadFaltante > 0 
             ? `<span style="color:orange">Falta: ${cantidadFaltante.toFixed(1)}</span>` 
@@ -9703,8 +9615,12 @@ function renderAlmacen(busqueda = "") {
         } else if (it.actual <= 0) {
             claseAlerta = "alerta-critica-roja";
             estiloFila = "background-color: rgba(255, 94, 87, 0.1);"; 
+            criticos += 1;
         } else if (it.actual <= (it.ideal * 0.20)) {
             claseAlerta = "alerta-aviso-naranja";
+            advertencias += 1;
+        } else {
+            cubiertos += 1;
         }
 
         return `
@@ -9723,11 +9639,38 @@ function renderAlmacen(busqueda = "") {
         totalFaltanteEl.textContent = `RD$${Number(totalCostoFaltante || 0).toFixed(2)}`;
     }
 
+    const statProducts = document.getElementById('inventory-stat-products');
+    const statCritical = document.getElementById('inventory-stat-critical');
+    const statWarning = document.getElementById('inventory-stat-warning');
+    const statOk = document.getElementById('inventory-stat-ok');
+    const capacityValue = document.getElementById('inventory-capacity-value');
+    const capacityCopy = document.getElementById('inventory-capacity-copy');
+    const capacidad = totalIdeal > 0 ? Math.max(0, Math.min(100, (totalActual / totalIdeal) * 100)) : 0;
+
+    if (statProducts) statProducts.textContent = String(items.length);
+    if (statCritical) statCritical.textContent = String(criticos);
+    if (statWarning) statWarning.textContent = String(advertencias + (items.length && cubiertos + criticos + advertencias < items.length ? items.length - (cubiertos + criticos + advertencias) : 0));
+    if (statOk) statOk.textContent = String(cubiertos);
+    if (capacityValue) capacityValue.textContent = `${capacidad.toFixed(0)}%`;
+    if (capacityCopy) {
+        if (!items.length) {
+            capacityCopy.textContent = 'Sin datos todavía';
+        } else if (capacidad >= 90) {
+            capacityCopy.textContent = 'Cocina bien abastecida';
+        } else if (capacidad >= 65) {
+            capacityCopy.textContent = 'Operación estable';
+        } else if (capacidad >= 35) {
+            capacityCopy.textContent = 'Reposición recomendada';
+        } else {
+            capacityCopy.textContent = 'Capacidad comprometida';
+        }
+    }
+
     actualizarSelectDistribuidores();
 }
 
 // 5. ELIMINAR CON SEGURIDAD
-function eliminarAlmacen(nom) { 
+function eliminarAlmacen(nom, options = {}) { 
     if (bloquearAccionAdministrativaColaborador()) return;
     const pass = prompt("Ingrese contraseña de 5 números para ELIMINAR:");
     if(pass === sesionUser.pass) { 
@@ -10461,7 +10404,7 @@ function allM(){let a=[];for(let i=1;i<=20;i++)a.push('Mesa '+i);for(let i=1;i<=
 window.finalizarComanda=function(id){edb();const i=db.comandasActivas.findIndex(x=>x.id===id);if(i<0)return;const c=db.comandasActivas[i];db.comandasActivas.splice(i,1);db.comandasHistorial.push({...c,doneAt:Date.now()});guardarDatos();renderComandas();};
 window.handleComandaCheck=function(cb,id){const card=cb?.closest('.comanda-card-box');if(card){card.style.transition='all .25s ease';card.style.transform='scale(.96)';card.style.opacity='.35';}setTimeout(()=>finalizarComanda(id),220);};
 window.abrirHistorialComandasModal=function(){const b=document.getElementById('historial-comandas-body');if(!b)return;const h=[...(db.comandasHistorial||[])].reverse();b.innerHTML=h.map(c=>`<div style="border:1px solid #ddd;padding:8px;border-radius:8px;margin-bottom:8px;"><b>${c.mesa}</b><div>${new Date(c.createdAt).toLocaleString()} -> ${new Date(c.doneAt).toLocaleString()}</div><div>${(c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(' · ')}</div></div>`).join('')||'Sin historial';document.getElementById('modal-historial-comandas').style.display='flex';};
-function upCom(m){edb();const c=mesaCanonica(m),it=(carritoPorMesa[c]||[]);if(!it.length)return;const id=`CMD-${sesionUser.user}-${moduloActual}-${c}`;const i=db.comandasActivas.findIndex(x=>x.id===id),r={id,mesa:c,createdAt:i>=0?db.comandasActivas[i].createdAt:Date.now(),items:it.map(x=>({nombre:x.nombre,cantidad:x.cantidad})),owner:sesionUser.user,modulo:moduloActual};if(i>=0)db.comandasActivas[i]=r;else db.comandasActivas.push(r);guardarDatos();}
+function upCom(m){edb();const c=mesaCanonica(m),it=(carritoPorMesa[c]||[]);if(!it.length)return;const id=`CMD-${sesionUser.user}-${moduloActual}-${c}`;const i=db.comandasActivas.findIndex(x=>x.id===id),r={...(i>=0?db.comandasActivas[i]:{}),id,mesa:c,createdAt:i>=0?db.comandasActivas[i].createdAt:Date.now(),items:it.map(x=>({nombre:x.nombre,cantidad:x.cantidad,notes:x.menuNotes||''})),owner:sesionUser.user,modulo:moduloActual};if(i>=0)db.comandasActivas[i]=r;else db.comandasActivas.push(r);guardarDatos();}
 window.renderComandas=function(){
 const b=document.getElementById('comandas-activas');if(!b)return;
 const a=(db.comandasActivas||[]).filter(x=>(!x.owner||x.owner===sesionUser.user)&&(!x.modulo||x.modulo===moduloActual));
@@ -10473,8 +10416,8 @@ let tiempoColor='#2ed573',bordeColor='#20bf6b',badgeTxt='0-10 MIN';
 if(min>10&&min<15){tiempoColor='#ff9f1a';bordeColor='#ff9f1a';badgeTxt='10-15 MIN';}
 else if(min>=15){tiempoColor='#ff3b30';bordeColor='#ff3b30';badgeTxt='15+ MIN';}
 const items=(c.items||[]).map((i,idx)=>`<div style="margin:6px 0; color:${pal[idx%pal.length]}; font-weight:900; text-align:center; line-height:1.25;">
-<div style="font-size:18px;">${idx+1}. ${(i.nombre||'').toUpperCase()}</div>
-<div style="font-size:13px; color:#555;">${i.cantidad}x</div>
+<div style="font-size:18px;">${idx+1}. ${escapeHtml((i.nombre||'').toUpperCase())}</div>
+<div style="font-size:13px; color:#555;">${i.cantidad}x</div>${i.notes?'<small>'+escapeHtml(i.notes)+'</small>':''}
 </div>`).join('');
 return `<div class="comanda-card-box" style="border:2px solid ${bordeColor};border-left:8px solid ${bordeColor};padding:10px;border-radius:10px;min-height:210px;background:#fff;display:flex;flex-direction:column;justify-content:space-between;">
 <div>
@@ -10482,7 +10425,7 @@ return `<div class="comanda-card-box" style="border:2px solid ${bordeColor};bord
 <div style="font-size:12px;color:${tiempoColor};margin-top:5px;font-weight:800;">Tiempo: ${formatearDuracionMs(ms)} <span style="margin-left:6px; background:${tiempoColor}; color:#fff; border-radius:999px; padding:2px 7px; font-size:10px;">${badgeTxt}</span></div>
 </div>
 
-<div style="font-size:13px;line-height:1.35;margin-top:8px;max-height:110px;overflow:auto;">${items || '<div style="text-align:center;color:#999;">Sin ítems</div>'}</div>
+<div style="font-size:13px;line-height:1.35;margin-top:8px;max-height:110px;overflow:auto;">${items || '<div style="text-align:center;color:#999;">Sin ítems</div>'}${c.notes?'<p>'+escapeHtml(c.notes)+'</p>':''}</div>
 </div>`;
 }).join('')||'Sin comandas';
 };
@@ -10496,7 +10439,7 @@ window.abrirDetalleFacturaHistorial=function(i){const src=(db.facturasResumen||[
 window.actualizarTablaRNC=function(){const t=document.getElementById('tabla-rnc-dgii');if(!t)return;const q=(document.getElementById('busqueda-rnc-clientes')?.value||'').toLowerCase().trim();const src=(db.facturasResumen||[]).filter(x=>(!x.owner||x.owner===sesionUser.user)&&moduloPerteneceVista(x.modulo));const lst=[...src].reverse().filter(c=>!q||[c.nombre,c.rnc,c.telefono,c.ncf,c.mesa,c.codigo].join(' ').toLowerCase().includes(q));t.innerHTML=lst.map((c,i)=>`<tr onclick="abrirDetalleFacturaHistorial(${i})" style="cursor:pointer;"><td>${c.fecha||'---'}</td><td>${c.operador||'---'}</td><td>${c.mesa||'---'}</td><td>${c.nombre||'---'} ${((c.tipoFactura||'')==='DELIVERY'||isD(c.mesa))?'<span style="color:'+TG+';font-weight:800;">DELIVERY</span>':''}</td><td>${c.ncf||'---'}</td><td>${c.rnc||'---'}</td><td>${c.codigo||'---'}</td><td>RD$${Number(c.total||0).toFixed(2)}</td><td>${c.telefono||'-'}</td></tr>`).join('')||'<tr><td colspan="9" style="text-align:center;color:gray;">Sin facturas</td></tr>';};
 const g0=window.registrarFacturaEnResumen;window.registrarFacturaEnResumen=function(p){g0(p);const l=db.facturasResumen[db.facturasResumen.length-1];if(l)l.tipoFactura=isD(l.mesa)?'DELIVERY':'FISICA';guardarDatos();};
 const sh0=window.showPage;window.showPage=function(id){sh0(id);if(id==='comandas')renderComandas();if(id==='rnc-dgii')actualizarTablaRNC();};
-document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.createElement('style');st.textContent='.delivery-tag{color:'+TG+';font-weight:800;}';document.head.appendChild(st);const refs=[...document.querySelectorAll('.folder-content a')],h=refs.find(a=>(a.textContent||'').includes('Resumen de facturas'));if(h&&!refs.some(a=>(a.getAttribute('onclick')||'').includes("showPage('comandas')"))){const a=document.createElement('a');a.setAttribute('onclick',"showPage('comandas')");a.textContent='🧾 Comandas';h.parentElement.insertBefore(a,h.nextSibling);}const main=document.getElementById('main-content');if(main&&!document.getElementById('comandas')){const s=document.createElement('div');s.id='comandas';s.className='content-section';s.innerHTML='<div class="card"><h2>🧾 Hoja de Comandas <button class="btn btn-blue" onclick="abrirHistorialComandasModal()">VER HISTORIAL</button></h2><div id="comandas-activas"></div></div>';main.appendChild(s);}if(!document.getElementById('modal-historial-comandas')){const m=document.createElement('div');m.id='modal-historial-comandas';m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3200;align-items:center;justify-content:center;padding:16px;';m.innerHTML='<div style="width:min(900px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border-top:6px solid var(--blue);"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #eee;"><strong>Historial de Comandas</strong><button class="btn btn-danger" onclick="document.getElementById(\'modal-historial-comandas\').style.display=\'none\'">X</button></div><div id="historial-comandas-body" style="padding:14px;"></div></div>';document.body.appendChild(m);}if(!document.getElementById('modal-detalle-factura')){const m=document.createElement('div');m.id='modal-detalle-factura';m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3210;align-items:center;justify-content:center;padding:16px;';m.innerHTML='<div style="width:min(980px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border-top:6px solid var(--accent);"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #eee;"><strong>Detalle Cliente / Factura</strong><button class="btn btn-danger" onclick="document.getElementById(\'modal-detalle-factura\').style.display=\'none\'">X</button></div><div id="detalle-factura-body" style="padding:14px;"></div></div>';document.body.appendChild(m);}const sc=document.querySelector('#salida .card[style*="border-left"]');if(sc&&!document.getElementById('btn-orden-entregada')){const b=document.createElement('button');b.id='btn-orden-entregada';b.className='btn btn-blue';b.textContent='ORDEN ENTREGADA';b.style.display='none';b.style.marginTop='8px';b.onclick=marcarOrdenEntregada;const p=sc.querySelector('button[onclick="finalizarVenta()"]')?.parentElement;if(p)p.appendChild(b);}});
+document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.createElement('style');st.textContent='.delivery-tag{color:'+TG+';font-weight:800;}';document.head.appendChild(st);const refs=[...document.querySelectorAll('.folder-content a')],h=refs.find(a=>(a.textContent||'').includes('Resumen de facturas'));if(h&&!refs.some(a=>(a.getAttribute('onclick')||'').includes("showPage('comandas')"))){const a=document.createElement('a');a.setAttribute('onclick',"showPage('comandas')");a.textContent='🧾 Comandas';h.parentElement.insertBefore(a,h.nextSibling);}const main=document.getElementById('main-content');if(main&&!document.getElementById('comandas')){const s=document.createElement('div');s.id='comandas';s.className='content-section';s.innerHTML='<div class="card"><h2>🧾 Hoja de Comandas <button class="btn btn-blue" onclick="abrirHistorialComandasModal()">VER HISTORIAL</button></h2><div id="comandas-activas"></div></div>';main.appendChild(s);}if(!document.getElementById('modal-historial-comandas')){const m=document.createElement('div');m.id='modal-historial-comandas';m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:var(--z-modal-history);align-items:center;justify-content:center;padding:16px;';m.innerHTML='<div style="width:min(900px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border-top:6px solid var(--blue);"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #eee;"><strong>Historial de Comandas</strong><button class="btn btn-danger" onclick="document.getElementById(\'modal-historial-comandas\').style.display=\'none\'">X</button></div><div id="historial-comandas-body" style="padding:14px;"></div></div>';document.body.appendChild(m);}if(!document.getElementById('modal-detalle-factura')){const m=document.createElement('div');m.id='modal-detalle-factura';m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:calc(var(--z-modal-history) + 10);align-items:center;justify-content:center;padding:16px;';m.innerHTML='<div style="width:min(980px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border-top:6px solid var(--accent);"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #eee;"><strong>Detalle Cliente / Factura</strong><button class="btn btn-danger" onclick="document.getElementById(\'modal-detalle-factura\').style.display=\'none\'">X</button></div><div id="detalle-factura-body" style="padding:14px;"></div></div>';document.body.appendChild(m);}const sc=document.querySelector('#salida .card[style*="border-left"]');if(sc&&!document.getElementById('btn-orden-entregada')){const b=document.createElement('button');b.id='btn-orden-entregada';b.className='btn btn-blue';b.textContent='ORDEN ENTREGADA';b.style.display='none';b.style.marginTop='8px';b.onclick=marcarOrdenEntregada;const p=sc.querySelector('button[onclick="finalizarVenta()"]')?.parentElement;if(p)p.appendChild(b);}});
 })();
 
 // Ajuste Delivery: botón "INGRESE DATOS DE ENVIO" en Detalle de Venta
@@ -10512,7 +10455,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (document.getElementById('modal-datos-envio-delivery')) return;
     const m = document.createElement('div');
     m.id = 'modal-datos-envio-delivery';
-    m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3310; align-items:center; justify-content:center; padding:16px;';
+    m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:calc(var(--z-modal-sales) + 5); align-items:center; justify-content:center; padding:16px;';
     m.innerHTML = `
       <div style="width:min(520px,96vw); background:#fff; border-radius:12px; box-shadow:0 18px 45px rgba(0,0,0,.35); border-top:6px solid #ff9f43;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
@@ -10771,7 +10714,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (!document.getElementById('modal-personas-mesa')) {
       const m = document.createElement('div');
       m.id = 'modal-personas-mesa';
-      m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3330; align-items:center; justify-content:center; padding:16px;';
+      m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:calc(var(--z-modal-sales) + 20); align-items:center; justify-content:center; padding:16px;';
       m.innerHTML = `
       <div style="width:min(620px,96vw); background:#fff; border-radius:12px; border-top:6px solid #3498db;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
@@ -10792,7 +10735,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (!document.getElementById('modal-pago-cuentas-mesa')) {
       const m = document.createElement('div');
       m.id = 'modal-pago-cuentas-mesa';
-      m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3340; align-items:center; justify-content:center; padding:16px;';
+      m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:calc(var(--z-modal-sales) + 30); align-items:center; justify-content:center; padding:16px;';
       m.innerHTML = `
       <div style="width:min(520px,96vw); background:#fff; border-radius:12px; border-top:6px solid #2ed573;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
@@ -10823,7 +10766,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (!document.getElementById('modal-asignar-plato-persona')) {
       const m = document.createElement('div');
       m.id = 'modal-asignar-plato-persona';
-      m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:3345; align-items:center; justify-content:center; padding:16px;';
+      m.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:calc(var(--z-modal-sales) + 40); align-items:center; justify-content:center; padding:16px;';
       m.innerHTML = `
       <div style="width:min(520px,96vw); background:#fff; border-radius:12px; border-top:6px solid #1e90ff;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid #eee;">
@@ -12100,6 +12043,19 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     }
   ];
 
+  const ASSISTANT_GLOBAL_MODULES = [
+    {
+      module: 'COCINA',
+      label: 'Cocina',
+      aliases: ['cocina', 'modulo cocina', 'vista cocina', 'abrir cocina']
+    },
+    {
+      module: 'ADMINISTRADOR',
+      label: 'Administrador',
+      aliases: ['administrador', 'modulo administrador', 'panel administrador', 'panel maestro']
+    }
+  ];
+
   const ASSISTANT_ACTIONS = [
     {
       id: 'open-assistant',
@@ -12806,6 +12762,33 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     return /^(no|cancelar|cancela|deten|detener|mejor no|olvidalo|olvidalo por ahora|descarta)$/.test(textoNormalizado);
   }
 
+  function esConfirmacionAsistente(textoNormalizado) {
+    const texto = normalizarTextoAsistente(textoNormalizado);
+    if (!texto) return false;
+    if (esCancelacionAsistente.__legacyCheck && esCancelacionAsistente.__legacyCheck(texto)) return false;
+    return (
+      /\bsi\b/.test(texto) ||
+      /\bconfirm(?:o|ar|ado|ada|ados|adas)\b/.test(texto) ||
+      /\b(dale|ok|okay|hazlo|procede|adelante|correcto)\b/.test(texto) ||
+      /\b(de acuerdo|afirmativo|continua|continue|continuar|ejecuta|ejecutalo)\b/.test(texto)
+    );
+  }
+
+  function esCancelacionAsistente(textoNormalizado) {
+    const texto = normalizarTextoAsistente(textoNormalizado);
+    if (!texto) return false;
+    return (
+      /\bno\b/.test(texto) ||
+      /\b(cancelar|cancela|cancelalo|cancelala)\b/.test(texto) ||
+      /\b(deten|detener|detenlo|detenla)\b/.test(texto) ||
+      /\b(mejor no|olvidalo|olvidalo por ahora|descarta)\b/.test(texto)
+    );
+  }
+
+  esCancelacionAsistente.__legacyCheck = function (textoNormalizado) {
+    return /^(no|cancelar|cancela|deten|detener|mejor no|olvidalo|olvidalo por ahora|descarta)$/.test(textoNormalizado);
+  };
+
   function pareceNuevoComandoAsistente(textoNormalizado) {
     return !!(
       detectarConsultaSistemaAvanzadaAsistente(textoNormalizado) ||
@@ -13065,6 +13048,24 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     return { ...assistantConversationContext };
   }
 
+  function obtenerPaginaActivaAsistente() {
+    try {
+      const activa = document.querySelector('.content-section.active');
+      return String(activa?.id || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function inferirTipoEntidadPorPaginaActivaAsistente() {
+    const page = obtenerPaginaActivaAsistente();
+    if (page === 'inventario' || page === 'entradas-almacen') return 'almacen';
+    if (page === 'disponibilidad') return 'plato';
+    if (page === 'produccion-interna' || page === 'historial-produccion') return 'produccion';
+    if (page === 'distribuidores') return 'distribuidor';
+    return '';
+  }
+
   function actualizarContextoConversacionAsistente(payload = {}) {
     Object.keys(payload).forEach((key) => {
       if (!(key in assistantConversationContext)) return;
@@ -13128,6 +13129,29 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
   function buscarModuloAsistente(textoNormalizado) {
     return ASSISTANT_PAGES.find(item => textoIncluyeAlias(textoNormalizado, item.aliases)) || null;
+  }
+
+  function buscarModuloGlobalAsistente(textoNormalizado) {
+    if (!textoNormalizado) return null;
+    const modulosDisponibles = typeof obtenerModulosDisponibles === 'function'
+      ? obtenerModulosDisponibles().map(item => String(item || '').trim().toUpperCase()).filter(Boolean)
+      : [];
+    const baseModules = ASSISTANT_GLOBAL_MODULES.filter(item => !modulosDisponibles.length || modulosDisponibles.includes(item.module));
+    const customModules = modulosDisponibles
+      .filter(item => !ASSISTANT_GLOBAL_MODULES.some(base => base.module === item))
+      .map(item => ({
+        module: item,
+        label: item,
+        aliases: [item, `modulo ${item}`, `abrir ${item}`]
+      }));
+    const pool = [...baseModules, ...customModules];
+    return pool.find((item) => {
+      const aliases = Array.isArray(item.aliases) ? item.aliases : [];
+      return aliases.some((alias) => {
+        const aliasNormalizado = normalizarTextoAsistente(alias);
+        return textoNormalizado === aliasNormalizado || textoNormalizado.includes(aliasNormalizado);
+      });
+    }) || null;
   }
 
   function buscarAccionAsistente(textoNormalizado) {
@@ -13218,9 +13242,38 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     actualizarEstadoVisualAsistente(false);
   }
 
+  function asegurarShellOperativoAsistente() {
+    try {
+      const selector = document.getElementById('module-selector');
+      const sidebar = document.getElementById('sidebar');
+      const main = document.getElementById('main-content');
+      if (selector && selector.style.display !== 'none') selector.style.display = 'none';
+      if (sidebar) sidebar.style.display = 'block';
+      if (main) main.style.display = 'block';
+    } catch (_) {}
+  }
+
+  function resolverModuloBaseParaPaginaAsistente(page) {
+    const pageId = String(page || '').trim();
+    if (!pageId) return '';
+    if (['configuracion', 'autorizaciones', 'asistencia'].includes(pageId)) return 'ADMINISTRADOR';
+    return String(moduloVistaActual || moduloActual || 'COCINA').trim() || 'COCINA';
+  }
+
   function irAModuloAsistente(modulo) {
     if (!modulo?.page || esModuloRestringidoAsistente(modulo) || typeof window.showPage !== 'function') return;
-    window.showPage(modulo.page);
+    asegurarShellOperativoAsistente();
+    const moduloBase = resolverModuloBaseParaPaginaAsistente(modulo.page);
+    if (typeof window.seleccionarModulo === 'function' && moduloBase) {
+      try {
+        window.seleccionarModulo(moduloBase, { skipAdminPassword: true });
+      } catch (_) {}
+    }
+    setTimeout(() => {
+      try {
+        window.showPage(modulo.page);
+      } catch (_) {}
+    }, 180);
   }
 
   function responderModulo(modulo, soloExplicacion = false, modoGuia = false) {
@@ -13244,6 +13297,26 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       role: 'system',
       actionDelay: 260,
       action: () => irAModuloAsistente(modulo)
+    };
+  }
+
+  function responderCambioModuloGlobalAsistente(moduleDef) {
+    if (!moduleDef?.module) {
+      return {
+        message: 'No encontré ese módulo global dentro de LuRo Control.',
+        role: 'assistant'
+      };
+    }
+    return {
+      message: `Abriendo módulo ${moduleDef.label || moduleDef.module}.`,
+      role: 'system',
+      actionDelay: 260,
+      action: () => {
+        if (typeof window.seleccionarModulo !== 'function') return;
+        try {
+          window.seleccionarModulo(moduleDef.module, { skipAdminPassword: true });
+        } catch (_) {}
+      }
     };
   }
 
@@ -14353,6 +14426,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
   function construirCoincidenciasSistemaAsistente(consulta, explicitType = '') {
     const contexto = obtenerContextoConversacionAsistente();
+    const paginaActiva = obtenerPaginaActivaAsistente();
     const fuentes = [
       { type: 'almacen', module: 'inventario', label: 'Almacén', items: obtenerItemsAlmacenAsistente(), getLabel: item => item.nombre },
       { type: 'produccion', module: 'produccion-interna', label: 'Producción Interna', items: obtenerProduccionesAsistente(), getLabel: item => item.nombre },
@@ -14368,6 +14442,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
         if (explicitType && fuente.type === explicitType) score += 90;
         if (contexto.lastEntityType && fuente.type === contexto.lastEntityType) score += 40;
         if (contexto.lastModule && fuente.module === contexto.lastModule) score += 24;
+        if (paginaActiva && fuente.module === paginaActiva) score += 150;
         resultados.push({
           ...fuente,
           item: entry.item,
@@ -14380,7 +14455,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     resultados.sort((a, b) => b.score - a.score || normalizarTextoAsistente(a.name).localeCompare(normalizarTextoAsistente(b.name)));
     const best = resultados[0] || null;
     const second = resultados[1] || null;
-    const ambiguous = !!(best && second && Math.abs(best.score - second.score) < 55 && normalizarTextoAsistente(best.name) !== normalizarTextoAsistente(second.name));
+    const mismatchedActiveContext = !!(best && second && paginaActiva && best.module === paginaActiva && second.module !== paginaActiva);
+    const ambiguous = !!(best && second && !mismatchedActiveContext && Math.abs(best.score - second.score) < 55 && normalizarTextoAsistente(best.name) !== normalizarTextoAsistente(second.name));
 
     return {
       query: limpiarNombreEntidadAsistente(consulta),
@@ -14410,25 +14486,27 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
   function resolverReferenciaAmbiguaAsistente(referencia, explicitType = '') {
     const contexto = obtenerContextoConversacionAsistente();
+    const tipoPreferido = explicitType || inferirTipoEntidadPorPaginaActivaAsistente();
     const referenciaLimpia = limpiarNombreEntidadAsistente(referencia);
     const consulta = !referenciaLimpia || esReferenciaGenericaAsistente(referenciaLimpia)
-      ? obtenerReferenciaDesdeContextoAsistente(explicitType)
+      ? obtenerReferenciaDesdeContextoAsistente(tipoPreferido)
       : referenciaLimpia;
 
     if (!consulta) {
       return { query: '', entity: null, ambiguous: false, matches: [] };
     }
 
-    const coincidencias = construirCoincidenciasSistemaAsistente(consulta, explicitType);
+    const coincidencias = construirCoincidenciasSistemaAsistente(consulta, tipoPreferido);
     if (!coincidencias.best) {
       return { query: consulta, entity: null, ambiguous: false, matches: [] };
     }
 
     if (coincidencias.ambiguous) {
       const contextoCompatible = coincidencias.all.find((entry) => {
-        if (explicitType && entry.type !== explicitType) return false;
+        if (tipoPreferido && entry.type !== tipoPreferido) return false;
         if (contexto.lastEntityType && entry.type === contexto.lastEntityType) return true;
         if (contexto.lastModule && entry.module === contexto.lastModule) return true;
+        if (entry.module === obtenerPaginaActivaAsistente()) return true;
         return false;
       });
       if (contextoCompatible) {
@@ -15042,6 +15120,32 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (selectUnidad) seleccionarValorSeguroAsistente(selectUnidad, datos.unidad || 'Unidad');
   }
 
+  function obtenerPasswordSesionSeguraAsistente() {
+    return String(loginClave || sesionUser?.pass || '').trim();
+  }
+
+  function ejecutarEliminacionSilenciosaAlmacenAsistente(nombreProducto) {
+    const nombre = String(nombreProducto || '').trim();
+    const trustedPass = obtenerPasswordSesionSeguraAsistente();
+    if (!nombre || !trustedPass || !sesionUser?.pass) return false;
+    if (trustedPass !== String(sesionUser.pass || '').trim() && trustedPass !== String(loginClave || '').trim()) {
+      return false;
+    }
+    const ownerKey = String(sesionUser?.user || '').trim().toLowerCase();
+    const moduloKey = String(moduloActual || '').trim();
+    runWithRowRemovalAnimation(buildRowKeyId('almacen', nombre), () => {
+      db.almacen = db.almacen.filter(a => !(
+        normalizarClaveProductoOperacion(a?.nombre) === normalizarClaveProductoOperacion(nombre) &&
+        String(a?.owner || '').trim().toLowerCase() === ownerKey &&
+        String(a?.modulo || '').trim() === moduloKey
+      ));
+      limpiarReferenciasInsumoEliminado(nombre, { owner: ownerKey, modulo: moduloKey });
+      guardarDatos();
+      renderAlmacen();
+    });
+    return true;
+  }
+
   function ejecutarRegistroAlmacenAsistente(datos) {
     prepararFormularioAlmacenAsistente(datos);
     if (typeof agregarAlmacen === 'function') {
@@ -15052,6 +15156,9 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   function ejecutarEliminacionAlmacenAsistente(item) {
     if (typeof window.showPage === 'function') {
       window.showPage('inventario');
+    }
+    if (ejecutarEliminacionSilenciosaAlmacenAsistente(item?.nombre || '')) {
+      return;
     }
     if (typeof eliminarAlmacen === 'function') {
       eliminarAlmacen(item.nombre);
@@ -15245,7 +15352,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     if (!nombre) return;
     if (type === 'almacen') {
       if (typeof window.showPage === 'function') window.showPage('inventario');
-      if (typeof eliminarAlmacen === 'function') eliminarAlmacen(nombre);
+      if (!ejecutarEliminacionSilenciosaAlmacenAsistente(nombre) && typeof eliminarAlmacen === 'function') eliminarAlmacen(nombre);
       return;
     }
     if (type === 'distribuidor') {
@@ -15965,7 +16072,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
         : (intento.kind === 'distribuidor-delete' ? datos.nombre : datos.reference);
       const explicitType = intento.kind === 'almacen-delete'
         ? 'almacen'
-        : (intento.kind === 'distribuidor-delete' ? 'distribuidor' : (datos.explicitType || ''));
+        : (intento.kind === 'distribuidor-delete' ? 'distribuidor' : (datos.explicitType || inferirTipoEntidadPorPaginaActivaAsistente() || ''));
       const resolucion = resolverReferenciaAmbiguaAsistente(reference, explicitType);
 
       if (!resolucion.query && !obtenerReferenciaDesdeContextoAsistente(explicitType)) {
@@ -16025,6 +16132,10 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       } else if (entity.type === 'plato') {
         confirmMessage = `Voy a abrir Disponibilidad y ejecutar la eliminación segura de ${capitalizarTextoAsistente(entity.name)}. El sistema te pedirá la validación administrativa correspondiente.`;
         run = () => ejecutarEliminacionPlatoAsistente(entity.item);
+      }
+
+      if (entity?.name) {
+        confirmMessage = `Eliminando ${capitalizarTextoAsistente(entity.name)}.`;
       }
 
       return construirPendienteAsistente({
@@ -16313,7 +16424,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   }
 
   window.LuroUniversalAgent = Object.freeze({
-    version: 'v1',
+    version: 'v2-super-agent-local',
     skills: LURO_AGENT_SKILLS,
     parseRelativeDateRange: detectarRangoRelativoAsistente,
     normalizeUnit: normalizarUnidadAsistente
@@ -16392,6 +16503,14 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       });
     }
 
+    const explicitGlobalModule = buscarModuloGlobalAsistente(normalizedText);
+    if (explicitGlobalModule && /(?:abre|abrir|cambia|cambiar|entrar|entra|usar|ve a|ir a|mostrar)/.test(normalizedText)) {
+      return finalizarRespuestaAsistente(responderCambioModuloGlobalAsistente(explicitGlobalModule), {
+        stage: 'global-module-navigation',
+        module: explicitGlobalModule.module
+      });
+    }
+
     const helpModuleMatch = buscarModuloAsistente(normalizedText);
     const helpActionMatch = buscarAccionAsistente(normalizedText);
     if (detectarIntencionAyuda(normalizedText) && !helpModuleMatch && !helpActionMatch) {
@@ -16440,6 +16559,14 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       return finalizarRespuestaAsistente(responderModulo(pageMatch, askExplanation || askGuide, askGuide), {
         stage: 'page-match',
         page: pageMatch.page
+      });
+    }
+
+    const globalModuleMatch = buscarModuloGlobalAsistente(normalizedText);
+    if (globalModuleMatch && !askExplanation && !askGuide) {
+      return finalizarRespuestaAsistente(responderCambioModuloGlobalAsistente(globalModuleMatch), {
+        stage: 'global-module-match',
+        module: globalModuleMatch.module
       });
     }
 
@@ -16967,64 +17094,4 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     });
   });
 })();
-
-/* ══════════════════════════════════════════════════
-   MÓDULO LA FOCA CHERIA — overlay full-screen
-   Admin de lafocacheria.web.app embebido en LuRo
-══════════════════════════════════════════════════ */
-function cerrarFocaCheria() {
-    const overlay = document.getElementById('foca-cheria-overlay');
-    const iframe  = document.getElementById('foca-cheria-iframe');
-    if (overlay) overlay.style.display = 'none';
-    if (iframe)  iframe.src = '';
-    const sel = document.getElementById('module-selector');
-    if (sel) sel.style.display = 'flex';
-}
-window.cerrarFocaCheria = cerrarFocaCheria;
-
-function guardarFocaCheria() {
-    const iframe = document.getElementById('foca-cheria-iframe');
-    const btn    = document.getElementById('focaSaveBtn');
-    if (!iframe || !iframe.contentWindow) return;
-    if (btn) {
-        btn.textContent = '⏳ Publicando...';
-        btn.style.background = '#f0c040';
-        btn.style.color = '#0a0a0b';
-    }
-    iframe.contentWindow.postMessage({ type: 'velvet_save_all' }, '*');
-}
-window.guardarFocaCheria = guardarFocaCheria;
-
-window.addEventListener('message', function(event) {
-    if (!event || !event.data || event.data.type !== 'velvet_cloud_status') return;
-    if (event.origin !== 'https://lafocacheria.web.app') return;
-
-    const btn = document.getElementById('focaSaveBtn');
-    if (!btn) return;
-
-    const state = String(event.data.state || '');
-    if (state === 'publishing') {
-        btn.textContent = '⏳ Publicando...';
-        btn.style.background = '#f0c040';
-        btn.style.color = '#0a0a0b';
-        return;
-    }
-    if (state === 'success') {
-        btn.textContent = '✅ Sitio actualizado';
-        btn.style.background = '#A1DFCB';
-        btn.style.color = '#0a0a0b';
-        return;
-    }
-    if (state === 'online') {
-        btn.textContent = '💾 Guardar';
-        btn.style.background = '#c9a84c';
-        btn.style.color = '#0a0a0b';
-        return;
-    }
-    if (state === 'offline') {
-        btn.textContent = '⚠️ Sin conexión';
-        btn.style.background = '#f08060';
-        btn.style.color = '#0a0a0b';
-    }
-});
 

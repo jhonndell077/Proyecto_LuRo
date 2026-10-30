@@ -1,0 +1,11 @@
+{
+  "status": "concepto aproximado, no porci\u00f3n real",
+  "dimensions_meters": [
+    0.25999999046325684,
+    0.1404736042022705,
+    0.25999999046325684
+  ],
+  "meshes": 80,
+  "triangles": 29180,
+  "geometry": "procedural; generated sheets are visual references, not reconstructed geometry"
+}

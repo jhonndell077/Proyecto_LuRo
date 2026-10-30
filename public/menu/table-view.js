@@ -1,0 +1,38 @@
+'use strict';
+let tableStream=null,tableRequest=0,tableFacing='environment',tableDrag=null;
+function stopTableCamera(){tableRequest++;if(tableStream){tableStream.getTracks().forEach(t=>t.stop());tableStream=null;}const v=$('table-video');if(v)v.srcObject=null;const start=$('table-start');if(start){start.disabled=false;start.textContent='Activar cámara';}if($('table-camera-status'))$('table-camera-status').textContent='Cámara apagada. Puedes explorar la vista de ejemplo.';}
+function tableScale(referenceCm,referencePixels,diameterCm){if(![referenceCm,referencePixels,diameterCm].every(x=>Number.isFinite(x)&&x>0))return null;return diameterCm*referencePixels/referenceCm;}
+function updateTablePreview(){
+ const width=tableScale(Number($('table-ref-cm').value),Number($('table-ref-px').value),Number($('table-diameter').value));
+ if(width===null){$('table-size-status').textContent='Introduce medidas mayores que cero.';return;}
+ $('table-dish').style.width=`${width}px`;
+ $('table-dish-inner').style.transform=`rotate(${$('table-rotation').value}deg) scaleY(${Number($('table-tilt').value)/100})`;
+ $('table-reference').style.width=`${$('table-ref-px').value}px`;
+ $('table-size-status').textContent=`Simulación de ${$('table-diameter').value} cm de diámetro. Medida elegida por ti, no confirmada por cocina.`;
+}
+function openTableView(id){
+ const item=MENU.find(x=>x.id===id);if(!item)return;stopTableCamera();tableFacing='environment';
+ $('table-content').innerHTML=`<header class="table-heading"><div><span class="eyebrow">VISTA CON CÁMARA · 2D</span><h2 id="table-title">Ver en mi mesa</h2><p>${escapeHtml(item.name)}</p></div><button class="icon-button close-dialog" aria-label="Cerrar vista de cámara">✕</button></header><div class="table-body"><p class="table-intro">Enfoca la mesa desde arriba y arrastra la imagen para colocar el plato. La foto es ilustrativa: no es un modelo 3D ni detecta superficies.</p><div id="table-stage" class="table-stage"><video id="table-video" autoplay muted playsinline aria-label="Vista de la cámara"></video><span class="table-demo-label">Superposición orientativa · tamaño manual</span><div id="table-dish" class="table-dish" tabindex="0" role="img" aria-label="Plato ilustrativo. Arrastra para mover o usa las flechas del teclado."><div id="table-dish-inner"><img src="${item.image}" alt="${escapeHtml(item.name)}"></div></div><div id="table-reference" class="table-reference"><span>Referencia</span></div></div><p id="table-camera-status" class="table-status" role="status">La cámara está apagada.</p><div class="table-camera-actions"><button id="table-start" class="primary">Activar cámara</button><button id="table-switch" class="secondary-button">Cambiar cámara</button><button id="table-stop" class="secondary-button">Apagar</button></div><details class="table-calibration" open><summary>Ajustar tamaño sobre la mesa</summary><p>Coloca un objeto de ancho conocido en la mesa, junto al plato. Mantén la cámara fija y perpendicular a la mesa. Ajusta la línea azul al ancho del objeto. Si mueves el teléfono, vuelve a calibrar.</p><label for="table-ref-cm">Ancho real del objeto de referencia (cm)</label><input id="table-ref-cm" type="number" min="1" max="100" step="0.1" value="10"><label for="table-ref-px">Ajustar línea azul al objeto</label><input id="table-ref-px" type="range" min="30" max="300" value="100"><label for="table-diameter">Diámetro del plato que quieres simular (cm)</label><input id="table-diameter" type="number" min="5" max="60" step="0.5" value="26"><p id="table-size-status" role="status"></p><label for="table-rotation">Girar imagen</label><input id="table-rotation" type="range" min="-180" max="180" value="0"><label for="table-tilt">Perspectiva visual</label><input id="table-tilt" type="range" min="40" max="100" value="100"><button id="table-center" class="secondary-button">Centrar plato</button></details><p class="table-privacy">Solo cámara, sin micrófono. Esta función no graba ni envía imágenes. La cámara se apaga al cerrar esta ventana o salir de la pestaña.</p><p class="table-limit">Aún no hay medidas reales del emplatado registradas. Para representar el tamaño real del restaurante hacen falta sus diámetros y modelos 3D a escala.</p></div>`;
+ showDialog($('table-dialog'));$('table-dialog').scrollTop=0;updateTablePreview();
+ const stage=$('table-stage'),dish=$('table-dish');
+ dish.addEventListener('pointerdown',e=>{e.preventDefault();dish.setPointerCapture(e.pointerId);const r=stage.getBoundingClientRect(),d=dish.getBoundingClientRect();tableDrag={dx:e.clientX-d.left-d.width/2,dy:e.clientY-d.top-d.height/2};});
+ dish.addEventListener('pointermove',e=>{if(!tableDrag)return;const r=stage.getBoundingClientRect();dish.style.left=`${Math.max(0,Math.min(r.width,e.clientX-r.left-tableDrag.dx))}px`;dish.style.top=`${Math.max(0,Math.min(r.height,e.clientY-r.top-tableDrag.dy))}px`;});
+ const finish=()=>tableDrag=null;dish.addEventListener('pointerup',finish);dish.addEventListener('pointercancel',finish);dish.addEventListener('lostpointercapture',finish);
+ dish.addEventListener('keydown',e=>{const moves={ArrowLeft:[-10,0],ArrowRight:[10,0],ArrowUp:[0,-10],ArrowDown:[0,10]};if(!moves[e.key])return;e.preventDefault();const s=stage.getBoundingClientRect(),d=dish.getBoundingClientRect(),m=moves[e.key];dish.style.left=`${Math.max(0,Math.min(s.width,d.left-s.left+d.width/2+m[0]))}px`;dish.style.top=`${Math.max(0,Math.min(s.height,d.top-s.top+d.height/2+m[1]))}px`;});
+}
+async function startTableCamera(){
+ stopTableCamera();const request=tableRequest;
+ if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){$('table-camera-status').textContent='La cámara necesita un navegador compatible y conexión HTTPS. Abre la app directamente en Safari o Chrome.';return;}
+ $('table-start').disabled=true;$('table-camera-status').textContent='Esperando permiso de cámara. Puedes cerrar esta ventana para cancelar.';
+ try{const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:tableFacing},width:{ideal:1280},height:{ideal:720}}});
+ if(request!==tableRequest||!$('table-dialog').open||document.hidden){stream.getTracks().forEach(t=>t.stop());return;}
+ tableStream=stream;$('table-video').srcObject=stream;await $('table-video').play();
+ if(request!==tableRequest)return;
+ $('table-camera-status').textContent='Cámara activa. Enfoca tu mesa y ajusta la referencia.';$('table-start').textContent='Reiniciar cámara';
+ }catch(e){if(request!==tableRequest)return;stopTableCamera();$('table-camera-status').textContent=e.name==='NotAllowedError'?'Permiso de cámara denegado. Puedes habilitarlo en los ajustes de este sitio y reintentar.':e.name==='NotFoundError'?'No se encontró una cámara. Puedes explorar la vista de ejemplo.':'No se pudo abrir la cámara. Cierra otras apps que la usen y reintenta.';
+ }finally{if($('table-start')&&request===tableRequest)$('table-start').disabled=false;}
+}
+$('table-dialog').addEventListener('close',stopTableCamera);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopTableCamera();});window.addEventListener('pagehide',stopTableCamera);
+document.addEventListener('input',e=>{if(['table-ref-cm','table-ref-px','table-diameter','table-rotation','table-tilt'].includes(e.target.id))updateTablePreview();});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.tableView)openTableView(b.dataset.tableView);if(b.id==='table-start')startTableCamera();if(b.id==='table-stop')stopTableCamera();if(b.id==='table-switch'){tableFacing=tableFacing==='environment'?'user':'environment';startTableCamera();}if(b.id==='table-center'){$('table-dish').style.left='50%';$('table-dish').style.top='50%';}});

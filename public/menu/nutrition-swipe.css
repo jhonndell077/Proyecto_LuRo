@@ -1,0 +1,6 @@
+.nutrition-swipe{position:relative;touch-action:pan-y pinch-zoom;isolation:isolate;cursor:grab;min-width:0}
+.nutrition-swipe:active{cursor:grabbing}
+.nutrition-swipe:focus-visible{outline:3px solid #ff9c26;outline-offset:3px}
+.nutrition-swipe img{user-select:none;-webkit-user-drag:none;display:block;max-width:100%}
+.nutrition-swipe .swipe-note{position:absolute;z-index:3;bottom:12px;left:12px;right:12px;margin:0;padding:10px 12px;border-radius:12px;background:#17120fee;color:#fff;font-size:13px;line-height:1.4;text-align:center;pointer-events:none;box-shadow:0 2px 12px #0004}
+.nutrition-swipe .close-dialog{z-index:5}

@@ -1,0 +1,18 @@
+/* Motion layer: content stays visible even when scripting is unavailable. */
+@keyframes tp-enter{from{opacity:.35;translate:0 24px}to{opacity:1;translate:0 0}}
+.motion-enter{animation:tp-enter .72s cubic-bezier(.2,.7,.25,1) both;animation-delay:var(--motion-delay,0ms)}
+.motion-progress{position:fixed;inset:0 0 auto;height:3px;z-index:100;background:linear-gradient(90deg,#a75d19,#ffb74f,#ffe3ab);transform:scaleX(var(--reading-progress,0));transform-origin:left;pointer-events:none;box-shadow:0 0 12px #ff9a2444}
+.motion-toggle{position:fixed;right:18px;bottom:18px;z-index:20;min-height:44px;padding:10px 14px;border:1px solid #9c713d80;border-radius:24px;background:#17120ff2;color:#f8dcb4;font:500 12px Inter,sans-serif;box-shadow:0 3px 16px #0004;cursor:pointer;backdrop-filter:blur(8px)}
+.motion-toggle:hover{border-color:#ffb75e;background:#302111}.motion-toggle:focus-visible{outline:3px solid #ffb75e;outline-offset:3px}
+.hero{position:relative}.hero-content,.hero-photo{z-index:1}.hero .ambient-specks{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;border-radius:24px}
+.ambient-specks span{position:absolute;left:var(--spark-x,20%);bottom:-12px;width:3px;height:3px;border-radius:50%;background:#ffb14e;box-shadow:0 0 9px #ff9d3970;opacity:0;animation:tp-ember var(--spark-duration,9s) linear infinite;animation-delay:var(--spark-delay,0s)}
+@keyframes tp-ember{0%{translate:0 0;opacity:0}15%{opacity:.45}75%{opacity:.2}100%{translate:20px -320px;opacity:0}}
+@media(hover:hover) and (pointer:fine){.card{transition:border-color .25s ease,box-shadow .25s ease}.card:hover{border-color:#a87940;box-shadow:0 12px 35px #0005}.hero-photo img{transition:scale .8s cubic-bezier(.2,.7,.25,1)}.hero-photo:hover img{scale:1.025}.website-nav a{transition:color .2s ease}.website-nav a:hover{color:#ffbc68}.order-button,.primary,.text-link{transition:background-color .2s ease,color .2s ease,box-shadow .2s ease}.order-button:hover,.primary:hover{box-shadow:0 4px 20px #ff9b2428}}
+@keyframes tp-dialog{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
+dialog[open]{animation:tp-dialog .25s ease-out}dialog::backdrop{backdrop-filter:blur(4px)}
+.motion-paused,.motion-paused *{scroll-behavior:auto!important}.motion-paused *,.motion-paused *::before,.motion-paused *::after{animation:none!important;transition:none!important}.motion-paused .ambient-specks{display:none}
+@media(max-width:600px){.motion-toggle{right:12px;bottom:calc(12px + env(safe-area-inset-bottom));font-size:11px;padding:9px 12px}.ambient-specks span:nth-child(n+7){display:none}.motion-enter{animation-duration:.55s}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{animation:none!important;transition:none!important}.ambient-specks{display:none}.motion-progress{display:none}}
+
+body:has(dialog[open]) .motion-toggle{display:none}
+.motion-toggle[hidden]{display:none}

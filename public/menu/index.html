@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b101b">
+  <title>The Proyect · Gourmet & Street Food</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="mobile.css">
+  <link rel="stylesheet" href="experience.css">
+  <link rel="stylesheet" href="diagram.css">
+  <link rel="stylesheet" href="refinement.css">
+  <link rel="stylesheet" href="dominican.css">
+  <link rel="stylesheet" href="nutrition.css">
+  <link rel="stylesheet" href="table-view.css">
+  <link rel="stylesheet" href="dish-views.css">
+  <link rel="stylesheet" href="burger-3d.css">
+  <link rel="stylesheet" href="gastronomic.css">
+  <script src="luro-config.js?v=20261030-1" defer></script>
+  <script src="app.js" defer></script>
+  <script src="experience.js" defer></script>
+  <script src="diagram.js" defer></script>
+  <script src="refinement.js" defer></script>
+  <script src="nutrition.js" defer></script>
+  <script src="table-view.js" defer></script>
+  <script src="dish-views.js" defer></script>
+  <script src="burger-3d.js" defer></script>
+  <script src="nutrition-swipe.js" defer></script>
+  <script src="website.js" defer></script>
+  <link rel="stylesheet" href="nutrition-swipe.css">
+  <link rel="stylesheet" href="website.css">
+  <link rel="stylesheet" href="motion.css">
+  <link rel="stylesheet" href="professional.css">
+  <link rel="stylesheet" href="image-edges.css">
+  <link rel="stylesheet" href="reference-panel.css">
+  <script src="professional.js" defer></script>
+  <script src="motion.js" defer></script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="offline.css">
+<script src="offline.js" defer></script>
+<link rel="stylesheet" href="luro-connection.css?v=20261030-2">
+<script src="luro-connection.js?v=20261030-2" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#menu-section">Saltar al menú</a>
+  <div class="app">
+    <header class="header">
+      <a class="brand" id="instagram-link" href="#" aria-label="Instagram del restaurante"><span class="logo" id="brand-logo">TP<span>✦</span></span><span><strong>The Proyect<span class="brand-dot">.</span></strong><small>GOURMET & STREET FOOD</small></span></a>
+      <nav class="website-nav" aria-label="Explora The Proyect"><a href="#hero">Inicio</a><a href="#nosotros">Nuestra propuesta</a><a href="#menu-section">Menú</a><a href="#experiencia">La experiencia</a></nav><div class="header-right"><span id="greeting" class="greeting">¡Hola, qué gusto verte!</span><button class="icon-button" id="cart-button" aria-label="Abrir carrito"><span data-icon="bag"></span><span id="cart-count" class="count" hidden>0</span></button></div>
+    </header>
+    <main>
+      <section class="hero" id="hero">
+        <div class="hero-content"><span class="eyebrow">GOURMET DE CORAZÓN. CALLE DE ESPÍRITU.</span><h1>Hoy se<br>come <em>bueno.</em></h1><p>Sabor de aquí, hecho a tu gusto.<br>Elige tu antojo y nosotros resolvemos.</p><a class="primary hero-link" href="#menu-section">Explorar el menú <span>↗</span></a><a class="story-link" href="#nosotros">Conoce nuestra propuesta ↓</a></div>
+        <button class="hero-photo" id="featured-dish" data-order="hamburguesa" aria-label="Ver Hamburguesa Clásica"><img id="hero-image" src="https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1000&q=85" alt="Hamburguesa con queso, vegetales y pan dorado"><span class="photo-tag">EL ANTOJO NO ESPERA</span><span class="photo-caption"><span>Hecho con pasión.</span><strong>Servido con actitud. ↗</strong></span></button>
+      </section>
+      <section id="nosotros" class="business-story"><div><span class="eyebrow">SABOR DE AQUÍ</span><h2>Gourmet de corazón.<br><em>Calle de espíritu.</em></h2></div><div><p>Aquí se cocina con cariño. Explora lo que tenemos preparado para ti y encuentra tu próximo favorito.</p><p>El menú muestra los platos y ofertas del restaurante. Caja confirma cada pedido antes de que empiece a prepararse.</p><a href="#menu-section" class="story-link">Descubre los sabores →</a></div></section>
+      <section class="signature-section" aria-labelledby="signature-title"><div class="signature-heading"><div><span class="eyebrow">TRES FORMAS DE DISFRUTARLO</span><h2 id="signature-title">¿Por dónde empezamos?</h2></div><a href="#menu-section" class="story-link">Todo el menú →</a></div><div class="signature-grid"></div></section>
+      <section id="menu-section" class="menu-section">
+        <section class="dish-discovery" id="dish-discovery" aria-label="Descubre nuestros platos"><div class="discovery-heading"><div><span class="eyebrow">UN ANTOJO LLEVA A OTRO</span><h2>Déjate tentar<span> ✦</span></h2></div><button id="pause-discovery" class="carousel-pause" aria-label="Pausar carrusel" aria-pressed="false">Ⅱ</button></div><div class="dish-window"><div id="dish-track" class="dish-track"></div></div></section>
+        <div class="section-heading"><div><span class="eyebrow" id="section-eyebrow">BUENA COMIDA, BUENOS MOMENTOS</span><h2 id="section-title">¿Qué se te antoja hoy?<span> ✦</span></h2></div><label class="search"><span data-icon="search"></span><input id="search" type="search" placeholder="Buscar tu próximo antojo…" aria-label="Buscar platos"></label></div>
+        <div class="category-row"><div id="categories" class="categories" aria-label="Categorías"></div><span class="result-count" id="result-count"></span></div>
+        <p class="menu-photo-note">Fotografías e información proporcionadas por el restaurante.</p><div id="menu" class="menu-grid"></div>
+        <section id="secondary" hidden></section>
+      </section>
+      <section id="experiencia" class="business-experience"><span class="eyebrow">A TU MANERA</span><h2>Empieza por el antojo.</h2><div class="experience-columns"><article><span>01 / EXPLORA</span><h3>Encuentra tu favorito</h3><p>Recorre el menú, descubre los ingredientes y conoce la propuesta de cada plato.</p></article><article><span>02 / ELIGE</span><h3>Dale tu toque</h3><p>Consulta las opciones de preparación y los acompañantes disponibles en el detalle.</p></article><article><span>03 / DESCUBRE</span><h3>Pregunta a Lafo</h3><p>Si no sabes por dónde empezar, nuestro asistente te orienta con el catálogo.</p><button class="text-link" onclick="openLafo()">Conversar con Lafo →</button></article></div></section>
+      <button class="service-strip" id="recommend-button"><span class="service-mark">✦</span><span class="service-copy">Pide una recomendación<small>Encuentra tu próximo favorito y cuéntanos tu experiencia.</small></span><span class="service-label">VAMOS A DESCUBRIRLO ↗</span></button>
+    </main>
+    <footer><span>© 2026 The Proyect</span><span>Gourmet de corazón. Calle de espíritu.</span><span>Hecho con sabor en RD <span class="brand-dot">✦</span></span></footer>
+    <nav class="bottom-nav" aria-label="Herramientas de tu pedido"><button data-view="menu" class="active"><span data-icon="menu"></span>Menú</button><button data-view="favorites"><span data-icon="heart"></span>Favoritos</button><button id="nav-cart" class="nav-cart" aria-label="Abrir carrito"><span data-icon="bag"></span></button><button data-view="orders"><span data-icon="clock"></span>Pedidos</button><button data-view="profile"><span data-icon="user"></span>Perfil</button></nav>
+  </div>
+  <dialog id="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
+  <dialog id="cart-dialog" aria-labelledby="cart-title"><div class="dialog-heading"><div><span class="eyebrow">QUE NO SE ENFRÍE EL ANTOJO</span><h2 id="cart-title">Tu pedido<span class="brand-dot">.</span></h2></div><button class="icon-button close-dialog" aria-label="Cerrar carrito">✕</button></div><div id="cart-items"></div><div id="cart-summary"></div></dialog>
+  <dialog id="utility-dialog" aria-labelledby="utility-title"><div id="utility-content"></div></dialog>
+  <dialog id="nutrition-dialog" aria-labelledby="nutrition-title"><div id="nutrition-content"></div></dialog>
+  <dialog id="table-dialog" aria-labelledby="table-title"><div id="table-content"></div></dialog>
+  <dialog id="dish-views-dialog" aria-labelledby="dish-views-title"><div id="dish-views-content"></div></dialog>
+  <dialog id="burger-3d-dialog" aria-labelledby="burger-3d-title"><div id="burger-3d-content"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -428,9 +428,43 @@
     </div>
 
 <div id="inventario" class="content-section">
-      <div class="card">
-        <h2>📦 Almacén de Suministros</h2>
-        
+      <div class="card inventory-card-shell">
+        <div class="inventory-hero">
+          <div>
+            <p class="inventory-kicker">Centro de Cocina</p>
+            <h2>📦 Almacén de Suministros</h2>
+            <p class="inventory-hero-copy">Controla entradas, capacidad, faltantes y compras desde una vista más operativa y visual.</p>
+          </div>
+          <div class="inventory-hero-badge">
+            <span class="inventory-hero-badge-label">Capacidad Operativa</span>
+            <strong id="inventory-capacity-value">0%</strong>
+            <small id="inventory-capacity-copy">Sin datos todavía</small>
+          </div>
+        </div>
+
+        <div class="inventory-summary-grid">
+          <article class="inventory-summary-card">
+            <span class="inventory-summary-label">Productos</span>
+            <strong id="inventory-stat-products">0</strong>
+            <small>Activos en el módulo</small>
+          </article>
+          <article class="inventory-summary-card is-critical">
+            <span class="inventory-summary-label">Críticos</span>
+            <strong id="inventory-stat-critical">0</strong>
+            <small>Sin existencia o en rojo</small>
+          </article>
+          <article class="inventory-summary-card is-warning">
+            <span class="inventory-summary-label">Bajo Meta</span>
+            <strong id="inventory-stat-warning">0</strong>
+            <small>Requieren reposición</small>
+          </article>
+          <article class="inventory-summary-card is-healthy">
+            <span class="inventory-summary-label">Cubiertos</span>
+            <strong id="inventory-stat-ok">0</strong>
+            <small>Listos para operar</small>
+          </article>
+        </div>
+
         <div class="inventory-form-shell">
           <div class="inventory-top-grid">
             <input type="text" id="inv_nombre" placeholder="Nombre del Producto (ej. Yuca)">
@@ -464,24 +498,26 @@
           </div>
         </div>
 
-        <button class="btn btn-save" style="width:100%; background:#d8f7e5; color:#136a43; border:1px solid #b8e8cb;" onclick="agregarAlmacen()">REGISTRAR ENTRADA</button>
-        <div class="inventory-provider-row" style="display:grid; grid-template-columns: 1fr auto; gap:10px; margin-top:10px;">
-            <div style="font-size:12px; color:#666; align-self:center;">Puede seleccionar el mejor proveedor desde el comparador de distribuidores.</div>
-            <button class="btn btn-purple" style="background:#eedcff; color:#5d3b8c; border:1px solid #d8b7ff;" onclick="buscarMejorProveedorEnAlmacen()">🏆 MEJOR PROVEEDOR</button>
-        </div>
-        
-        <div class="inventory-bulk-actions" style="display: flex; gap: 10px; margin-top: 10px;">
-            <button class="btn" style="flex: 1; background-color: #dceeff; color:#1d567f; border:1px solid #bddcff;" onclick="entradaAutomaticaMasiva()">
-                🧮 RELLENAR STOCK IDEAL
-            </button>
-            <button class="btn btn-blue" style="flex: 1; background-color: #dcf7e6; color:#1e6e46; border:1px solid #bfeccc;" onclick="enviarPedidoWhatsapp()">
-                🛒 LISTA DE COMPRAS (WA)
-            </button>
-        </div>
+        <div class="inventory-action-panel">
+          <button class="btn btn-save inventory-primary-action" onclick="agregarAlmacen()">REGISTRAR ENTRADA</button>
+          <div class="inventory-provider-row">
+              <div class="inventory-provider-copy">Puede seleccionar el mejor proveedor desde el comparador de distribuidores.</div>
+              <button class="btn btn-purple inventory-provider-action" onclick="buscarMejorProveedorEnAlmacen()">🏆 MEJOR PROVEEDOR</button>
+          </div>
+          
+          <div class="inventory-bulk-actions">
+              <button class="btn inventory-soft-action" onclick="entradaAutomaticaMasiva()">
+                  🧮 RELLENAR STOCK IDEAL
+              </button>
+              <button class="btn btn-blue inventory-soft-action inventory-soft-action--success" onclick="enviarPedidoWhatsapp()">
+                  🛒 LISTA DE COMPRAS (WA)
+              </button>
+          </div>
 
-        <button class="btn btn-danger" style="width: 100%; margin-top: 10px; background-color: #ffcfc7; color:#8f2412; border:1px solid #ffb4aa;" onclick="borrarTodoElAlmacen()">
-    🗑️ ELIMINAR TODO EL ALMACÉN
-</button>
+          <button class="btn btn-danger inventory-danger-action" onclick="borrarTodoElAlmacen()">
+            🗑️ ELIMINAR TODO EL ALMACÉN
+          </button>
+        </div>
 
         <div class="inventory-search-tools">
             <div class="inventory-search-input-wrap">
@@ -493,7 +529,7 @@
             </div>
         </div>
 
-        <div style="overflow-x: auto; margin-top: 15px;">
+        <div class="inventory-table-shell">
             <table class="luro-table luro-table--inventory">
                 <thead>
                     <tr>
@@ -1769,7 +1805,7 @@
       </div>
 
       <div class="luro-assistant-compose">
-        <input id="luro-assistant-input" type="text" placeholder="Pídele algo a LuRo o di 'Hola LuRo'..." onkeydown="handleLuroAssistantKeydown(event)">
+        <input id="luro-assistant-input" type="text" placeholder="Pídele algo a LuRo o usa el botón de voz..." onkeydown="handleLuroAssistantKeydown(event)">
         <button type="button" id="luro-mic-btn-pub" class="btn" onclick="luroVozToggle()" title="Hablar" style="background:#2d3436;color:#fff;padding:8px 12px;font-size:16px;">🎙️</button>
         <button type="button" class="btn btn-save" onclick="enviarMensajeAsistente()">ENVIAR</button>
       </div>
@@ -1777,13 +1813,14 @@
     </div>
   </section>
 
-  <script src="assets/js/app.js?v=20260418-master-pass-3"></script>
+  <script src="assets/js/app.js?v=20261029-menu-admin-1"></script>
   <script src="assets/js/asistencia-module.js?v=20260417-asistencia-sucursal-fix-1"></script>
-  <script src="assets/js/cloud-bridge.js?v=20260413-hotfix-1"></script>
+  <script src="assets/js/cloud-bridge.js?v=20261029-menu-admin-1"></script>
+  <script src="assets/js/menu-admin.js?v=20261029-menu-admin-1"></script>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260624-reloadfix-1';
+      var swVersion = '20261030-menu-integration-1';
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'
@@ -1803,21 +1840,10 @@
           registration.update().catch(function () {});
         }).catch(function () {});
       });
+
+
     })();
   </script>
-
-  <!-- ══ MÓDULO LA FOCA CHERIA — overlay full-screen ══ -->
-  <div id="foca-cheria-overlay" style="display:none; position:fixed; inset:0; z-index:4000; background:#0a0a0b;">
-    <iframe id="foca-cheria-iframe" src="" style="border:none; width:100%; height:100%; display:block;"></iframe>
-    <button onclick="guardarFocaCheria()" id="focaSaveBtn" title="Guardar cambios en La Foca Cheria"
-      style="position:fixed; bottom:72px; right:24px; z-index:4001; background:#c9a84c; color:#0a0a0b; border:none; border-radius:50px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.5);">
-      💾 Guardar
-    </button>
-    <button onclick="cerrarFocaCheria()" title="Volver a LuRo Control"
-      style="position:fixed; bottom:24px; right:24px; z-index:4001; background:#A1DFCB; color:#0a0a0b; border:none; border-radius:50px; padding:10px 22px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.5);">
-      ← LuRo
-    </button>
-  </div>
 
 <!-- ===== LURO ASISTENTE INTELIGENTE v9 — MANOS LIBRES ===== -->
 <style>
@@ -1851,11 +1877,12 @@
   // llama a estos proxys del backend, nunca a api.groq.com directo (no se exponen claves).
   const CLOUD_FN_BASE  = 'https://us-central1-luro-control.cloudfunctions.net';
   const AI_CHAT_URL    = `${CLOUD_FN_BASE}/aiChat`;
+  const AI_CAPABILITIES_URL = `${CLOUD_FN_BASE}/aiCapabilities`;
   const GROQ_CHAT_URL  = `${CLOUD_FN_BASE}/groqChat`;
   const GROQ_AUDIO_URL = `${CLOUD_FN_BASE}/groqTranscribe`;
   const GROQ_MODEL     = 'llama-3.3-70b-versatile';
   const GEMINI_MODEL   = 'gemini-2.5-flash';
-  const OPENROUTER_MODEL = 'auto:free';
+  const OPENROUTER_MODEL = 'openrouter/free';
   const WHISPER_MODEL  = 'whisper-large-v3-turbo';
   const MEM_KEY        = 'LURO_MEMORIA_OPERATIVA';
   const WAKE_WORDS     = ['luro','hola luro','hey luro','oye luro','estás ahí luro','estas ahi luro','¿estás ahí luro?','estas ahí luro'];
@@ -1863,11 +1890,13 @@
   const AFIRMAR        = ['sí','si','ok','okay','confirma','confirmo','correcto','adelante','hazlo','dale','claro','venga'];
   const NEGAR          = ['no','cancela','cancelar','cancel','stop','para'];
   const TAG_RE         = /\[(NAV|MODULO|LIMPIAR|ELIMINAR_DIST|ELIMINAR_ALMACEN|ELIMINAR_PLATO|ENTRADA|DIST_NUEVO|CLIENTE_NUEVO):[^\]]*\]/g;
-  const LURO_API_SYSTEM_PROMPT = 'Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gestión para restaurantes. Conoces todos los módulos del sistema: Almacén, Producción Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gestión de Usuarios, Autorizaciones, Diagnóstico Inteligente y Entrenamientos. Respondes siempre en español, directo y sin relleno. Eres un copiloto operativo, no un generador de código.';
+  const LURO_API_SYSTEM_PROMPT = 'Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gestión para restaurantes. Conoces todos los módulos del sistema: Almacén, Producción Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gestión de Usuarios, Autorizaciones, Diagnóstico Inteligente y Entrenamientos. Respondes siempre en español, directo y sin relleno. Eres un copiloto operativo, no un generador de código. Cuando el usuario solicite una acción crítica (eliminar, limpiar, borrar), genera el tag correspondiente UNA SOLA VEZ y explica brevemente qué hará. NO pidas confirmación adicional, el sistema ya maneja la confirmación. Sé didáctico y conciso.';
   const COMPLEX_AI_HINTS = ['analiza','diagnóstico','diagnostico','reporte','comparar','historial','rentabilidad','tendencia','resumen general'];
   const VOZ_MAX_MS     = 10000;
   const VOZ_MIN_MS     = 1800;
   const VOZ_CONFIRM_MS = 6000;
+  const VOZ_IDLE_LIMIT = 3;
+  const DETENER_VOZ    = ['deten la voz','deten luro','para la voz','termina la conversación','termina la conversacion','cerrar conversación','cerrar conversacion','hasta aqui','hasta aquí','gracias luro','gracias, luro'];
 
   // (Sin API key en el cliente: la autenticación contra Groq la hace el backend.)
 
@@ -1886,9 +1915,14 @@
   let accionPend    = null;    // tag crítico esperando confirmación
   let watchT        = null;
   let vozLoopT      = null;
+  let vozIdleCount  = 0;
   let lastVoiceError = '';
+  let asistenteHablando = false; // para detectar interrupciones
   const synth       = window.speechSynthesis;
   let voiceReadyMsg = '';
+  let micPermissionState = 'unknown';
+  const ENABLE_WAKE_WORD = false;
+  const PREFER_BROWSER_SPEECH_RECOGNITION = false;
 
   const $          = id => document.getElementById(id);
   const panelOpen  = () => { const p=$('luro-assistant-panel'); return !!(p&&p.classList.contains('is-open')); };
@@ -1908,8 +1942,8 @@
       setRuntimeStatus(voiceReadyMsg, '#b45309');
       return;
     }
-    if (!hasSpeechRecognition()) {
-      voiceReadyMsg = 'La conversación por voz manual está disponible. El saludo "Hola LuRo" no está soportado en este navegador.';
+    if (!ENABLE_WAKE_WORD || !hasSpeechRecognition()) {
+      voiceReadyMsg = 'La conversación por voz manual está disponible. Activa el micrófono una vez y luego usa el botón de voz cuando quieras hablar con LuRo.';
       setRuntimeStatus(voiceReadyMsg, '#2563eb');
       return;
     }
@@ -1917,19 +1951,64 @@
     setRuntimeStatus(voiceReadyMsg, '#0f766e');
   }
 
+  function restoreAssistantReadyState() {
+    updateVoiceReadyMsg();
+    if (modoVoz) return;
+    if (ENABLE_WAKE_WORD && micPermiso && hasSpeechRecognition()) {
+      wakeStart();
+      return;
+    }
+    setE('idle');
+  }
+
+  function detenerModoVoz(mensaje = 'Sesión de voz cerrada.') {
+    modoVoz = false;
+    vozIdleCount = 0;
+    clearTimeout(vozLoopT);
+    stopGrab();
+    synth.cancel();
+    asistenteHablando = false;
+    burbuja('assistant', mensaje);
+    setRuntimeStatus('Modo manos libres detenido. Puedes reactivarlo cuando quieras.', '#6b7280');
+    restoreAssistantReadyState();
+  }
+
+  async function consultarPermisoMicrofono() {
+    try {
+      if (!navigator.permissions?.query) return micPermissionState;
+      const result = await navigator.permissions.query({ name: 'microphone' });
+      micPermissionState = String(result?.state || 'unknown');
+      if (result && typeof result.addEventListener === 'function' && !result.__luroBound) {
+        result.addEventListener('change', () => {
+          micPermissionState = String(result.state || 'unknown');
+          if (micPermissionState !== 'granted') {
+            micPermiso = false;
+          }
+        });
+        result.__luroBound = true;
+      }
+      return micPermissionState;
+    } catch (_e) {
+      return micPermissionState;
+    }
+  }
+
   async function pingAssistantBackend() {
     try {
-      const res = await fetch(AI_CHAT_URL, { method: 'GET' });
+      const res = await fetch(AI_CAPABILITIES_URL, { method: 'GET' });
       if (res.status === 404) {
-        return { ok: false, text: 'El backend del asistente no está publicado todavía. Falta desplegar aiChat y groqTranscribe.', tone: '#b91c1c' };
-      }
-      if (res.status === 405) {
-        return { ok: true, text: 'La API del asistente está publicada y lista para recibir mensajes.', tone: '#0f766e' };
+        return { ok: false, text: 'El backend del super agente no está publicado todavía. Falta desplegar aiCapabilities, aiChat y groqTranscribe.', tone: '#b91c1c' };
       }
       if (res.status === 503) {
         return { ok: false, text: 'La API del asistente existe, pero falta configurar algún secreto de IA en Firebase.', tone: '#b45309' };
       }
-      return { ok: res.ok, text: `La API respondió con estado ${res.status}.`, tone: res.ok ? '#0f766e' : '#b45309' };
+      if (!res.ok) {
+        return { ok: false, text: `La API respondió con estado ${res.status}.`, tone: '#b45309' };
+      }
+      const data = await res.json().catch(() => null);
+      const activos = Object.entries(data?.providers || {}).filter(([, value]) => value?.configured).map(([key]) => key);
+      const lista = activos.length ? activos.join(', ') : 'ninguno';
+      return { ok: true, text: `Super agente disponible. Proveedores activos: ${lista}.`, tone: '#0f766e' };
     } catch (_e) {
       return { ok: false, text: 'No pude verificar la API del asistente desde este navegador.', tone: '#b45309' };
     }
@@ -1965,9 +2044,12 @@
     // Botón mic
     const b = $('luro-mic-btn-pub');
     if (b) {
+      const sesionActiva = !!modoVoz;
       const icn = { idle:'🎙', wake:'👂', voz_grab:'👂', voz_proc:'🧠', voz_tts:'💬', txt_proc:'🧠', confirming:'⚠' };
-      const bg  = { idle:'#2d3436', wake:'#00b894', voz_grab:'#e84118', voz_proc:'#6c5ce7', voz_tts:'#0984e3', txt_proc:'#6c5ce7', confirming:'#fdcb6e' };
-      b.textContent = icn[s]||'🎙'; b.style.background = bg[s]||'#2d3436';
+      const bg  = { idle:'#2d3436', wake:'#00b894', voz_grab:'#0f766e', voz_proc:'#0f766e', voz_tts:'#0f766e', txt_proc:'#6c5ce7', confirming:'#fdcb6e' };
+      b.textContent = sesionActiva ? '⏹' : (icn[s]||'🎙');
+      b.style.background = sesionActiva ? '#0f766e' : (bg[s]||'#2d3436');
+      b.title = sesionActiva ? 'Detener conversación por voz' : 'Iniciar conversación por voz';
     }
   }
 
@@ -1990,12 +2072,19 @@
     ocultarConfirm();
     const pending = accionPend; accionPend = null;
     if (ok && pending) {
-      sinDialogos(()=>ejecutarTag(pending));
-      burbuja('assistant','Listo, acción ejecutada.');
-      hablarY('Listo, ejecutado.', ()=>{ modoVoz ? vozLoop() : wakeStart(); });
+      // Ejecutar directamente sin sinDialogos para evitar conflictos
+      try {
+        ejecutarTag(pending);
+        burbuja('assistant','✓ Acción ejecutada correctamente.');
+        hablarY('Acción ejecutada.', ()=>{ modoVoz ? vozLoop() : restoreAssistantReadyState(); });
+      } catch (e) {
+        console.error('Error ejecutando acción:', e);
+        burbuja('assistant','❌ Hubo un error al ejecutar la acción: ' + e.message);
+        hablarY('Hubo un error.', ()=>{ modoVoz ? vozLoop() : restoreAssistantReadyState(); });
+      }
     } else {
-      burbuja('assistant','Acción cancelada.');
-      hablarY('Cancelado.', ()=>{ modoVoz ? vozLoop() : wakeStart(); });
+      burbuja('assistant','✗ Acción cancelada por el usuario.');
+      hablarY('Cancelado.', ()=>{ modoVoz ? vozLoop() : restoreAssistantReadyState(); });
     }
   };
 
@@ -2066,8 +2155,9 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   /* ── TTS ── */
   function hablarY(txt, onFin) {
     synth.cancel();
+    asistenteHablando = true;
     const clean = txt.replace(TAG_RE,'').replace(/[*_#`>~]/g,'').replace(/\n+/g,' ').trim();
-    if (!clean) { if(onFin) onFin(); return; }
+    if (!clean) { asistenteHablando = false; if(onFin) onFin(); return; }
     const utt = new SpeechSynthesisUtterance(clean);
     utt.lang='es-ES'; utt.rate=1.05;
     const voz = synth.getVoices().find(v=>v.lang.startsWith('es')&&v.name.toLowerCase().includes('google'))
@@ -2075,7 +2165,7 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     if (voz) utt.voice = voz;
     setE('voz_tts');
     let done=false;
-    const fin=()=>{if(!done){done=true; if(onFin) onFin();}};
+    const fin=()=>{if(!done){done=true; asistenteHablando = false; if(onFin) onFin();}};
     utt.onend=fin; utt.onerror=fin;
     synth.speak(utt);
     setTimeout(fin, 12000); // fallback 12s
@@ -2084,6 +2174,10 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   /* ── BURBUJAS ── */
   function burbuja(role, txt) {
     const cont=$('luro-assistant-messages'); if(!cont) return null;
+    if (role === 'user' && modoVoz) {
+      cont.scrollTop=cont.scrollHeight;
+      return null;
+    }
     const w=document.createElement('div');
     w.className='luro-assistant-msg '+(role==='user'?'is-user':'is-assistant');
     const m=document.createElement('span'); m.className='luro-assistant-msg-meta';
@@ -2157,11 +2251,42 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   }
 
   /* ── GROQ CHAT ── */
+  function buildRuntimeContextForAI() {
+    const activeSection = document.querySelector('.content-section.active');
+    const moduleLabel = String(document.getElementById('current-module-display')?.textContent || '').trim();
+    const userLabel = String(
+      window.operadorActual ||
+      window.sesionUser?.user ||
+      window.sesionUser?.username ||
+      ''
+    ).trim();
+    const businessName = String(
+      window.db?.config?.businessName ||
+      window.db?.config?.negocio ||
+      ''
+    ).trim();
+    const dataSummary = [
+      Array.isArray(window.db?.almacen) ? `almacen:${window.db.almacen.length}` : '',
+      Array.isArray(window.db?.platos) ? `platos:${window.db.platos.length}` : '',
+      Array.isArray(window.db?.ventas) ? `ventas:${window.db.ventas.length}` : '',
+      Array.isArray(window.db?.distribuidores) ? `distribuidores:${window.db.distribuidores.length}` : ''
+    ].filter(Boolean).join(', ');
+    return {
+      currentPage: String(activeSection?.id || '').trim(),
+      currentModule: moduleLabel,
+      currentUser: userLabel,
+      currentRole: String(window.moduloActual || '').trim(),
+      businessName,
+      dataSummary,
+      limitations: 'No inventar datos, respetar flujo seguro para acciones críticas.'
+    };
+  }
+
   async function groqCall(model, sysPrompt, msgs) {
     const res = await fetch(AI_CHAT_URL, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model, userMessage:String(msgs?.[msgs.length - 1]?.content || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:sysPrompt},...msgs], temperature:0.65, max_tokens:350})
+      body: JSON.stringify({model, userMessage:String(msgs?.[msgs.length - 1]?.content || ''), runtimeContext:buildRuntimeContextForAI(), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:sysPrompt},...msgs], temperature:0.65, max_tokens:350})
     });
     return res;
   }
@@ -2176,7 +2301,7 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     const res = await fetch(AI_CHAT_URL, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({providerHint:'groq', model:GROQ_MODEL, userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:350})
+      body: JSON.stringify({providerHint:'groq', agentMode:'operational', model:GROQ_MODEL, runtimeContext:buildRuntimeContextForAI(), userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:350})
     });
     return res;
   }
@@ -2185,7 +2310,7 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     const res = await fetch(AI_CHAT_URL, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({providerHint:'gemini', model:GEMINI_MODEL, userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:500})
+      body: JSON.stringify({providerHint:'gemini', agentMode:'analysis', model:GEMINI_MODEL, runtimeContext:buildRuntimeContextForAI(), userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:500})
     });
     return res;
   }
@@ -2194,7 +2319,7 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     const res = await fetch(AI_CHAT_URL, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({providerHint:'openrouter', model:OPENROUTER_MODEL, userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:500})
+      body: JSON.stringify({providerHint:'openrouter', agentMode:'general', model:OPENROUTER_MODEL, runtimeContext:buildRuntimeContextForAI(), userMessage:String(message || ''), systemPrompt:LURO_API_SYSTEM_PROMPT, messages:[{role:'system',content:systemPrompt},...(msgs || [{ role:'user', content: message }])], temperature:0.65, max_tokens:500})
     });
     return res;
   }
@@ -2294,7 +2419,13 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
             else interim += `${text} `;
           }
           const combined = (finalTxt || interim).trim();
-          if (combined) setRuntimeStatus(`Te escucho: ${combined}`, '#2563eb');
+          if (combined) {
+            // Feedback visual más claro de interacción en tiempo real
+            setRuntimeStatus(`🎙 Escuchando: "${combined}"`, '#2563eb');
+            // Actualizar burbuja de usuario en tiempo real para feedback inmediato
+            const userBubble = document.querySelector('.luro-chat-bubble.user:last-of-type');
+            if (userBubble) userBubble.textContent = combined;
+          }
         };
         rec.onerror = (e) => {
           if (e?.error === 'no-speech') { finish((finalTxt || '').trim()); return; }
@@ -2354,7 +2485,24 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     lastVoiceError = '';
     // Reusar stream si sigue vivo
     if(!mediaStream||mediaStream.getTracks().every(t=>t.readyState==='ended')){
-      try{mediaStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});}
+      try{
+        const state = await consultarPermisoMicrofono();
+        if (state === 'denied') {
+          lastVoiceError='El permiso de micrófono está bloqueado';
+          return null;
+        }
+        mediaStream=await navigator.mediaDevices.getUserMedia({
+          audio:{
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
+          video:false
+        });
+        micPermiso = true;
+        micPermissionState = 'granted';
+      }
       catch(e){lastVoiceError='No pude acceder al micrófono'; return null;}
     }
     return new Promise(resolve=>{
@@ -2389,15 +2537,23 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
 
   async function capturarVoz(maxMs=VOZ_MAX_MS) {
     lastVoiceError = '';
-    if (hasSpeechRecognition()) {
+    // Usar SpeechRecognition solo si se habilita explícitamente.
+    if (PREFER_BROWSER_SPEECH_RECOGNITION && hasSpeechRecognition()) {
       try {
         setE('voz_grab');
+        setRuntimeStatus('🎙 Escuchando en tiempo real...', '#2563eb');
         const txt = await escucharConSpeechRecognition(maxMs);
-        if (txt) return txt;
+        if (txt && txt.trim()) {
+          setRuntimeStatus('✓ Entendido: "' + txt + '"', '#0f766e');
+          return txt;
+        }
       } catch (e) {
         lastVoiceError = e?.message || 'Falló el reconocimiento de voz';
+        console.warn('[LuRo] SpeechRecognition falló, intentando fallback:', e);
       }
     }
+    // Captura breve y enfocada en la voz del usuario.
+    setRuntimeStatus('🎙 Escuchando tu voz...', '#2563eb');
     return await grabar(maxMs);
   }
 
@@ -2409,6 +2565,11 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   function esWake(t){ const lc=t.toLowerCase(); return WAKE_WORDS.some(w=>lc.includes(w)); }
 
   function wakeStart() {
+    if (!ENABLE_WAKE_WORD) {
+      wakeStop();
+      setE('idle');
+      return;
+    }
     if(wakeActivo||!micPermiso||modoVoz)return;
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){ updateVoiceReadyMsg(); return; } // sin SR, solo funciona botón
@@ -2438,11 +2599,12 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
       updateVoiceReadyMsg();
       return;
     }
-    wakeStop(); modoVoz=true;
+    wakeStop(); modoVoz=true; vozIdleCount=0;
     // Abrir panel
     if(!panelOpen()&&typeof window.toggleLuroAssistant==='function')
       window.toggleLuroAssistant(true);
-    await hablarYP('Dime, ¿en qué te puedo ayudar?');
+    setRuntimeStatus('Modo manos libres activo. Te escucho sin que tengas que tocar el botón cada vez.', '#0f766e');
+    await hablarYP('Listo, me quedo contigo. Dime qué necesitas.');
     vozLoop();
   }
 
@@ -2450,35 +2612,53 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     if(!modoVoz)return;
     clearTimeout(vozLoopT);
 
-    setRuntimeStatus('Te escucho. Habla con naturalidad.', '#2563eb');
+    setRuntimeStatus('🎙 Listo para escuchar. Habla con naturalidad.', '#2563eb');
     const txt=await capturarVoz(VOZ_MAX_MS);
 
     if(!txt||!txt.trim()){
+      vozIdleCount += 1;
       if(lastVoiceError){
         burbuja('assistant',`No pude entenderte bien. ${lastVoiceError}.`);
         setRuntimeStatus(`${lastVoiceError}. Puedes volver a hablar de inmediato.`, '#b45309');
       }
-      // Silencio/error → preguntar una vez más
-      await hablarYP('¿Sigues ahí?');
-      const txt2=await capturarVoz(8000);
-      if(!txt2||!txt2.trim()){
-        // Salir de modo voz
-        modoVoz=false;
-        burbuja('assistant','Sesión de voz cerrada. Dime "Hola LuRo" para volver.');
-        hablarY('Hasta luego.', wakeStart);
+      if(vozIdleCount < VOZ_IDLE_LIMIT){
+        await hablarYP(vozIdleCount === 1 ? 'Aquí sigo. Habla cuando quieras.' : 'Sigo atento. Tómate tu tiempo.');
+        vozLoopT=setTimeout(vozLoop,600);
         return;
       }
-      procesarVoz(txt2); return;
+      detenerModoVoz('Sesión de voz cerrada por inactividad. Cuando quieras, la reactivas con un toque.');
+      return;
     }
+    vozIdleCount = 0;
     procesarVoz(txt);
   }
 
   async function procesarVoz(txt) {
     if(!modoVoz)return;
+    vozIdleCount = 0;
+    const lcBase=txt.toLowerCase().trim();
+    if(DETENER_VOZ.some(i=>lcBase.includes(i))){
+      detenerModoVoz('Cerré la conversación por voz. Aquí estaré cuando me necesites.');
+      return;
+    }
+
+    // Detectar interrupción si el asistente está hablando
+    if(asistenteHablando){
+      const lc=lcBase;
+      if(INTERRUPTIR.some(i=>lc.includes(i))){
+        synth.cancel();
+        asistenteHablando = false;
+        burbuja('assistant','🛑 Interrumpido. ¿Qué necesitas?');
+        setRuntimeStatus('🛑 Asistente interrumpido', '#e17055');
+        await hablarYP('Te escucho. ¿Qué necesitas?');
+        vozLoopT=setTimeout(vozLoop,400);
+        return;
+      }
+    }
 
     // Detectar si/no si hay acción pendiente
     if(accionPend){
-      const lc=txt.toLowerCase().trim();
+      const lc=lcBase;
       if(AFIRMAR.some(a=>lc.includes(a))){ window.__luroOK(true); return; }
       if(NEGAR.some(n=>lc.includes(n))){ window.__luroOK(false); return; }
     }
@@ -2553,8 +2733,8 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
           if(ph)ph.textContent=localMsg;
           pushMem(txt,localMsg);
           ejecutarResultadoLocal(localResult);
-          watchT=setTimeout(()=>{ if(!modoVoz)setE('wake'); },600);
-          hablarY(localMsg, ()=>{ if(!modoVoz){ setE('wake'); } });
+          watchT=setTimeout(()=>{ if(!modoVoz)restoreAssistantReadyState(); },600);
+          hablarY(localMsg, ()=>{ if(!modoVoz){ restoreAssistantReadyState(); } });
           return;
         }
 
@@ -2562,21 +2742,25 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
         if(ph)ph.textContent=resp.replace(TAG_RE,'').trim();
         pushMem(txt,resp);
         const hayCritica=ejecutar(resp);
-        watchT=setTimeout(()=>{ if(!modoVoz)setE('wake'); },1000);
+        watchT=setTimeout(()=>{ if(!modoVoz)restoreAssistantReadyState(); },1000);
         if(!hayCritica){
           // TTS la respuesta pero NO iniciar loop de voz
-          hablarY(resp, ()=>{ if(!modoVoz){ setE('wake'); } });
+          hablarY(resp, ()=>{ if(!modoVoz){ restoreAssistantReadyState(); } });
         }
       }catch(e){
         console.error('[LuRo txt]',e);
         if(ph)ph.textContent='Error: '+(e.message||'desconocido');
-        setE('wake');
+        restoreAssistantReadyState();
       }
     };
   }
 
   /* ── BOTÓN MIC (respaldo y activador manual) ── */
   window.luroVozToggle = async function() {
+    if(modoVoz){
+      detenerModoVoz('Cerré la conversación por voz. Cuando quieras, vuelves a activarme.');
+      return;
+    }
     if(estado==='voz_grab'){stopGrab();return;}
     if(estado==='voz_proc'||estado==='voz_tts')return;
     if(estado==='confirming'){return;}
@@ -2602,8 +2786,28 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
   /* ── PERMISO MIC ── */
   async function pedirMic() {
     try{
-      mediaStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
-      micPermiso=true; return true;
+      const state = await consultarPermisoMicrofono();
+      if (state === 'denied') {
+        micPermiso=false;
+        return false;
+      }
+      if (mediaStream && mediaStream.getTracks().some(t => t.readyState === 'live')) {
+        micPermiso=true;
+        micPermissionState='granted';
+        return true;
+      }
+      mediaStream=await navigator.mediaDevices.getUserMedia({
+        audio:{
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video:false
+      });
+      micPermiso=true;
+      micPermissionState='granted';
+      return true;
     }catch(e){ micPermiso=false; return false; }
   }
 
@@ -2616,7 +2820,11 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     btn.onclick=async()=>{
       btn.textContent='⏳ Solicitando permiso...';
       const ok=await pedirMic();
-      if(ok){btn.remove();localStorage.setItem('LURO_MIC_AUTORIZADO','1');wakeStart();}
+      if(ok){
+        btn.remove();
+        localStorage.setItem('LURO_MIC_AUTORIZADO','1');
+        restoreAssistantReadyState();
+      }
       else btn.textContent='❌ Permiso denegado — reintenta';
     };
     document.body.appendChild(btn);
@@ -2640,11 +2848,22 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     };
 
     const yaAuth=localStorage.getItem('LURO_MIC_AUTORIZADO')==='1';
-    if(yaAuth){
+    const permissionState = await consultarPermisoMicrofono();
+    if(permissionState === 'granted'){
       const ok=await pedirMic().catch(()=>false);
-      if(ok)wakeStart();
-      else{localStorage.removeItem('LURO_MIC_AUTORIZADO');mostrarBotonActivar();}
+      if(ok){
+        localStorage.setItem('LURO_MIC_AUTORIZADO','1');
+        restoreAssistantReadyState();
+      }else{
+        mostrarBotonActivar();
+      }
+    }else if(yaAuth && permissionState === 'prompt'){
+      mostrarBotonActivar();
+      setRuntimeStatus('La voz está disponible. Toca "Activar voz de LuRo" para conceder el micrófono una sola vez.', '#2563eb');
     }else{
+      if (permissionState === 'denied') {
+        setRuntimeStatus('El micrófono está bloqueado en el navegador. Habilítalo en permisos del sitio para usar la voz.', '#b91c1c');
+      }
       mostrarBotonActivar();
     }
   });

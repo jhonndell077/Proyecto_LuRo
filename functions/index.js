@@ -2616,9 +2616,28 @@ exports.upsertOwnerData = onCall(async (request) => {
     const snap = await tx.get(docRef);
     const current = snap.data() || {};
     const currentDb = current.db || current["base de datos"] || {};
+    if (c.collaborator === true) {
+      // Public storefront configuration is owned by the administrator.
+      if (currentDb.menuIntegration) payload.menuIntegration = currentDb.menuIntegration;
+      else delete payload.menuIntegration;
+      const domain = require('./menu-domain');
+      for (const p of payload.platos || []) {
+        const original = (currentDb.platos || []).find(x => domain.dishId(x) === domain.dishId(p));
+        if (original?.menu) p.menu = original.menu;
+        else delete p.menu;
+      }
+    }
+    try {
+      require('./menu-domain').preserveImports(payload, currentDb);
+    } catch (e) {
+      throw new HttpsError('aborted', e.message);
+    }
     const currentHasContent = ownerDbHasContent(currentDb);
     const currentUpdatedAtClient = Number(current.updatedAtClient || 0);
     const currentSyncKey = String(current.syncKey || "");
+    if (String(current.updatedFrom || '').startsWith('menu-') && Number(request.data?.baseRemoteAt || 0) < currentUpdatedAtClient) {
+      throw new HttpsError('aborted', 'La nube ya tiene una version mas reciente de esta base. Hay cambios de pedidos web.');
+    }
 
     if (currentHasContent && !payloadHasContent) {
       console.warn("[sync] Bloqueado: base con contenido no puede ser sobrescrita por base vacía.", {
@@ -2640,6 +2659,7 @@ exports.upsertOwnerData = onCall(async (request) => {
       throw new HttpsError("aborted", "La nube ya tiene una version mas reciente de esta base.");
     }
 
+    await require('./menu-sync')(db, tx, payload, owner);
     tx.set(docRef, {
       owner,
       db: payload,
@@ -2696,6 +2716,8 @@ const whatsappNotifications = registerWhatsAppNotifications({
   resolveSession,
   getOwnerDoc
 });
+
+Object.assign(exports, require('./menu-integration')({ db, resolveSession, assertOwnerActive }));
 
 exports.notifyWhatsAppOnOwnerDataUpdate = whatsappNotifications.notifyWhatsAppOnOwnerDataUpdate;
 exports.notifyWhatsAppOnMasterNotificationCreate = whatsappNotifications.notifyWhatsAppOnMasterNotificationCreate;
@@ -2883,7 +2905,23 @@ const GROQ_CHAT_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_AUDIO_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions";
 const GEMINI_CHAT_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const OPENROUTER_CHAT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+const AI_PROVIDER_SECRETS = ["GROQ_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"];
+const AI_PROVIDER_DEFAULTS = Object.freeze({
+  groq: "llama-3.3-70b-versatile",
+  gemini: "gemini-2.5-flash",
+  openrouter: "openrouter/free"
+});
 const LURO_SYSTEM_PROMPT = "Eres LuRo, el asistente inteligente oficial de LuRo Control, un SaaS de gestión para restaurantes. Conoces todos los módulos del sistema: Almacén, Producción Interna, Registrar Salida, Distribuidores, Comandas, Disponibilidad, Costos, Decomiso, Historial, Ventas, Clientes y Puntos, Gestión de Usuarios, Autorizaciones, Diagnóstico Inteligente y Entrenamientos. Respondes siempre en español, directo y sin relleno. Eres un copiloto operativo, no un generador de código.";
+const LURO_SUPER_AGENT_POLICIES = [
+  "ActÃºas como super agente operativo de LuRo Control.",
+  "Debes interpretar preguntas abiertas, operativas y analÃ­ticas del restaurante.",
+  "Nunca inventes datos del sistema, stock, ventas ni usuarios.",
+  "Si falta un dato indispensable, haz una sola pregunta breve.",
+  "Si la pregunta pide ejecutar una acciÃ³n crÃ­tica, deja la decisiÃ³n final al flujo seguro del sistema.",
+  "Habla como un operador experto: claro, directo, confiable y Ãºtil.",
+  "Prioriza respuestas accionables sobre explicaciones largas.",
+  "Si llega contexto del sistema, debes usarlo como fuente principal."
+].join(" ");
 const AI_TIMEOUT_MS = 8000;
 const COMPLEX_AI_HINTS = [
   "analiza",
@@ -2901,6 +2939,56 @@ function normalizeAiText(v) {
   return String(v || "").trim().toLowerCase();
 }
 
+function isSecretConfigured(name) {
+  return Boolean(String(process.env[name] || "").trim());
+}
+
+function getProviderAvailability() {
+  return {
+    groq: {
+      configured: isSecretConfigured("GROQ_API_KEY"),
+      defaultModel: AI_PROVIDER_DEFAULTS.groq,
+      supports: ["chat", "fast-replies", "speech-to-text"]
+    },
+    gemini: {
+      configured: isSecretConfigured("GEMINI_API_KEY"),
+      defaultModel: AI_PROVIDER_DEFAULTS.gemini,
+      supports: ["chat", "reasoning", "multimodal"]
+    },
+    openrouter: {
+      configured: isSecretConfigured("OPENROUTER_API_KEY"),
+      defaultModel: AI_PROVIDER_DEFAULTS.openrouter,
+      supports: ["chat", "free-router", "fallback"]
+    }
+  };
+}
+
+function selectTaskMode(userMessage = "", options = {}) {
+  const text = normalizeAiText(userMessage);
+  if (normalizeAiText(options.agentMode) === "analysis") return "analysis";
+  if (normalizeAiText(options.agentMode) === "operational") return "operational";
+  if (/analiza|compar|diagn[oó]stico|tendencia|reporte|resumen|rentabilidad|proyecci[oó]n/.test(text)) return "analysis";
+  if (/elimina|borra|quita|registra|crea|actualiza|edita|abre|ve a|muestra|consulta|busca/.test(text)) return "operational";
+  return "general";
+}
+
+function buildSuperAgentPrompt(basePrompt, options = {}) {
+  const runtime = options.runtimeContext && typeof options.runtimeContext === "object" ? options.runtimeContext : {};
+  const parts = [
+    String(basePrompt || LURO_SYSTEM_PROMPT).trim(),
+    LURO_SUPER_AGENT_POLICIES,
+    `Modo actual del agente: ${selectTaskMode(options.userMessage || "", options)}.`
+  ];
+  if (runtime.currentModule) parts.push(`MÃ³dulo visible: ${String(runtime.currentModule).trim()}.`);
+  if (runtime.currentPage) parts.push(`Pantalla activa: ${String(runtime.currentPage).trim()}.`);
+  if (runtime.currentUser) parts.push(`Usuario autenticado: ${String(runtime.currentUser).trim()}.`);
+  if (runtime.currentRole) parts.push(`Rol operativo: ${String(runtime.currentRole).trim()}.`);
+  if (runtime.businessName) parts.push(`Negocio actual: ${String(runtime.businessName).trim()}.`);
+  if (runtime.dataSummary) parts.push(`Resumen operativo: ${String(runtime.dataSummary).trim()}`);
+  if (runtime.limitations) parts.push(`LÃ­mites activos del cliente: ${String(runtime.limitations).trim()}.`);
+  return parts.filter(Boolean).join("\n\n");
+}
+
 function mergeSystemPrompt(messages = []) {
   const list = Array.isArray(messages) ? messages.filter((item) => item && typeof item === "object") : [];
   const firstSystem = list.find((item) => String(item.role || "").toLowerCase() === "system");
@@ -2914,7 +3002,8 @@ function mergeSystemPrompt(messages = []) {
 function selectAPI(userMessage) {
   const text = normalizeAiText(userMessage);
   if (COMPLEX_AI_HINTS.some((keyword) => text.includes(keyword))) return "gemini";
-  return "groq";
+  if (/elimina|borra|quita|registra|crea|actualiza|abre|navega|m[oó]dulo|stock|inventario|almacen|comanda/.test(text)) return "groq";
+  return "gemini";
 }
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = AI_TIMEOUT_MS) {
@@ -2944,7 +3033,7 @@ async function callGroq(message, systemPrompt, options = {}) {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: String(options.model || "llama-3.3-70b-versatile"),
+      model: String(options.model || AI_PROVIDER_DEFAULTS.groq),
       messages,
       temperature: typeof options.temperature === "number" ? options.temperature : 0.65,
       max_tokens: typeof options.max_tokens === "number" ? options.max_tokens : 350
@@ -2962,7 +3051,7 @@ async function callGemini(message, systemPrompt, options = {}) {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: String(options.model || "gemini-2.5-flash"),
+      model: String(options.model || AI_PROVIDER_DEFAULTS.gemini),
       messages,
       temperature: typeof options.temperature === "number" ? options.temperature : 0.65,
       max_tokens: typeof options.max_tokens === "number" ? options.max_tokens : 500
@@ -2985,7 +3074,7 @@ async function callOpenRouter(message, systemPrompt, options = {}) {
       "X-Title": "LuRo Control"
     },
     body: JSON.stringify({
-      model: String(options.model || "auto:free"),
+      model: String(options.model || AI_PROVIDER_DEFAULTS.openrouter),
       messages,
       temperature: typeof options.temperature === "number" ? options.temperature : 0.65,
       max_tokens: typeof options.max_tokens === "number" ? options.max_tokens : 500
@@ -2995,11 +3084,16 @@ async function callOpenRouter(message, systemPrompt, options = {}) {
 
 async function apiRouter(userMessage, options = {}) {
   const forced = normalizeAiText(options.providerHint);
+  const availability = getProviderAvailability();
   const selected = forced === "gemini" || forced === "openrouter" || forced === "groq"
     ? forced
     : selectAPI(userMessage);
-  const systemPrompt = String(options.systemPrompt || LURO_SYSTEM_PROMPT);
+  const systemPrompt = buildSuperAgentPrompt(String(options.systemPrompt || LURO_SYSTEM_PROMPT), {
+    ...options,
+    userMessage
+  });
   const commonOptions = {
+    model: options.model,
     messages: options.messages,
     temperature: options.temperature,
     max_tokens: options.max_tokens
@@ -3019,6 +3113,9 @@ async function apiRouter(userMessage, options = {}) {
   for (let index = 0; index < queue.length; index += 1) {
     const provider = queue[index];
     try {
+      if (!availability[provider]?.configured) {
+        throw new Error(`${provider.toUpperCase()} no configurada en el backend`);
+      }
       if (index > 0) {
         console.warn("API primaria no disponible, usando fallback", {
           selected,
@@ -3035,6 +3132,27 @@ async function apiRouter(userMessage, options = {}) {
   }
   throw lastError || new Error("Ningún proveedor de IA está disponible");
 }
+
+exports.aiCapabilities = onRequest({ cors: true, secrets: AI_PROVIDER_SECRETS }, async (req, res) => {
+  if (req.method !== "GET") { res.status(405).json({ ok: false, error: "MÃ©todo no permitido" }); return; }
+  res.status(200).json({
+    ok: true,
+    project: "luro-control",
+    agent: {
+      name: "LuRo Super Agent",
+      version: "v2-local",
+      modes: ["general", "operational", "analysis"],
+      features: [
+        "routing multi-proveedor",
+        "contexto operacional",
+        "fallback automÃ¡tico",
+        "chat y voz",
+        "respuestas seguras"
+      ]
+    },
+    providers: getProviderAvailability()
+  });
+});
 
 exports.groqChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
   if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
@@ -3060,7 +3178,7 @@ exports.groqChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (r
   }
 });
 
-exports.aiChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req, res) => {
+exports.aiChat = onRequest({ cors: true, secrets: AI_PROVIDER_SECRETS }, async (req, res) => {
   if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Método no permitido" }); return; }
   try {
     const body = (req.body && typeof req.body === "object") ? req.body : {};
@@ -3072,8 +3190,11 @@ exports.aiChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req
       return;
     }
     const { provider, response, fallback } = await apiRouter(userMessage, {
+      model: body.model,
       messages,
       providerHint: body.providerHint,
+      agentMode: body.agentMode,
+      runtimeContext: body.runtimeContext,
       systemPrompt: String(body.systemPrompt || LURO_SYSTEM_PROMPT),
       temperature: typeof body.temperature === "number" ? body.temperature : 0.65,
       max_tokens: typeof body.max_tokens === "number" ? body.max_tokens : 350
@@ -3084,6 +3205,7 @@ exports.aiChat = onRequest({ cors: true, secrets: ["GROQ_API_KEY"] }, async (req
       .set("Content-Type", "application/json")
       .set("X-LuRo-AI-Provider", provider)
       .set("X-LuRo-AI-Fallback", fallback ? "1" : "0")
+      .set("X-LuRo-Agent-Mode", selectTaskMode(userMessage, { agentMode: body.agentMode }))
       .send(payload.text);
   } catch (_e) {
     res.status(503).json({ ok: false, error: "LuRo está recargando, intenta en un momento..." });

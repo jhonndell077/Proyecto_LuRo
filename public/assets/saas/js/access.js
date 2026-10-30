@@ -1,10 +1,37 @@
 (function () {
   const BASE = "https://us-central1-luro-control.cloudfunctions.net";
   const statusEl = () => document.getElementById("status");
+  const loginButtonEl = () => document.getElementById("login-submit");
   const payBox = () => document.getElementById("pay-box");
   const payLink = () => document.getElementById("pay-link");
   const payPalSlot = () => document.getElementById("paypal-register-slot");
   let paypalSdkReady = false;
+
+  function setStatus(message = "", kind = "") {
+    const el = statusEl();
+    if (!el) return;
+    el.textContent = String(message || "");
+    el.classList.remove("is-error", "is-success");
+    if (kind === "error") el.classList.add("is-error");
+    if (kind === "success") el.classList.add("is-success");
+  }
+
+  function sanitizeErrorMessage(message) {
+    const raw = String(message || "").trim();
+    if (!raw) return "No se pudo completar la solicitud en este momento.";
+    if (/<!doctype html|<html|<head|<body/i.test(raw)) {
+      return "No se pudo validar el acceso en este momento. Intenta nuevamente en unos segundos.";
+    }
+    return raw.replace(/\s+/g, " ").trim();
+  }
+
+  function setLoginBusy(busy) {
+    const btn = loginButtonEl();
+    if (!btn) return;
+    if (!btn.dataset.baseText) btn.dataset.baseText = btn.textContent.trim();
+    btn.disabled = !!busy;
+    btn.textContent = busy ? "Validando acceso..." : btn.dataset.baseText;
+  }
 
   function hidePayPalSlot() {
     const slot = payPalSlot();
@@ -25,7 +52,7 @@
     document.getElementById("form-register").classList.toggle("hidden", login);
     document.getElementById("tab-login").classList.toggle("active", login);
     document.getElementById("tab-register").classList.toggle("active", !login);
-    statusEl().textContent = "";
+    setStatus("");
     payBox()?.classList.add("hidden");
     hidePayPalSlot();
   };
@@ -46,9 +73,14 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data })
     });
+    const contentType = String(r.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.includes("application/json")) {
+      const rawText = await r.text().catch(() => "");
+      throw new Error(sanitizeErrorMessage(rawText || `HTTP ${r.status}`));
+    }
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.error) {
-      throw new Error(String(j?.error?.message || j?.message || `HTTP ${r.status}`));
+      throw new Error(sanitizeErrorMessage(j?.error?.message || j?.message || `HTTP ${r.status}`));
     }
     return j.result || {};
   }
@@ -129,13 +161,13 @@
           password: ownerPassword,
           subscriptionId: subscriptionID
         });
-        statusEl().textContent = "Suscripción autorizada. Activando acceso...";
+        setStatus("Suscripción autorizada. Activando acceso...", "success");
         setTimeout(() => {
           window.location.href = "app.html";
         }, 900);
       },
       onError: function () {
-        statusEl().textContent = "Error en PayPal Subscriptions. Intente nuevamente.";
+        setStatus("No se pudo completar la autorización de PayPal. Intenta nuevamente.", "error");
       }
     }).render(slot);
     return true;
@@ -145,23 +177,32 @@
     ev.preventDefault();
     const user = document.getElementById("login-user").value.trim().toLowerCase();
     const pass = document.getElementById("login-pass").value.replace(/\u00a0/g, " ").trim();
-    statusEl().textContent = "Validando...";
+    if (!user || !pass) {
+      setStatus("Completa usuario y contraseña para continuar.", "error");
+      return false;
+    }
+    setStatus("Validando acceso...");
+    setLoginBusy(true);
     payBox()?.classList.add("hidden");
     hidePayPalSlot();
     try {
       const rs = await call("authenticateSession", { username: user, password: pass });
       if (!rs?.ok) throw new Error("Credenciales inválidas.");
       sessionStorage.setItem("LURO_SAAS_PENDING_LOGIN", JSON.stringify({ user, pass, at: Date.now() }));
-      statusEl().textContent = "Acceso correcto. Redirigiendo...";
+      setStatus("Acceso correcto. Redirigiendo...", "success");
       window.location.href = "app.html";
     } catch (e) {
-      const rawMessage = String(e.message || e || "");
+      const rawMessage = sanitizeErrorMessage(e.message || e || "");
       const normalizedMessage = rawMessage.trim().toLowerCase();
       if (normalizedMessage === "internal") {
-        statusEl().textContent = "No se pudo validar el acceso. Si eres administrador usa el correo registrado del negocio. Si eres colaborador usa tu usuario exacto.";
+        setStatus("No se pudo validar el acceso. Usa el correo del negocio o el usuario exacto del colaborador.", "error");
+      } else if (/credenciales|inválid|invalid|incorrect/i.test(rawMessage)) {
+        setStatus("Usuario o contraseña incorrectos. Verifica los datos e intenta nuevamente.", "error");
       } else {
-        statusEl().textContent = `Error: ${rawMessage}`;
+        setStatus(`No se pudo iniciar sesión. ${rawMessage}`, "error");
       }
+    } finally {
+      setLoginBusy(false);
     }
     return false;
   };
@@ -180,7 +221,7 @@
       plan: document.getElementById("reg-plan").value,
       billingDay: Number(document.getElementById("reg-billing-day")?.value || 0)
     };
-    statusEl().textContent = "Creando cuenta...";
+    setStatus("Creando cuenta...");
     payBox()?.classList.add("hidden");
     hidePayPalSlot();
     try {
@@ -190,10 +231,10 @@
       sessionStorage.setItem("LURO_SAAS_PENDING_LOGIN", JSON.stringify({ user, pass, at: Date.now() }));
 
       payBox()?.classList.remove("hidden");
-      payLink().classList.add("hidden");
+      payLink()?.classList.add("hidden");
       const planNombre = String(rs?.planInfo?.nombre || "Suscripción");
       const monto = Number(rs?.planInfo?.montoUSD || 0).toFixed(2);
-      statusEl().textContent = `Cuenta creada en estado pendiente. Autorice la suscripción ${planNombre} (USD$${monto}) para activar su acceso.`;
+      setStatus(`Cuenta creada en estado pendiente. Autoriza la suscripción ${planNombre} (USD$${monto}) para activar tu acceso.`, "success");
 
       const rendered = await renderRegisterPayPalButton({
         owner: String(rs?.owner || user).toLowerCase(),
@@ -202,13 +243,15 @@
         paypalPlanId: String(rs?.paypalPlanId || "")
       });
       if (!rendered) {
-        statusEl().textContent = "Cuenta creada en estado pendiente. Falta configurar PayPal Subscriptions en backend (PLAN_ID / credenciales).";
+        setStatus("Cuenta creada en estado pendiente. Falta configurar PayPal Subscriptions en backend.", "error");
       }
     } catch (e) {
-      statusEl().textContent = `Error: ${String(e.message || e)}`;
+      setStatus(`No se pudo completar el registro. ${String(e.message || e)}`, "error");
     }
     return false;
   };
 
+  document.getElementById("login-user")?.addEventListener("input", () => setStatus(""));
+  document.getElementById("login-pass")?.addEventListener("input", () => setStatus(""));
   applyPlanFromQuery();
 })();

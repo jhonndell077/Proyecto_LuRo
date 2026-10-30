@@ -125,6 +125,14 @@
         }, opts);
       }
 
+      // Restricted to the menu's administrative API; credentials stay inside this bridge.
+      window.luroMenuAdminCall = (name, data = {}) => {
+        if (!['menuListOrders', 'menuUpdateOrder', 'menuCreateCustomerLink'].includes(name)) {
+          return Promise.reject(new Error('Operación de menú no permitida.'));
+        }
+        return postCallableWithSession(name, data, { timeoutMs: 15000 });
+      };
+
       async function pushCloudPresence(online = true, opts = {}) {
         const s = ensureCloudAuth();
         if (!s?.username || !s?.password) return false;
@@ -422,6 +430,7 @@
           }
           await postCallableWithSession('upsertOwnerData', {
             db: payloadDb,
+            baseRemoteAt: Number(window.__cloudLastKnownRemoteAt || 0),
             updatedAtClient,
             syncKey
           }, { timeoutMs: 9000 });
@@ -486,6 +495,7 @@
             return false;
           }
           window.setSyncStatusPublic('Base descargada desde cloud.');
+          window.__cloudLastKnownRemoteAt = Number(remoteMeta.updatedAtClient || 0);
           window.__cloudLastPullResult = {
             ok: true,
             reason: 'applied',

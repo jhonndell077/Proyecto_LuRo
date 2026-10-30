@@ -12,9 +12,17 @@
     "Deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Deploy.ps1 -Target hosting",
     "audit:structure": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/validate-structure.ps1"
   },
-  "keywords": ["firebase", "hosting", "luro-control"],
+  "keywords": [
+    "firebase",
+    "hosting",
+    "luro-control"
+  ],
   "author": "jhonndell077",
   "license": "MIT",
-  "devDependencies": {},
-  "dependencies": {}
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  },
+  "dependencies": {
+    "puppeteer": "^25.2.1"
+  }
 }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Acceso | LuRo Control SaaS</title>
-  <link rel="stylesheet" href="assets/saas/css/access.css?v=20260309-0420">
+  <link rel="stylesheet" href="assets/saas/css/access.css?v=20260625-clean-login-1">
 </head>
 <body>
   <main class="wrap">
@@ -13,7 +13,9 @@
         <img src="assets/brand/logo-luro.png" alt="Logo LuRo Control" class="luro-logo luro-logo-toned">
         <span>LuRo Control</span>
       </div>
+      <p class="panel-kicker">Acceso seguro</p>
       <h1>Acceder a LuRo Control</h1>
+      <p class="panel-copy">Ingresa con el correo del negocio o con el usuario exacto del colaborador para continuar.</p>
       <div class="tabs">
         <button id="tab-login" class="active" onclick="showTab('login')">Iniciar sesión</button>
         <button id="tab-register" onclick="showTab('register')">Registrar negocio</button>
@@ -28,7 +30,7 @@
           <input id="login-pass" type="password" placeholder=" " required>
           <label for="login-pass">Contraseña</label>
         </div>
-        <button type="submit">Entrar al sistema</button>
+        <button id="login-submit" type="submit">Entrar al sistema</button>
       </form>
 
       <form id="form-register" class="hidden" onsubmit="return registerBusiness(event)">
@@ -87,7 +89,7 @@
         <button type="submit">Crear cuenta</button>
       </form>
 
-      <p id="status" class="status"></p>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
       <div id="pay-box" class="pay-box hidden">
         <p><strong>Pago de suscripción:</strong> complete el pago para activar la cuenta.</p>
         <div id="paypal-register-slot" class="hidden" style="margin-top:8px;"></div>
@@ -96,11 +98,11 @@
       <a class="back" href="index.html">Volver al inicio</a>
     </section>
   </main>
-  <script src="assets/saas/js/access.js?v=20260306-1205"></script>
+  <script src="assets/saas/js/access.js?v=20260625-clean-login-1"></script>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
-      var swVersion = '20260624-reloadfix-1';
+      var swVersion = '20261030-menu-integration-1';
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/service-worker.js?v=' + swVersion, {
           updateViaCache: 'none'
@@ -120,6 +122,8 @@
           registration.update().catch(function () {});
         }).catch(function () {});
       });
+
+
     })();
   </script>
 </body>
