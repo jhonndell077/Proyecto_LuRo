@@ -49,16 +49,20 @@ npm --prefix functions run lint
 
 Los fixtures de servidor verifican concurrencia, idempotencia, precios manipulados, aislamiento de clientes, mesas ocupadas, estados, cobro y conservación de comandas. Las pruebas DOM cargan la estructura completa del menú, sustituyen la red por fixtures locales y verifican envío, errores, catálogo vacío, desconexión y nutrición. Las pruebas administrativas usan el shell real de LuRo y una sesión simulada.
 
-## Activación pendiente de publicación explícita
+## Despliegue del 30 de octubre de 2026
 
-El código está preparado localmente; las nuevas funciones aún no están desplegadas y el sitio alojado sigue en la versión anterior. La instrucción de integración no cambia la política del proyecto de exigir una instrucción explícita para publicar.
+El usuario autorizó el despliegue y eligió el propietario `jssantana077`; se usó `COCINA`, el único módulo con platos en su base. Se habilitó el menú para esa cuenta, sin modificar precios ni existencias, y se asignó un identificador estable al plato existente.
 
-Al autorizar la publicación:
+- Panel administrativo: https://luro-control.web.app/app.html
+- Menú de acceso directo: https://luro-control.web.app/menu/
+- Sitio original: https://the-proyect-menu-mobile.jhonndell077.chatgpt.site/ (versión 24, con su acceso previo conservado).
+- Respaldo de LuRo: commit `8fc3c9fbd2d40e30f8f3125c85f9f8adedeaabb8` de `main` en GitHub.
+- Source del sitio: commit `3ae5dcdf5621fb1b88837422a24bbc63179dfa82`.
+- Firebase Hosting se publicó correctamente; se crearon las siete funciones `menu*` y se actualizó `upsertOwnerData`.
+- La consulta pública devolvió el plato «Pasta de ostras», RD$500, con cuatro porciones disponibles. La comprobación CORS desde el dominio de LuRo devolvió HTTP 204 y el origen permitido.
 
-1. Revisar y respaldar los cambios de este trabajo junto con los cambios previos del usuario, sin incluirlos inadvertidamente en un commit de integración. Hay modificaciones previas en los mismos archivos.
-2. Publicar las funciones nuevas y los cambios de `upsertOwnerData`, y después el hosting de LuRo mediante el flujo seguro existente. No desplegar reglas ni secretos.
-3. Guardar/sincronizar la configuración del negocio desde LuRo. Esto requiere una sesión administrativa y elección del módulo real; no se inventa un propietario en la app cliente.
-4. Sincronizar `public/menu/` con `dist/` del checkout del sitio, ejecutar sus pruebas, empaquetar y publicar con Sites conservando su acceso actual. Su ID es `appgprj_6ae2a999341881919aa0e0bf11820557`.
-5. Comprobar el flujo real con un pedido autorizado por el negocio. La prueba local no sustituye esa comprobación posterior al despliegue.
+Firebase bloqueó inicialmente el backend por falta de facturación. Tras la instrucción expresa «Habilítalo», se vinculó la única cuenta de facturación activa, «Pago de Firebase», y la API confirmó `billingEnabled: true`. No se creó otra cuenta ni se cambiaron métodos de pago.
 
-No se cambiaron Firebase Auth, reglas, secretos, datos de producción ni políticas de acceso al sitio. El sitio conserva su acceso restringido: abrirlo al público requiere una decisión expresa adicional. La app requiere internet para pedidos, seguimiento y perfiles. La interfaz puede guardarse sin conexión, pero no confirma pedidos offline. Las notificaciones son avisos dentro de la app abierta; no hay push con la app cerrada. Las existencias registradas por cajas offline pueden estar desactualizadas hasta sincronizarse; no se cambió la arquitectura global del POS para descontar inventario en el servidor.
+El despliegue se hizo desde una copia aislada de `main`, incorporando la corrección remota del bucle de recarga del service worker y conservando el trabajo local previo. La publicación usa el flujo existente de respaldo en GitHub antes de Firebase. El backend se publicó de forma selectiva para no desplegar servicios de pago o IA ajenos a esta integración.
+
+No se cambiaron Firebase Auth, reglas, secretos ni las existencias del negocio. Las notificaciones son avisos dentro de la app abierta; no hay push con la app cerrada. Las existencias registradas por cajas offline pueden estar desactualizadas hasta sincronizarse; no se cambió la arquitectura global del POS para descontar inventario en el servidor. Las fotografías, descripción, oferta y ficha nutricional se completan desde LuRo; la ausencia de esos datos no se sustituye por información inventada.

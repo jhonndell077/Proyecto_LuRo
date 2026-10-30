@@ -19,7 +19,7 @@
   const setStatus=(message,error=false)=>{statusBar.textContent=message;statusBar.classList.toggle('connection-error',error);};
   async function api(name,data={}){
     const control=new AbortController(),timer=setTimeout(()=>control.abort(),15000);
-    try{const response=await fetch(endpoint+name,{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({data:{...config,...data}}),signal:control.signal});const json=await response.json();if(!response.ok||json.error)throw Error(json.error?.message||'No se pudo consultar el restaurante.');return json.result;}finally{clearTimeout(timer);}
+    try{const response=await fetch(endpoint+name,{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({data:{...config,...data}}),signal:control.signal});const json=await response.json().catch(()=>({}));if(!response.ok||json.error)throw Error([429,503].includes(response.status)?'El restaurante está restableciendo la conexión. Vuelve a intentar en unos minutos.':json.error?.message||'No se pudo consultar el restaurante.');return json.result;}finally{clearTimeout(timer);}
   }
   const previousView=setView;setView=function(next){previousView(next);document.querySelectorAll('.business-story,.signature-section,#experiencia,.service-strip,.quick-tools').forEach(x=>x.hidden=view!=='menu');};
   const priorDetail=openDetail;
@@ -63,7 +63,7 @@
     setStatus('Menú actualizado · precios en RD$ · pedidos sujetos a aceptación de caja');
     const r=await api('menuGetOrders',{customerToken});for(const o of r.orders){const old=orders.find(x=>x.id===o.id);if(old&&old.status!==o.status&&o.status==='ready')toast('Tu pedido está listo.');}orders=r.orders;if(view==='orders')renderOrders();
     const accessToken=sessionStorage.getItem(scope+':profile');if(accessToken){try{customerProfile=await api('menuGetProfile',{accessToken});if(view==='profile')renderProfile();}catch(e){customerProfile=null;setStatus(e.message,true);}}
-  }catch(e){connected=false;setStatus(e.name==='AbortError'?'El restaurante no respondió. Actualiza para intentar otra vez.':e.message,true);if(view==='menu'||view==='favorites')renderMenu();if($('cart-dialog').open)renderCart();}finally{inFlight=false;}}
+  }catch(e){connected=false;setStatus(e.name==='AbortError'?'El restaurante no respondió. Actualiza para intentar otra vez.':e.name==='TypeError'?'No se pudo conectar con el restaurante. Actualiza para intentar otra vez.':e.message,true);if(view==='menu'||view==='favorites')renderMenu();if($('cart-dialog').open)renderCart();}finally{inFlight=false;}}
   document.addEventListener('submit',e=>{if(e.target.id==='luro-order-form'){e.preventDefault();sendOrder(e.target);}});
   // Remove illustrative data immediately. Only server-confirmed dishes enter this array again.
   MENU.splice(0);cart=[];orders=[];favorites=new Set();renderCategories();renderMenu();updateBadge();if($('dish-track'))$('dish-track').innerHTML='';$('hero-image').src=placeholder;$('hero-image').alt='Menú del restaurante';$('featured-dish').removeAttribute('data-order');
