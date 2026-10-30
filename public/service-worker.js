@@ -1,10 +1,12 @@
-const SW_VERSION = 'luro-pwa-visual-editor-20261030-1';
+const SW_VERSION = 'luro-pwa-responsive-20261030-1';
 const CORE_ASSETS = [
   '/',
   '/index.html',
   '/acceder.html',
   '/descargar.html',
   '/app.html',
+  '/assets/css/responsive.css?v=20261030-responsive-1',
+  '/assets/js/responsive.js?v=20261030-responsive-1',
   '/manifest.webmanifest',
   '/assets/saas/css/landing.css?v=20260414-landing-ecosistema-2',
   '/assets/saas/js/landing.js?v=20260412-1200',
