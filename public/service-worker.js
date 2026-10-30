@@ -1,4 +1,4 @@
-const SW_VERSION = 'luro-pwa-menu-admin-20261029-1';
+const SW_VERSION = 'luro-pwa-mobile-startup-20261030-1';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -10,10 +10,10 @@ const CORE_ASSETS = [
   '/assets/saas/js/landing.js?v=20260412-1200',
   '/assets/saas/css/access.css?v=20260625-clean-login-1',
   '/assets/saas/js/access.js?v=20260625-clean-login-1',
-  '/assets/css/styles.css?v=20260625-clean-login-2',
-  '/assets/js/app.js?v=20261029-menu-admin-1',
+  '/assets/css/styles.css?v=20261030-mobile-startup-1',
+  '/assets/js/app.js?v=20261030-mobile-startup-1',
   '/assets/js/cloud-bridge.js?v=20261029-menu-admin-1',
-  '/assets/js/menu-admin.js?v=20261029-menu-admin-1',
+  '/assets/js/menu-admin.js?v=20261030-menu-connection-2',
   '/assets/brand/logo-luro.png',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',

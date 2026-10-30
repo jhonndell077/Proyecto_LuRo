@@ -1072,7 +1072,6 @@ body.mobile-nav-open .mobile-nav-toggle {
   input, select, textarea { padding: 8px; font-size: 13px; min-height: var(--touch-size); }
   #module-selector {
     padding: 16px 0 24px;
-    display: flex;
     flex-direction: column;
     align-items: center !important;
     justify-content: flex-start;

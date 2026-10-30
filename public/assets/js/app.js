@@ -6025,12 +6025,15 @@ window.autologinSaasPendiente = function () {
 
 document.addEventListener('DOMContentLoaded', () => {
     // Optimización: diferir carga de componentes pesados
-    requestIdleCallback(() => {
+    const deferLoginInputs = typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback.bind(window)
+        : (callback) => setTimeout(callback, 0);
+    deferLoginInputs(() => {
         const inputUser = document.getElementById('log_user');
         const inputPass = document.getElementById('log_pass');
         if (inputUser) inputUser.addEventListener('input', () => setLoginInlineStatus(""));
+        if (inputPass) inputPass.addEventListener('input', () => setLoginInlineStatus(""));
     });
-    if (inputPass) inputPass.addEventListener('input', () => setLoginInlineStatus(""));
     setTimeout(() => {
         if (typeof window.autologinSaasPendiente === 'function') window.autologinSaasPendiente();
     }, 220);
