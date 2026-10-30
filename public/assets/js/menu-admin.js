@@ -10,8 +10,8 @@
   const authorized = () => typeof sesionUser !== 'undefined' && !!sesionUser && typeof esColaboradorSesion !== 'undefined' && !esColaboradorSesion && !!owner();
   const operator = () => typeof sesionUser !== 'undefined' && !!sesionUser && !!owner() && (authorized() || typeof permisosSesion !== 'undefined' && permisosSesion.some(x => ['salida','comandas'].includes(x)));
   const status = (message, error = false) => { if(el('menu-admin-status')){el('menu-admin-status').textContent=message;el('menu-admin-status').style.color=error?'#c0392b':'#20754b';} };
-  function url(local = false) {
-    const u = new URL(local ? 'menu/index.html' : site, location.href);
+  function url(external = false) {
+    const u = new URL(external ? site : 'menu/index.html', location.href);
     u.searchParams.set('owner',owner());u.searchParams.set('module',moduleName());return u;
   }
   function mount() {
@@ -27,7 +27,7 @@
       <label>Portada (URL HTTPS)<input type="url" id="menu-hero"></label>
       <label>Instagram oficial<input type="url" id="menu-instagram"></label>
       <button class="btn btn-save" type="submit">Guardar y sincronizar con la app</button></form>
-      <p><a id="menu-live-link" target="_blank" rel="noopener">Abrir app del menú</a> · <a id="menu-local-link" target="_blank" rel="noopener">Abrir copia local</a></p>
+      <p><a id="menu-live-link" target="_blank" rel="noopener">Abrir menú conectado a LURO</a> · <a id="menu-local-link" target="_blank" rel="noopener">Abrir sitio externo</a></p>
       <h3>Presentación, ofertas y nutrición de los platos</h3><p>El precio y la existencia se administran en Disponibilidad. Los nutrientes se registran por porción preparada; un dato vacío se muestra como pendiente.</p>
       <label>Plato<select id="menu-dish-select"><option value="">Seleccionar</option></select></label>
       <form id="menu-dish-form" class="menu-admin-grid" hidden>
@@ -47,7 +47,7 @@
     el('menu-customer-link').addEventListener('click',customerLink);
     el('menu-refresh').addEventListener('click',()=>refresh(true));
     el('menu-orders-list').addEventListener('click',async e=>{const b=e.target.closest('button[data-order]');if(b)await transition(b.dataset.order,b.dataset.next);});
-    const ops=document.createElement('section');ops.id='menu-operations';ops.className='card';ops.innerHTML='<h3>Pedidos de la app</h3>';ops.append(el('menu-refresh'),el('menu-orders-list'));(el('salida')||host).prepend(ops);
+    const ops=document.createElement('section');ops.id='menu-operations';ops.className='card';ops.innerHTML='<h3>Pedidos de la app</h3><p id="menu-orders-status" role="status" aria-live="polite"></p>';ops.append(el('menu-refresh'),el('menu-orders-list'));(el('salida')||host).prepend(ops);
     const output=el('salida');if(output){const banner=document.createElement('div');banner.id='menu-cashier-banner';banner.className='card';banner.hidden=true;banner.innerHTML='<strong id="menu-pending-count"></strong> <button class="btn btn-blue" type="button">Revisar pedidos del menú</button>';banner.querySelector('button').onclick=()=>{showPage('salida');ops.scrollIntoView({behavior:'smooth'});};output.prepend(banner);}
   }
   function loadSettings() {
@@ -77,7 +77,7 @@
   function renderOrders(){const pending=list.filter(o=>o.status==='pending').length;const banner=el('menu-cashier-banner');if(banner){banner.hidden=!pending;el('menu-pending-count').textContent=`${pending} pedido(s) de la app esperan aceptación de caja.`;}
     el('menu-orders-list').innerHTML=list.map(o=>`<article class="menu-admin-order"><strong>${esc(o.id)} · ${esc(labels[o.status])}</strong><p>${esc(o.customer?.name)} ${o.mesa?'· '+esc(o.mesa):''} · RD$${Number(o.total).toFixed(2)} · ${o.payment?.status==='paid'?'Cobrado en LuRo':'Pendiente de cobro'}</p><p>${o.items.map(i=>`${i.quantity} × ${esc(i.name)}${i.notes?' — '+esc(i.notes):''}`).join('<br>')}</p>${o.notes?'<p>'+esc(o.notes)+'</p>':''}${o.status==='pending'?`<button class="btn btn-save" data-order="${o.id}" data-next="accepted">Aceptar y enviar a cocina</button><button class="btn btn-danger" data-order="${o.id}" data-next="rejected">Rechazar</button>`:''}${[['accepted','preparing','Cocina acepta · comenzar'],['preparing','ready','Marcar listo'],['ready','delivered','Marcar entregado']].filter(([from])=>from===o.status).map(([,to,label])=>`<button class="btn btn-blue" data-order="${o.id}" data-next="${to}">${label}</button>`).join('')}</article>`).join('')||'No hay pedidos en este módulo.';
   }
-  async function refresh(manual=false){if(!operator()||polling||busy)return;polling=true;try{const r=await window.luroMenuAdminCall('menuListOrders',{module:moduleName()});list=r.orders||[];const added=list.filter(o=>o.status==='pending'&&!seen.has(o.id));seen=new Set(list.map(o=>o.id));renderOrders();if(added.length)status(`${added.length} pedido(s) nuevo(s): caja debe aceptarlos para enviar a cocina.`);else if(manual)status('Pedidos actualizados.');}catch(e){if(manual)status(e.message,true);}finally{polling=false;}}
+  async function refresh(manual=false){if(!operator()||polling||busy)return;polling=true;try{const r=await window.luroMenuAdminCall('menuListOrders',{module:moduleName()});list=r.orders||[];el('menu-orders-status').textContent='Conectado a LURO · '+moduleName()+' · actualizado '+new Date().toLocaleTimeString('es-DO');const added=list.filter(o=>o.status==='pending'&&!seen.has(o.id));seen=new Set(list.map(o=>o.id));renderOrders();if(added.length)status(`${added.length} pedido(s) nuevo(s): caja debe aceptarlos para enviar a cocina.`);else if(manual)status('Pedidos actualizados.');}catch(e){el('menu-orders-status').textContent='No se pudieron actualizar los pedidos: '+e.message;if(manual)status(e.message,true);}finally{polling=false;}}
   async function transition(id,next){if(!operator()||busy)return;busy=true;try{if(!await window.subirBaseActualAlCloud?.({silent:true}))throw Error('Sincroniza los cambios locales antes de aceptar o actualizar el pedido.');let reason='';if(next==='rejected'){reason=prompt('Motivo del rechazo:')||'';if(!reason.trim())return;}await window.luroMenuAdminCall('menuUpdateOrder',{module:moduleName(),id,status:next,reason});if(['accepted','ready'].includes(next))await window.descargarBaseDesdeCloud({silent:true,reload:false,force:true});status('Pedido actualizado. El cliente verá el estado en la app.');}catch(e){status(e.message,true);}finally{busy=false;await refresh();}}
   document.addEventListener('DOMContentLoaded',()=>{
     mount();
