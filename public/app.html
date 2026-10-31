@@ -8,8 +8,8 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
   <link rel="stylesheet" href="assets/css/styles.css?v=20261030-mobile-startup-1">
-  <link rel="stylesheet" href="assets/css/menu-editor.css?v=20261031-integration2">
-  <link rel="stylesheet" href="assets/css/responsive.css?v=20261030-responsive-1">
+  <link rel="stylesheet" href="assets/css/menu-editor.css?v=20261031-floating-controls">
+  <link rel="stylesheet" href="assets/css/responsive.css?v=20261031-floating-controls">
   <script defer src="assets/js/responsive.js?v=20261030-responsive-1"></script>
 </head>
 <body onload="cargarDatos()">
@@ -1821,7 +1821,7 @@
   <script src="assets/js/app.js?v=20261031-integration2"></script>
   <script src="assets/js/asistencia-module.js?v=20260417-asistencia-sucursal-fix-1"></script>
   <script src="assets/js/cloud-bridge.js?v=20261031-integration2"></script>
-  <script src="assets/js/menu-admin.js?v=20261031-integration2"></script>
+  <script src="assets/js/menu-admin.js?v=20261031-floating-controls"></script>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
@@ -2816,25 +2816,6 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
     }catch(e){ micPermiso=false; return false; }
   }
 
-  function mostrarBotonActivar(){
-    if($('luro-activar-mic-btn'))return;
-    const btn=document.createElement('button');
-    btn.id='luro-activar-mic-btn';
-    btn.innerHTML='🎙 Activar voz de LuRo';
-    btn.style.cssText='position:fixed;bottom:138px;right:20px;z-index:10000;background:linear-gradient(135deg,#6c5ce7,#00b894);color:#fff;border:none;border-radius:24px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(108,92,231,0.4);animation:ldPulse 2s ease-in-out infinite;';
-    btn.onclick=async()=>{
-      btn.textContent='⏳ Solicitando permiso...';
-      const ok=await pedirMic();
-      if(ok){
-        btn.remove();
-        localStorage.setItem('LURO_MIC_AUTORIZADO','1');
-        restoreAssistantReadyState();
-      }
-      else btn.textContent='❌ Permiso denegado — reintenta';
-    };
-    document.body.appendChild(btn);
-  }
-
   /* ── ARRANQUE ── */
   window.addEventListener('load',async function(){
     // Badge de estado
@@ -2860,16 +2841,15 @@ Sección: ${pag}${mod?' | Módulo: '+mod:''}.${ctx()}`;
         localStorage.setItem('LURO_MIC_AUTORIZADO','1');
         restoreAssistantReadyState();
       }else{
-        mostrarBotonActivar();
+        setRuntimeStatus('Abre el asistente y toca su micrófono para activar la voz.', '#2563eb');
       }
     }else if(yaAuth && permissionState === 'prompt'){
-      mostrarBotonActivar();
-      setRuntimeStatus('La voz está disponible. Toca "Activar voz de LuRo" para conceder el micrófono una sola vez.', '#2563eb');
+      setRuntimeStatus('Abre el asistente y toca su micrófono para conceder el permiso de voz.', '#2563eb');
     }else{
       if (permissionState === 'denied') {
         setRuntimeStatus('El micrófono está bloqueado en el navegador. Habilítalo en permisos del sitio para usar la voz.', '#b91c1c');
       }
-      mostrarBotonActivar();
+      if (permissionState !== 'denied') setRuntimeStatus('Abre el asistente y toca su micrófono para activar la voz.', '#2563eb');
     }
   });
 

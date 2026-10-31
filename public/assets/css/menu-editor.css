@@ -41,3 +41,12 @@
 @keyframes menu-busy{to{transform:rotate(360deg)}}
 #luro-menu-admin [aria-busy="true"]::before,#menu-operations [aria-busy="true"]::before,#tareas-pendientes [aria-busy="true"]::before{content:"";display:inline-block;width:1em;height:1em;margin-right:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:menu-busy 1s linear infinite}
 @media(prefers-reduced-motion:reduce){[aria-busy="true"]::before{animation:none!important}}
+
+/* Persistent notices sit above the assistant launcher, including safe-area screens. */
+#menu-floating-notice{position:fixed;right:18px;bottom:calc(90px + env(safe-area-inset-bottom,0px));z-index:2280;width:max-content;max-width:min(320px,calc(100vw - 36px));max-height:min(40dvh,280px);overflow:auto;box-sizing:border-box;background:#102c45;color:white;padding:16px;border-radius:12px;box-shadow:0 4px 20px #0005}
+#menu-floating-notice[hidden]{display:none}
+#menu-floating-notice p{margin:0 0 10px}
+#menu-floating-notice .btn{min-height:44px;max-width:100%;white-space:normal}
+#menu-floating-notice .btn+p{margin-top:12px}
+body:has(#luro-assistant-panel[aria-hidden="false"]) #menu-floating-notice{visibility:hidden;pointer-events:none}
+@media(max-width:1024px){#menu-floating-notice{right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-width:calc(100vw - 24px)}}
