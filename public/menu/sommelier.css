@@ -1,0 +1,142 @@
+/* Wine, crimson and champagne theme. Loaded after the responsive layout. */
+:root {
+  --wine: #6b0f1a;
+  --wine-deep: #831b30;
+  --crimson: #8f2038;
+  --gold: #e2c08d;
+  --bg: #0e0d11;
+  --panel: #131216;
+  --line: #30272c;
+  --muted: #aaa4aa;
+  --text: #fff5ed;
+  --amber: var(--gold);
+  --orange: var(--crimson);
+  --accent: var(--crimson);
+  --primary: var(--crimson);
+}
+body {
+  background: radial-gradient(ellipse at 50% 10%, #6b0f1a55, transparent 42%),
+    linear-gradient(180deg, #17090d, var(--bg) 55%) !important;
+  color: var(--text);
+}
+.header {
+  background: linear-gradient(110deg, #0c0b0ef5, #140c10f5);
+  border-color: #e2c08d40;
+  border-radius: 0;
+  padding-inline: 16px;
+  backdrop-filter: blur(18px);
+}
+.brand .logo { background: linear-gradient(135deg, var(--wine), var(--wine-deep)); color: var(--gold); }
+.hero h1, .section-heading h2, .business-story h2, .signature-heading h2,
+.discovery-heading h2, .business-experience h2, .card h3, .signature-grid strong,
+.detail-title h2 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 500;
+  color: var(--gold);
+}
+.hero h1 { color: var(--text) !important; letter-spacing: -.035em; }
+.hero h1 em { color: var(--gold) !important; -webkit-text-fill-color: var(--gold) !important; }
+.eyebrow, .story-link, .price, .signature-grid small, .signature-grid em { color: var(--gold); }
+.card, .signature-grid button, .history-card, .profile-card, .agent-card,
+.benefits-panel, .service-strip, dialog {
+  background: linear-gradient(135deg, #1d1319d9, #111115f2);
+  border-color: var(--line);
+  box-shadow: 0 12px 36px #08020540;
+  backdrop-filter: blur(16px);
+}
+.hero-photo { background: #151014 !important; }
+.search, .category, .quick-tools button, .option, textarea, select, .profile-card input {
+  background: #151216;
+  border-color: var(--line);
+  color: var(--text);
+}
+.hero-link, .primary, .category.active, .header-right #cart-button,
+.app .bottom-nav button.active, .lafo-float {
+  background: linear-gradient(110deg, var(--wine), #781429 55%, var(--crimson)) !important;
+  color: #fff5ed !important;
+  border-color: var(--crimson) !important;
+  box-shadow: 0 6px 26px #78142933 !important;
+}
+.lafo-float small, .lafo-mini-avatar { color: #fff5ed !important; }
+.app .bottom-nav {
+  background: linear-gradient(110deg, #171116f5, #100e12f5) !important;
+  border-color: #e2c08d55 !important;
+}
+.order-button { background: #6b0f1a80; border-color: #78142980; color: #fff5ed; }
+.app .bottom-nav button, .app .bottom-nav .nav-cart {
+  background: #191217 !important;
+  color: var(--gold) !important;
+  border-color: #6b0f1a80 !important;
+}
+.app .bottom-nav button.active {
+  background: var(--wine) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+.category.active { background: var(--wine) !important; }
+/* Override older blue/orange skins without changing component geometry. */
+.business-experience {
+  background: radial-gradient(ellipse at 0 18%, #6b0f1a40, transparent 45%),
+    radial-gradient(ellipse at 100% 55%, #78142930, transparent 40%), #101014 !important;
+}
+.card { background: linear-gradient(145deg, #191216, #111115) !important; border-color: #6b0f1a !important; }
+.card-photo:after { box-shadow: inset 0 0 28px 20px #130d11; }
+.hero-photo:after {
+  background: linear-gradient(0deg, #140c10f0, transparent 45%),
+    radial-gradient(ellipse at center, transparent 45%, #140c10 100%) !important;
+  box-shadow: inset 0 0 35px 15px #140c10;
+}
+.category, .search, .quick-tools button {
+  background: #191116 !important;
+  border-color: #63303d !important;
+}
+.category.active { background: linear-gradient(110deg, #6b0f1a, #831b30) !important; border-color: #9b3b50 !important; color: var(--text) !important; }
+.app .bottom-nav button[data-view=menu].active { background: var(--wine) !important; color: var(--text) !important; }
+.eyebrow, .logo, .service-mark, .brand-dot, #luro-connection-status { color: var(--gold) !important; }
+.motion-progress, .progress span { background: linear-gradient(90deg, #6b0f1a, #8f2038) !important; }
+.secondary-button, .icon-button, .quantity button, .carousel-pause, .favorite,
+.nutrition-button, .table-button, .dish-views-button, .motion-toggle {
+  background: linear-gradient(135deg, #41131f, #271019);
+  border-color: #783244;
+  color: var(--text);
+}
+.badge, .count, .order-state, .photo-tag {
+  background: #6b0f1a;
+  border-color: #8f3046;
+  color: var(--text);
+}
+.favorite.active, .favorite[aria-pressed=true], .text-link { color: #df9eaf; }
+.club-card, .experience-columns article, .tracking, .offline-status, #toast {
+  background: linear-gradient(135deg, #281019, #141115);
+  border-color: #63303d;
+  color: var(--text);
+}
+.option:has(input:checked) { background: #41131f; border-color: #9b3b50; }
+input { accent-color: var(--wine); }
+.hero-content .eyebrow, .signature-grid small { color: var(--gold) !important; }
+.card:hover { border-color: var(--wine); }
+.website-nav a[aria-current=location] { color: var(--gold); border-color: var(--gold); }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible,
+select:focus-visible, .card button:focus-visible, .signature-grid button:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 4px;
+}
+@media (hover: hover) {
+  .card:hover, .signature-grid button:hover, .order-button:hover,
+  .primary:hover, .hero-link:hover, .category:hover {
+    border-color: var(--crimson) !important;
+    box-shadow: 0 0 22px #78142940;
+  }
+  .website-nav a:hover, .story-link:hover { color: #fff5ed; }
+}
+
+
+
+/* Keep the restaurant identity and cart aligned as in the approved mobile menu. */
+@media(max-width:600px){
+  .header{flex-wrap:nowrap}
+  .brand{flex:1;min-width:0}
+  .brand>span:last-child{min-width:0}
+  .brand strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .header-right{flex-shrink:0;margin-left:auto}
+}

@@ -1,7 +1,9 @@
-const CACHE='the-proyect-offline-v32-integration2';
-const CORE=["luro-config.js?v=20261030-1","luro-connection.js?v=20261031-integration2", "luro-connection.css?v=20261031-integration2", "table-view.js", "styles.css", "reference-panel.css", "website.js", "nutrition.css", "website.css", "offline.js", "burger-3d.css", "refinement.js", "manifest.webmanifest", "offline.css", "burger-3d.js", "mobile.css", "experience.css", "motion.css", "gastronomic.css", "nutrition-swipe.css", "refinement.css", "professional.css", "diagram.js", "diagram.css", "app.js", "dominican.css", "motion.js", "experience.js", "dish-views.js", "dish-views.css", "image-edges.css", "table-view.css", "nutrition-swipe.js", "nutrition.js", "professional.js"];
+const CACHE='the-proyect-offline-v33-restore-wine';
+const CORE=["luro-config.js?v=20261030-1","luro-connection.js?v=20261031-restore-wine", "luro-connection.css?v=20261031-integration2", "table-view.js", "styles.css", "reference-panel.css", "website.js", "nutrition.css", "website.css", "offline.js", "burger-3d.css", "refinement.js", "manifest.webmanifest", "offline.css", "burger-3d.js", "mobile.css", "experience.css", "motion.css", "gastronomic.css", "nutrition-swipe.css", "refinement.css", "professional.css", "diagram.js", "diagram.css", "app.js", "dominican.css", "motion.js", "experience.js", "dish-views.js", "dish-views.css", "image-edges.css", "table-view.css", "nutrition-swipe.js", "nutrition.js", "professional.js"];
 const OPTIONAL=["assets/menu-photos/cordero.svg", "assets/menu-photos/yaroa.svg", "assets/menu-photos/langosta.svg", "assets/menu-photos/pancakes.svg", "assets/menu-photos/chimi.svg", "assets/menu-photos/alitas.svg", "assets/menu-photos/hamburguesa.svg", "assets/dish-views/pancakes.png", "assets/dish-views/alitas.png", "assets/dish-views/yaroa.png", "assets/dish-views/hamburguesa.png", "assets/dish-views/cordero.png", "assets/dish-views/chimi.png", "assets/dish-views/langosta.png", "assets/models/photo-manifest.json"];
 const BASE=new URL('./',self.location.href);
+CORE.push('mobile-version.css?v=20261031-restore-wine');
+CORE.push('sommelier.css?v=20261031-restore-wine');
 const HOME=new URL('./',BASE).href;
 async function save(cache,file,html=false){
  const url=new URL(file,BASE).href;

@@ -15,14 +15,18 @@ test('mobile membership and Lafo work in Chrome with local fixtures and no exter
   page.on('request',async r=>{
    if(r.url().includes('cloudfunctions.net')){
     const name=r.url().split('/').pop();
-    const results={menuGetCatalog:{business:'Restaurante de prueba',heroPhrase:'Pendiente por incluir',brand:{},items:[{id:'dish-fixture',name:'Mangú',price:250,basePrice:250,stock:3,category:'Desayuno',image:'',description:'Preparado aquí',ingredients:['Plátano','Cebolla'],soldQuantity:5,nutrition:{},allergens:''}]},menuGetOrders:{orders:[]},menuRegisterMember:{accessToken:'c'.repeat(64)},menuGetProfile:{name:'Ana',points:0,premiumActive:false,history:[],verificationPending:true}};
+    const results={menuGetCatalog:{business:'The Proyect',heroPhrase:'Pendiente por incluir',brand:{},items:[{id:'dish-fixture',name:'Mangú',price:250,basePrice:250,stock:3,category:'Desayuno',image:'',description:'Preparado aquí',ingredients:['Plátano','Cebolla'],soldQuantity:5,nutrition:{},allergens:''}]},menuGetOrders:{orders:[]},menuRegisterMember:{accessToken:'c'.repeat(64)},menuGetProfile:{name:'Ana',points:0,premiumActive:false,history:[],verificationPending:true}};
     return r.respond({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type'},body:JSON.stringify({result:results[name]})});
    }
    return r.url().startsWith('file:')||r.url().startsWith('data:')?r.continue():r.abort();
   });
   await page.goto(pathToFileURL(path.resolve(__dirname,'../public/menu/index.html')).href+'?owner=fixture&module=COCINA',{waitUntil:'load'});
   await page.waitForFunction(()=>document.querySelector('#luro-connection-status')?.textContent.includes('actualizado'),{timeout:8000}).catch(async e=>{throw new Error(e.message+' '+JSON.stringify({errors,status:await page.$eval('#luro-connection-status',x=>x.textContent).catch(()=> 'not mounted')}));});
-  assert.equal(await page.$eval('#hero h1',x=>x.textContent),'Pendiente por incluir');
+  assert.equal(await page.$eval('#hero h1',x=>x.textContent),'Hoy secome bueno.');
+  fs.mkdirSync(path.resolve(__dirname,'../tmp/integration2'),{recursive:true});
+  await page.screenshot({path:path.resolve(__dirname,'../tmp/integration2/restored-home-mobile.png')});
+  assert.equal(await page.$eval('#hero h1 em',x=>getComputedStyle(x).color),'rgb(226, 192, 141)');
+  assert.equal(await page.$eval('.bottom-nav',x=>getComputedStyle(x).position),'fixed');
   await page.evaluate(()=>{openLafo();answerLafo('Qué es lo más vendido');answerLafo('De qué se compone Mangú');});
   assert.match(await page.$eval('#chat-messages',x=>x.textContent),/5 porciones vendidas/);
   assert.match(await page.$eval('#chat-messages',x=>x.textContent),/Plátano, Cebolla/);
