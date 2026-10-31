@@ -43,4 +43,18 @@ npm --prefix functions run lint
 npm run audit:structure
 ```
 
-Todas las pruebas utilizan fixtures locales y bloquean llamadas externas en Chrome. No se instalaron dependencias ni se probaron datos de producción. Esta implementación está local y requiere publicación de Hosting y las funciones correspondientes para aparecer en el sitio público. No se ha publicado.
+Todas las pruebas utilizan fixtures locales y bloquean llamadas externas en Chrome. No se instalaron dependencias ni se probaron datos de producción. La verificación funcional se realizó localmente antes de publicar. La publicación autorizada se registra a continuación.
+
+
+## Publicación autorizada: 31 de octubre de 2026
+
+- Respaldo de código en `main`: `4d676f749c0ff0889d7bad2826a64241759d4fee`.
+- Hosting publicado en https://luro-control.web.app; panel en `/app.html` y menú en `/menu/`.
+- Diez funciones del menú desplegadas y confirmadas `ACTIVE` en `us-central1`: siete actualizadas y tres nuevas (`menuRegisterMember`, `menuListTasks`, `menuResolveTask`).
+- Se volvieron a ejecutar las 37 pruebas en una copia aislada de publicación; todas aprobadas, junto con lint y auditoría de estructura.
+- Los seis archivos principales consultados por HTTP devolvieron 200 y coincidieron por SHA-256 con el código publicado. Las tres funciones nuevas devolvieron HTTP 204 al preflight CORS desde LuRo.
+- El script existente de Hosting falló al consultar `ReleaseTimeIso` de una respuesta vacía. Tras completar el respaldo se usó directamente la CLI de Firebase para Hosting y el despliegue selectivo de las funciones del menú.
+- El primer análisis local del backend excedió diez segundos; se reintentó con `FUNCTIONS_DISCOVERY_TIMEOUT=60`, únicamente en el proceso de la CLI. El despliegue terminó correctamente.
+- Se conservaron los cambios locales ajenos a esta integración; no se publicaron las eliminaciones locales de los sitios Velvet ni los estilos de menú aún sin commit.
+- No se modificaron reglas, secretos, cuentas, datos comerciales ni configuración de Firebase. No se realizaron pedidos ni registros de prueba contra producción.
+- El workflow automático de GitHub falló también para este push, como en ejecuciones previas; la publicación final se completó mediante la CLI autenticada y se verificó directamente en Firebase.
