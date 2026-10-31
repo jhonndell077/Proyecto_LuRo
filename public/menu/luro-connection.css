@@ -7,3 +7,10 @@ body{background:#05080d!important}.business-experience{background:radial-gradien
 
 .app,.hero-content,.hero-photo,.business-story>div,.signature-grid,.experience-columns{min-width:0}.hero{grid-template-columns:minmax(0,.95fr) minmax(0,1.2fr)}
 @media(max-width:900px){.website-nav{display:none}.hero{grid-template-columns:1fr}.hero h1{font-size:clamp(50px,11vw,85px)}.hero-photo{min-height:300px;max-width:100%}.experience-columns{grid-template-columns:1fr}.header{gap:12px}.brand{min-width:0}.brand strong{font-size:clamp(17px,4vw,24px)}}
+
+@keyframes luro-turn{to{transform:rotate(360deg)}}
+.luro-spinner,[aria-busy="true"]::before{content:"";display:inline-block;width:1em;height:1em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:luro-turn 1s linear infinite;vertical-align:middle;margin-right:.5em}
+button:active{transform:scale(.97)}
+@media(prefers-reduced-motion:reduce){.luro-spinner,[aria-busy="true"]::before{animation:none}button:active{transform:none}}
+
+#luro-member-form label{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}#luro-member-form input{margin:0}.utility-body input[aria-label="Enlace privado de miembro"]{width:100%;min-width:0;margin-top:16px}.utility-body a.primary{overflow-wrap:anywhere}

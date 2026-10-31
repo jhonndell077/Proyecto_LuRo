@@ -26,13 +26,63 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
     return c;
   }
   const reserveRef = ctx => db.collection('menu_reservations').doc(ctx.scope);
+  const tasksRef = ctx => db.collection('menu_tasks').doc(ctx.scope).collection('tasks');
+  const membersRef = ctx => db.collection('menu_members').doc(ctx.scope).collection('members');
   const ordersRef = ctx => db.collection('menu_orders').doc(ctx.scope).collection('orders');
   function publicOrder(o) { return {id:o.id,date:new Date(o.createdAt).toISOString(),status:o.status,items:o.items,subtotal:o.subtotal,delivery:o.delivery,total:o.total,mesa:o.mesa || null,payment:o.payment,acceptedAt:o.acceptedAt || null,preparingAt:o.preparingAt || null,readyAt:o.readyAt || null,deliveredAt:o.deliveredAt || null,rejectionReason:o.rejectionReason || '',updatedAt:o.updatedAt}; }
   return {
     menuGetCatalog: call(async r => {
       const ctx = context(r.data); await assertOwnerActive(ctx.owner);
       const [snap,res] = await Promise.all([ctx.ref.get(),reserveRef(ctx).get()]);
-      return D.catalog(unpack(snap),ctx.owner,ctx.module,res.data()?.quantities || {});
+      const menu = D.catalog(unpack(snap),ctx.owner,ctx.module,res.data()?.quantities || {});
+      if (menu.heroPhrase === 'Pendiente por incluir') await db.runTransaction(async tx => {
+        const ref = tasksRef(ctx).doc('hero-phrase'), existing = await tx.get(ref);
+        if (!existing.exists || existing.data().status === 'completed') tx.set(ref,{id:'hero-phrase',type:'content',title:'Incluir frase de inicio',status:'pending',createdAt:Date.now()});
+      });
+      return menu;
+    }),
+    menuRegisterMember: call(async r => {
+      const ctx=context(r.data), customerHash=token(r.data); await assertOwnerActive(ctx.owner);
+      const name=D.text(r.data.name,80), cedula=D.text(r.data.cedula,30).replace(/\D/g,''), phone=D.text(r.data.phone,30).replace(/\D/g,'');
+      if(name.length<2 || !/^\d{11}$/.test(cedula) || !/^\d{10,15}$/.test(phone)) throw new HttpsError('invalid-argument','Indica nombre, cédula de 11 dígitos y teléfono válido.');
+      // One profile per opaque session. Identity alone never grants access to existing customer data.
+      const accessToken=D.hash(`${r.data.customerToken}:${ctx.scope}:member`), memberRef=membersRef(ctx).doc(customerHash);
+      return db.runTransaction(async tx => {
+        const rr=reserveRef(ctx),[existing,bs,rs]=await Promise.all([tx.get(memberRef),tx.get(ctx.ref),tx.get(rr)]);
+        D.catalog(unpack(bs),ctx.owner,ctx.module);
+        if(!existing.exists){
+          const now=Date.now(),state=rs.data()||{},minute=Math.floor(now/60000),count=state.memberMinute===minute?Number(state.memberCount)||0:0;
+          if(count>=10)throw new HttpsError('resource-exhausted','Hay muchas solicitudes de membresía. Intenta en un minuto.');
+          tx.set(rr,{...state,memberMinute:minute,memberCount:count+1});
+          tx.set(memberRef,{name,cedula,phone,createdAt:now,customerId:null});
+          tx.set(tasksRef(ctx).doc('member-'+customerHash),{id:'member-'+customerHash,type:'membership',title:'Verificar nuevo miembro',memberId:customerHash,status:'pending',createdAt:now});
+        }
+        tx.set(db.collection('menu_customer_access').doc(D.hash(accessToken)),{owner:ctx.owner,module:ctx.module,memberId:customerHash,expiresAt:Date.now()+30*86400000});
+        return {accessToken,expiresInDays:30};
+      });
+    }),
+    menuListTasks: call(async r => {
+      const c=await staff(r,true),ctx=context({...r.data,owner:c.owner});
+      const snap=await tasksRef(ctx).where('status','==','pending').limit(100).get();
+      return {tasks:await Promise.all(snap.docs.map(async d=>{const t=d.data();if(t.memberId){const m=await membersRef(ctx).doc(t.memberId).get();t.member=m.data();}return t;}))};
+    }),
+    menuResolveTask: call(async r => {
+      const c=await staff(r,true),ctx=context({...r.data,owner:c.owner}),id=D.text(r.data.id,90);
+      if(!/^(hero-phrase|member-[a-f0-9]{64})$/.test(id))throw new HttpsError('invalid-argument','Tarea inválida.');
+      return db.runTransaction(async tx=>{
+        const ref=tasksRef(ctx).doc(id),[ts,bs]=await Promise.all([tx.get(ref),tx.get(ctx.ref)]);
+        if(!ts.exists)throw new HttpsError('not-found','Tarea no encontrada.');
+        const task=ts.data(),payload=unpack(bs);
+        if(task.status==='completed')return {ok:true};
+        if(task.type==='content' && !D.text(payload.menuIntegration?.[ctx.module]?.heroPhrase,200))throw new HttpsError('failed-precondition','Guarda primero la frase en Configuración.');
+        if(task.type==='membership'){
+          const mr=membersRef(ctx).doc(task.memberId),ms=await tx.get(mr);
+          const customer=(payload.clientesFidelizacion||[]).find(x=>String(x.id)===String(r.data.customerId) && D.key(x.owner||ctx.owner)===ctx.owner);
+          if(!customer || !ms.exists || String(customer.cedula||'').replace(/\D/g,'')!==ms.data().cedula)throw new HttpsError('failed-precondition','Registra o selecciona el cliente verificado en Clientes y puntos.');
+          tx.set(mr,{...ms.data(),customerId:String(customer.id)});
+        }
+        tx.set(ref,{...task,status:'completed',completedAt:Date.now()});return {ok:true};
+      });
     }),
     menuSubmitOrder: call(async r => {
       const ctx = context(r.data), customerHash = token(r.data); await assertOwnerActive(ctx.owner);
@@ -119,7 +169,15 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
       const access=await db.collection('menu_customer_access').doc(D.hash(r.data.accessToken)).get(),a=access.data();
       if(!a||a.owner!==ctx.owner||a.expiresAt<Date.now())throw new HttpsError('permission-denied','Enlace vencido o inválido. Solicita otro en caja.');
       await assertOwnerActive(ctx.owner);const payload=unpack(await ctx.ref.get());
-      const customer=(payload.clientesFidelizacion||[]).find(x=>String(x.id)===a.customerId);
+      let customerId=a.customerId;
+      if(a.memberId){
+        if(a.module!==ctx.module)throw new HttpsError('permission-denied','Enlace de otro módulo.');
+        const ms=await membersRef(ctx).doc(a.memberId).get(),member=ms.data();
+        if(!member)throw new HttpsError('not-found','Perfil no disponible.');
+        if(!member.customerId)return {name:member.name,points:0,premiumActive:false,history:[],verificationPending:true};
+        customerId=member.customerId;
+      }
+      const customer=(payload.clientesFidelizacion||[]).find(x=>String(x.id)===customerId && D.key(x.owner||ctx.owner)===ctx.owner);
       if(!customer)throw new HttpsError('not-found','Cliente no disponible.');
       // Only the linked customer's fields. No identity documents, phone, credentials or bank information.
       const identity = String(customer.cedula || '').replace(/\D/g,'');

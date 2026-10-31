@@ -37,3 +37,9 @@ test('catalog isolates owners and modules and expired discounts do not change pr
  a.w.eval("db.platos.push({owner:'other',modulo:'COCINA',nombre:'Privado'},{owner:'owner',modulo:'BAR',nombre:'Otro módulo'})");a.w.document.getElementById('menu-dish-search').dispatchEvent(new a.w.Event('input'));assert.equal(a.w.document.querySelectorAll('[data-edit-dish]').length,1);
  a.w.document.querySelector('[data-edit-dish="0"]').click();a.w.document.getElementById('menu-offer').value='50';a.w.document.getElementById('menu-offer-until').value='2020-01-01T10:00';a.w.document.getElementById('menu-offer').dispatchEvent(new a.w.Event('input',{bubbles:true}));const html=a.w.document.getElementById('menu-dish-preview').srcdoc;assert.match(html,/RD\$250/);assert.doesNotMatch(html,/<del>/);
 }finally{a.w.close();}});
+
+test('pending requests remain visible across modules in the floating notification',async()=>{const a=await app();try{
+ a.w.luroMenuAdminCall=async(name)=>name==='menuListTasks'?{tasks:[{id:'hero-phrase',title:'Incluir frase',status:'pending'}]}:{orders:[{id:'WEB-1',status:'pending',total:250,items:[]}]};
+ await a.calls[1]();const notice=a.w.document.getElementById('menu-floating-notice');assert.equal(notice.hidden,false);assert.match(notice.textContent,/1 pedido/);assert.match(notice.textContent,/1 tarea/);
+ a.w.showPage('home');assert.equal(notice.hidden,false);assert.match(a.w.document.getElementById('menu-task-list').textContent,/Incluir frase/);
+}finally{a.w.close();}});

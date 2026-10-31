@@ -38,3 +38,31 @@ test('rejection releases reservations exactly once',async()=>{const a=app(),o=aw
 test('payment sync releases reservation atomically and does not release twice',async()=>{const a=app(),o=await request(a);await a.call('menuUpdateOrder',{staff:true,id:o.id,status:'accepted'});const p=a.db.values.get('datos_del_propietario/owner').db;p.ventas=[{menuOrderId:o.id,owner:'owner',plato:o.items[0].name,cantidad:1}];for(let i=0;i<2;i++)await a.db.runTransaction(tx=>syncPayments(a.db,tx,p,'owner'));assert.equal(a.db.values.get('menu_reservations/'+scope).quantities[o.items[0].id],0);assert.equal(a.db.values.get(`menu_orders/${scope}/orders/${o.id}`).payment.status,'paid');});
 test('stale uploads cannot drop server-created table imports',async()=>{const a=app(),o=await request(a);await a.call('menuUpdateOrder',{staff:true,id:o.id,status:'accepted'});const incoming=fixture(),current=a.db.values.get('datos_del_propietario/owner').db;D.preserveImports(incoming,current);assert.equal(incoming.mesasEstado.carritoPorMesa['Mesa 1'][0].menuOrderId,o.id);const occupied=fixture();occupied.mesasEstado.carritoPorMesa['Mesa 1']=[{nombre:'Otro pedido'}];assert.throws(()=>D.preserveImports(occupied,current),/Descarga/);});
 test('profile links are random, expire, and do not disclose identity or other clients',async()=>{const a=app(),p=a.db.values.get('datos_del_propietario/owner').db;p.clientesFidelizacion=[{id:'client-1',nombre:'Ana',puntos:25,cedula:'private',telefono:'private'},{id:'client-2',nombre:'Pedro',puntos:500}];const link=await a.call('menuCreateCustomerLink',{staff:true,customerId:'client-1'});const profile=await a.call('menuGetProfile',{accessToken:link.accessToken});assert.equal(profile.points,25);assert.ok(!JSON.stringify(profile).includes('private'));assert.ok(!JSON.stringify(profile).includes('Pedro'));await assert.rejects(()=>a.call('menuGetProfile',{accessToken:'b'.repeat(64)}),/inválido/);});
+
+
+test('Edgar public projection scopes sales and exposes ingredient names without recipe quantities',()=>{
+ const p=fixture();p.ventas=[{owner:'owner',modulo:'COCINA',plato:'Mangú',cantidad:3,totalVenta:750},{owner:'other',modulo:'COCINA',plato:'Mangú',cantidad:100},{owner:'owner',modulo:'BAR',plato:'Mangú',cantidad:100}];
+ const c=D.catalog(p,'owner','COCINA');assert.deepEqual(c.items[0].ingredients,['Plátano']);assert.equal(c.items[0].soldQuantity,3);assert.ok(!JSON.stringify(c).includes('cantidad'));assert.equal(c.heroPhrase,'Pendiente por incluir');
+});
+test('missing hero phrase creates one task and completion requires configured content',async()=>{
+ const a=app();await a.call('menuGetCatalog');await a.call('menuGetCatalog');let tasks=await a.call('menuListTasks',{staff:true});assert.equal(tasks.tasks.length,1);
+ await assert.rejects(()=>a.call('menuResolveTask',{staff:true,id:'hero-phrase'}),/frase/);
+ a.db.values.get('datos_del_propietario/owner').db.menuIntegration.COCINA.heroPhrase='Hecho aquí';
+ await a.call('menuResolveTask',{staff:true,id:'hero-phrase'});assert.equal((await a.call('menuListTasks',{staff:true})).tasks.length,0);
+ assert.equal((await a.call('menuGetCatalog')).heroPhrase,'Hecho aquí');
+});
+const memberData={customerToken:'c'.repeat(64),name:'Ana',cedula:'00112345678',phone:'8095551234'};
+test('membership creates a private profile idempotently and never reveals history by claimed identity',async()=>{
+ const a=app(),p=a.db.values.get('datos_del_propietario/owner').db;p.clientesFidelizacion=[{id:'existing',nombre:'Private',cedula:memberData.cedula,puntos:500}];
+ const link=await a.call('menuRegisterMember',memberData),retry=await a.call('menuRegisterMember',memberData);assert.equal(link.accessToken,retry.accessToken);
+ const profile=await a.call('menuGetProfile',{accessToken:link.accessToken});assert.equal(profile.verificationPending,true);assert.equal(profile.points,0);assert.equal(profile.name,'Ana');assert.ok(!JSON.stringify(profile).includes(memberData.cedula));
+ const tasks=await a.call('menuListTasks',{staff:true});assert.equal(tasks.tasks.length,1);assert.equal(tasks.tasks[0].member.cedula,memberData.cedula);
+ await assert.rejects(()=>a.call('menuListTasks'),/Login/);await assert.rejects(()=>a.call('menuGetProfile',{accessToken:link.accessToken,module:'BAR'}),/módulo/);
+ p.clientesFidelizacion.push({id:'wrong',cedula:'00199999999'});await assert.rejects(()=>a.call('menuResolveTask',{staff:true,id:tasks.tasks[0].id,customerId:'wrong'}),/verificado/);
+ await a.call('menuResolveTask',{staff:true,id:tasks.tasks[0].id,customerId:'existing'});assert.equal((await a.call('menuGetProfile',{accessToken:link.accessToken})).points,500);
+});
+test('membership rejects invalid fields and limits new registrations per business',async()=>{
+ const a=app();await assert.rejects(()=>a.call('menuRegisterMember',{...memberData,cedula:'bad'}),/cédula/);
+ for(let i=0;i<10;i++)await a.call('menuRegisterMember',{...memberData,customerToken:i.toString(16).padStart(64,'0')});
+ await assert.rejects(()=>a.call('menuRegisterMember',memberData),/muchas solicitudes/);
+});

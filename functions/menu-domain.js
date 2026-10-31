@@ -18,6 +18,11 @@ function nutrition(p) {
 function catalog(payload, owner, module, reserved = {}, now = Date.now()) {
   const settings = payload.menuIntegration?.[module];
   if (!settings?.enabled) fail('El menú de este negocio no está habilitado.');
+  const sales = new Map();
+  for (const v of payload.ventas || []) {
+    const quantity=Number(v.cantidad);
+    if(key(v.owner)===key(owner) && v.modulo===module && Number.isFinite(quantity) && quantity>0) sales.set(key(v.plato),(sales.get(key(v.plato))||0)+quantity);
+  }
   const items = (payload.platos || []).filter(p => key(p.owner) === key(owner) && p.modulo === module && p.menu?.hidden !== true).map(p => {
     const id = dishId(p), meta = p.menu || {};
     const basePrice = money(p.precio), stock = Math.max(0, Math.floor(Number(p.stock) || 0) - (Number(reserved[id]) || 0));
@@ -25,9 +30,11 @@ function catalog(payload, owner, module, reserved = {}, now = Date.now()) {
     const ends = Date.parse(meta.offerUntil || ''), offerActive = discount > 0 && discount <= 100 && Number.isFinite(ends) && ends > now;
     return {id, name: text(p.nombre), description: text(meta.description, 700), category: text(meta.category || 'Platos', 60), image: safeImage(meta.image), basePrice, price: offerActive ? money(basePrice * (1 - discount / 100)) : basePrice,
       offer: offerActive ? {percent: discount, until: new Date(ends).toISOString()} : null,
+      ingredients: [...new Set((Array.isArray(p.receta) ? p.receta : []).map(i => text(i.nombre, 100)).filter(Boolean))].slice(0, 60), soldQuantity: sales.get(key(p.nombre)) || 0,
       stock, availability: stock === 0 ? 'sold_out' : stock <= 3 ? 'low_stock' : 'available', nutrition: nutrition(p), allergens: text(meta.allergens, 400)};
   }).filter(p => Number.isFinite(p.price) && p.price >= 0);
   return {business: text(settings.business || 'Nuestro menú'), currency: 'DOP', owner: key(owner), module, updatedAt: Number(payload.updatedAt) || now,
+    heroPhrase: text(settings.heroPhrase, 200) || 'Pendiente por incluir',
     brand: {logo: safeImage(settings.logo), heroImage: safeImage(settings.heroImage), instagram: /^https:\/\/(www\.)?instagram\.com\//i.test(settings.instagram || '') ? settings.instagram : ''}, items};
 }
 function quote(menu, lines) {

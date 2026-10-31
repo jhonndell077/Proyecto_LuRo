@@ -8,7 +8,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
   <link rel="stylesheet" href="assets/css/styles.css?v=20261030-mobile-startup-1">
-  <link rel="stylesheet" href="assets/css/menu-editor.css?v=20261030-visual-editor-1">
+  <link rel="stylesheet" href="assets/css/menu-editor.css?v=20261031-integration2">
   <link rel="stylesheet" href="assets/css/responsive.css?v=20261030-responsive-1">
   <script defer src="assets/js/responsive.js?v=20261030-responsive-1"></script>
 </head>
@@ -286,6 +286,7 @@
         <a onclick="showPage('ventas')">📊 Historial de Ventas</a>
         <a onclick="showPage('reporte-compras-distribuidor')">📑 Reporte Compras Distribuidor</a>
         <a onclick="showPage('rnc-dgii')">🧾 Resumen de facturas</a> 
+        <a data-tasks-nav onclick="showPage('tareas-pendientes')">📋 Tareas Pendientes</a>
         <a onclick="showPage('autorizaciones')">✅ Autorizaciones</a>
         <a onclick="showPage('historial-decomiso')">📑 Historial Decomiso</a>
     </div>
@@ -1779,6 +1780,7 @@
         </div>
       </div>
     </div>
+    <section id="tareas-pendientes" class="content-section"></section>
     <div id="decomiso" class="content-section"><div class="card"><h2>🗑️ Registrar Decomiso</h2><select id="tipo-decomiso" onchange="actualizarListaDecomiso()" style="width:100%; margin-bottom:10px;"><option value="plato">Producto Terminado</option><option value="almacen">Ingrediente</option></select><input type="text" id="busqueda-decomiso" onkeyup="actualizarListaDecomiso()" placeholder="Buscar..." style="width:100%; margin-bottom:15px;"><div id="lista-decomiso-items"></div></div></div>
     <div id="produccion" class="content-section"><div class="card"><h2>📊 Departamentos A-B-C</h2><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:20px;"><button class="btn btn-danger" onclick="filtrarPlatosABC('rojo')">SIN STOCK (0)</button><button class="btn btn-warning" onclick="filtrarPlatosABC('amarillo')">POCO STOCK (1-5)</button><button class="btn btn-save" onclick="filtrarPlatosABC('verde')">STOCK OK (+6)</button></div><div id="resultado-filtro-abc"></div></div></div>
   </div>
@@ -1816,10 +1818,10 @@
     </div>
   </section>
 
-  <script src="assets/js/app.js?v=20261030-mobile-startup-1"></script>
+  <script src="assets/js/app.js?v=20261031-integration2"></script>
   <script src="assets/js/asistencia-module.js?v=20260417-asistencia-sucursal-fix-1"></script>
-  <script src="assets/js/cloud-bridge.js?v=20261029-menu-admin-1"></script>
-  <script src="assets/js/menu-admin.js?v=20261030-visual-editor-1"></script>
+  <script src="assets/js/cloud-bridge.js?v=20261031-integration2"></script>
+  <script src="assets/js/menu-admin.js?v=20261031-integration2"></script>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;
@@ -2140,7 +2142,7 @@
     return `Eres LuRo, asistente oficial de LuRo Control y copiloto operativo del sistema. Hablas en español, directo, breve y natural, pensado para conversación por voz. Ejecutas solicitudes claras de inmediato, haces solo una pregunta si falta un dato indispensable y no inventas módulos ni resultados.
 
 Usa los tags exactos al final de tu respuesta cuando aplique:
-[NAV:id] navegar — IDs: home,agregar,inventario,distribuidores,produccion-interna,disponibilidad,salida,asistencia,procedimientos,clientes-puntos,historial-produccion,entradas-almacen,ventas,reporte-compras-distribuidor,rnc-dgii,comandas,autorizaciones,historial-decomiso,decomiso,produccion,diagnostico,comandos,configuracion,entrenamientos
+[NAV:id] navegar — IDs: home,agregar,inventario,distribuidores,produccion-interna,disponibilidad,salida,asistencia,procedimientos,clientes-puntos,historial-produccion,entradas-almacen,ventas,reporte-compras-distribuidor,rnc-dgii,comandas,autorizaciones,historial-decomiso,decomiso,produccion,diagnostico,comandos,configuracion,entrenamientos,tareas-pendientes
 [MODULO:NOMBRE] abrir módulo (ADMINISTRADOR,COCINA,CAJERO...)
 [LIMPIAR:tipo] borrar historial (entradas,ventas,produccion,decomisos,autorizaciones,rnc) — CRÍTICO
 [ELIMINAR_DIST:nombre] eliminar distribuidor — CRÍTICO

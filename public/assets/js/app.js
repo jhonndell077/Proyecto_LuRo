@@ -4331,6 +4331,7 @@ function bloquearAccionAdministrativaColaborador(mensaje = "🚫 Esta acción no
 }
 
 function tienePermisoPagina(pageId) {
+    if (pageId === 'tareas-pendientes') return !esColaboradorSesion;
     if (pageId === 'diagnostico') return true;
     if (pageId === 'comandos') return true;
     if (pageId === 'clientes-puntos' && !puedeUsarClientesPuntosExclusivo()) return false;
@@ -11900,6 +11901,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 // ============================
 (() => {
   const ASSISTANT_PAGES = [
+    {page:'tareas-pendientes',label:'Tareas Pendientes',aliases:['tareas pendientes','solicitudes del menu'],description:'Revisa solicitudes de membresía y contenido pendiente de la app.'},
     {
       page: 'home',
       label: 'Inicio',

@@ -37,3 +37,7 @@
  #luro-menu-admin .menu-editor-actions button { width:100%;min-height:48px; }
  #luro-menu-admin #menu-preview-panel { padding:10px; }
 }
+
+@keyframes menu-busy{to{transform:rotate(360deg)}}
+#luro-menu-admin [aria-busy="true"]::before,#menu-operations [aria-busy="true"]::before,#tareas-pendientes [aria-busy="true"]::before{content:"";display:inline-block;width:1em;height:1em;margin-right:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:menu-busy 1s linear infinite}
+@media(prefers-reduced-motion:reduce){[aria-busy="true"]::before{animation:none!important}}

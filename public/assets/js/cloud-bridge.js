@@ -127,7 +127,7 @@
 
       // Restricted to the menu's administrative API; credentials stay inside this bridge.
       window.luroMenuAdminCall = (name, data = {}) => {
-        if (!['menuListOrders', 'menuUpdateOrder', 'menuCreateCustomerLink'].includes(name)) {
+        if (!['menuListOrders', 'menuUpdateOrder', 'menuCreateCustomerLink', 'menuListTasks', 'menuResolveTask'].includes(name)) {
           return Promise.reject(new Error('Operación de menú no permitida.'));
         }
         return postCallableWithSession(name, data, { timeoutMs: 15000 });
