@@ -3698,7 +3698,7 @@ function normalizarDBSyncGlobal() {
     if (!db || typeof db !== 'object') db = {};
     const arrKeys = [
         'usuarios', 'platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones',
-        'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'distribuidores', 'catalogoDistribuidores',
+        'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'distribuidores', 'catalogoDistribuidores',
         'facturasResumen', 'clientesFidelizacion', 'entrenamientos', 'modulosCustom',
         'comandasActivas', 'comandasHistorial', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'
     ];
@@ -3720,7 +3720,7 @@ function baseTieneContenido(dbRef) {
     if (!dbRef || typeof dbRef !== 'object') return false;
     const claves = ['platos', 'almacen', 'ventas', 'clientes', 'distribuidores', 'historial_prod', 'entradas'];
     if (claves.some((k) => Array.isArray(dbRef[k]) && dbRef[k].length > 0)) return true;
-    const extras = ['productionRecipes', 'productionHolds', 'productionSchedule', 'clientesFidelizacion', 'clientesRNC', 'facturasResumen', 'produccion_stock', 'decomisos', 'autorizaciones', 'catalogoDistribuidores', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones'];
+    const extras = ['productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'clientesFidelizacion', 'clientesRNC', 'facturasResumen', 'produccion_stock', 'decomisos', 'autorizaciones', 'catalogoDistribuidores', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones'];
     return extras.some((k) => Array.isArray(dbRef[k]) && dbRef[k].length > 0);
 }
 
@@ -3733,7 +3733,7 @@ window.baseTieneContenido = baseTieneContenido;
         const saveSource = String(opts?.source || '').trim().toLowerCase();
         asegurarCuentaMaestra();
         normalizarDBSyncGlobal();
-        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
+        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
         tablasModulo.forEach(k => {
             if (!Array.isArray(db[k])) return;
             db[k] = db[k].map(item => (item && item.modulo === 'ADMINISTRADOR') ? { ...item, modulo: 'COCINA' } : item);
@@ -7478,7 +7478,7 @@ function toggleDetallesProduccion(idx) {
             !(m.owner === sesionUser.user && String(m.nombre || '').trim().toUpperCase() === nombre)
         );
 
-        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
+        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
         tablasModulo.forEach(k => {
             if (!Array.isArray(db[k])) return;
             db[k] = db[k].filter(item => !(item && item.owner === sesionUser.user && String(item.modulo || '').trim().toUpperCase() === nombre));
@@ -7821,7 +7821,7 @@ function normalizarNombreProducto(txt) {
 }
 
 function esUnidadPeso(u) {
-    return ['g', 'Lb', 'Oz'].includes(u);
+    return ['g', 'Kg', 'Lb', 'Oz'].includes(u);
 }
 
 function esUnidadVolumen(u) {

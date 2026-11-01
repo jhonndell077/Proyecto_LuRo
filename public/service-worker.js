@@ -1,6 +1,8 @@
-const SW_VERSION = 'luro-pwa-33-import-fix-20261101';
+const SW_VERSION = 'luro-pwa-advanced-20261101';
 const CORE_ASSETS = [
-  '/assets/js/inventory-import.js?v=20261101-luro33-import-fix',
+  '/assets/js/inventory-domain.js?v=20261101-advanced',
+  '/assets/js/inventory-workspace.js?v=20261101-advanced',
+  '/assets/js/inventory-import.js?v=20261101-advanced',
   '/',
   '/index.html',
   '/acceder.html',
@@ -9,7 +11,7 @@ const CORE_ASSETS = [
   '/assets/js/stock-domain.js?v=20261101-operations',
   '/assets/js/operations-workspace.js?v=20261101-operations',
   '/assets/js/production-workspace.js?v=20261101-operations',
-  '/assets/css/operations-workspace.css?v=20261101-operations',
+  '/assets/css/operations-workspace.css?v=20261101-advanced',
   '/assets/css/responsive.css?v=20261101-luro25',
   '/assets/js/responsive.js?v=20261101-luro25',
   '/manifest.webmanifest',
@@ -18,7 +20,7 @@ const CORE_ASSETS = [
   '/assets/saas/css/access.css?v=20260625-clean-login-1',
   '/assets/saas/js/access.js?v=20260625-clean-login-1',
   '/assets/css/styles.css?v=20261030-mobile-startup-1',
-  '/assets/js/app.js?v=20261101-luro33',
+  '/assets/js/app.js?v=20261101-advanced',
   '/assets/js/cloud-bridge.js?v=20261029-menu-admin-1',
   '/assets/js/menu-admin.js?v=20261101-luro33',
   '/assets/css/menu-editor.css?v=20261030-visual-editor-1',
