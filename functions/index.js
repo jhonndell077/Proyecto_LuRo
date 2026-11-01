@@ -124,7 +124,7 @@ function ownerDbHasContent(payload = {}) {
   if (!payload || typeof payload !== "object") return false;
   const claves = ["platos", "almacen", "ventas", "clientes", "distribuidores", "historial_prod", "entradas"];
   if (claves.some((k) => Array.isArray(payload[k]) && payload[k].length > 0)) return true;
-  const extras = ["clientesFidelizacion", "clientesRNC", "facturasResumen", "produccion_stock", "decomisos", "autorizaciones", "catalogoDistribuidores", "entrenamientos"];
+  const extras = ["productionRecipes", "productionHolds", "productionSchedule", "clientesFidelizacion", "clientesRNC", "facturasResumen", "produccion_stock", "decomisos", "autorizaciones", "catalogoDistribuidores", "entrenamientos"];
   return extras.some((k) => Array.isArray(payload[k]) && payload[k].length > 0);
 }
 

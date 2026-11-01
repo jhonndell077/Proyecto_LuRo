@@ -1,0 +1,93 @@
+/* Marco de controles y superficies operativas con límites de pantalla. */
+#luro-control-frame{position:fixed;right:10px;top:calc(6px + env(safe-area-inset-top,0px));z-index:2285;display:flex;align-items:center;gap:5px;padding:5px;border:1px solid #35586a;border-radius:14px;background:#102c3e;box-shadow:0 3px 14px #0003;max-width:calc(100vw - 20px);box-sizing:border-box}
+#luro-control-frame :is(#mobile-nav-toggle,#luro-alert-toggle,#luro-assistant-fab,#luro-tables-toggle){position:static!important;display:flex!important;align-items:center;justify-content:center;flex:0 0 auto;inset:auto!important;margin:0!important;width:38px!important;min-width:38px!important;height:38px!important;padding:5px!important;border:1px solid #557181!important;border-radius:9px!important;background:#183e50!important;color:#fff!important;font-size:17px;box-shadow:none!important;transform:none!important;line-height:1}
+#luro-control-frame #luro-tables-toggle{width:auto!important;min-width:60px!important;font-size:12px;font-weight:700;gap:4px;padding:5px 9px!important}
+#luro-control-frame [hidden]{display:none!important}
+#luro-control-frame .luro-assistant-fab-label{display:none!important}
+#luro-control-frame #luro-assistant-fab{font-size:18px!important}
+#luro-active-tables-notice{position:fixed;top:calc(65px + env(safe-area-inset-top,0px));right:12px;z-index:2281;max-width:calc(100vw - 24px);font-size:12px;font-weight:700;border:1px solid #b66b12;border-radius:9px;background:#fff1cf;color:#633b00;padding:8px 12px;box-shadow:0 2px 8px #0002}
+#luro-active-tables-notice[hidden]{display:none}
+body #menu-floating-notice{top:calc(108px + env(safe-area-inset-top,0px));max-height:40dvh}
+body .luro-assistant-panel{top:calc(108px + env(safe-area-inset-top,0px));max-height:calc(100dvh - 125px)}
+.luro-work-dialog{width:min(850px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);box-sizing:border-box;overflow:auto;border:1px solid #b7c9d5;border-radius:16px;padding:20px;color:#1a3244;background:#fff;box-shadow:0 12px 60px #0006}
+.luro-work-dialog::backdrop{background:#061525aa}
+.luro-work-dialog *{box-sizing:border-box;min-width:0;max-width:100%}
+.luro-work-dialog [hidden],#produccion-interna [hidden]{display:none!important}
+.luro-work-dialog :is(input,select,textarea){width:100%;font:inherit;font-size:16px;padding:9px;min-height:42px;border:1px solid #b3c4ce;border-radius:8px}
+.luro-work-dialog label{display:grid;gap:6px;margin:8px 0;font-size:13px;font-weight:600}
+.luro-work-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.luro-work-head h2,.luro-work-head h3{margin:0;overflow-wrap:anywhere}
+.luro-work-head>button{border:1px solid #c9d5dd;background:#eff4f7;border-radius:8px;min-width:38px;min-height:38px;font-size:22px;cursor:pointer}
+.luro-active-table{display:grid;gap:7px;width:100%;text-align:left;background:#edf7f3;border:1px solid #b4d6c7;border-radius:10px;padding:14px;margin:10px 0;font:inherit;cursor:pointer}
+.inventory-disclosure,.availability-price-tools{margin:8px 0;border:1px solid #d9e2e8;border-radius:9px;background:#fbfcfd;padding:0 10px}
+.inventory-disclosure>summary,.availability-price-tools>summary{padding:11px 2px;cursor:pointer;font-size:13px;font-weight:650;color:#375466}
+.inventory-disclosure .inventory-action-panel{margin-top:8px}
+.stock-capacity{display:block;max-width:180px;white-space:normal;font-size:11px;color:#62737e;margin-top:5px}
+.production-overview>div:first-child p{color:#677a89;line-height:1.5}
+.production-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.production-actions .btn{margin:0;white-space:normal;min-height:40px}
+.production-workspace-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px;align-items:start}
+.production-workspace-grid>.card{min-width:0;margin:0}
+.production-recipe{border:1px solid #dce6ec;border-radius:11px;padding:14px;margin:12px 0;background:#fff;overflow-wrap:anywhere}
+.production-recipe h3{margin:0 0 6px;font-size:16px}
+.production-recipe p{margin:6px 0;line-height:1.5}
+.production-extra-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px;align-items:end}
+.production-form-dialog .production-builder-row{display:grid!important;grid-template-columns:2fr 1fr 1fr!important;gap:10px}
+.production-form-dialog .production-ingredient{display:grid;grid-template-columns:minmax(160px,2fr) repeat(3,minmax(80px,1fr));gap:8px;align-items:end;border:1px solid #d5e1e9;border-radius:12px;padding:12px;margin:12px 0;background:#f5f9fb}
+.production-instructions{white-space:pre-wrap;line-height:1.6}
+#production-preview{padding:12px;border:1px solid #e4d9bf;border-radius:9px;background:#fff7e6;line-height:1.5}
+#production-preview[data-state=ready]{border-color:#b0d9c3;background:#eaf8ef}
+#production-history-list{max-height:650px;overflow:auto}
+.content-section,.content-section .card,.content-section form{box-sizing:border-box;min-width:0;max-width:100%}
+.content-section :is(img,video,canvas,iframe){max-width:100%}
+.content-section :is(h2,h3,h4,p,strong,label,summary){overflow-wrap:anywhere}
+@media(max-width:1024px){
+ body #mobile-topbar{padding-left:12px;padding-right:240px;min-height:62px}
+ body #mobile-topbar-title{font-size:12px;line-height:1.2}
+ .inventory-hero{display:flex!important;flex-wrap:nowrap!important;gap:10px!important;align-items:center;padding:10px!important;margin-bottom:8px!important}
+ .inventory-hero h2{font-size:17px!important;margin:0!important}
+ .inventory-kicker,.inventory-hero-copy,.inventory-hero-badge-label,.inventory-hero-badge small{display:none!important}
+ .inventory-hero-badge{padding:6px!important;min-width:60px!important;border-radius:9px!important}
+ .inventory-hero-badge strong{font-size:21px!important}
+ .inventory-summary-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important;margin:8px 0!important}
+ .inventory-summary-card{padding:7px!important;min-height:0!important;border-radius:8px!important}
+ .inventory-summary-card strong{font-size:18px!important;margin:2px 0!important}
+ .inventory-summary-card small{display:none!important}
+ .inventory-summary-label{font-size:10px!important;letter-spacing:0!important}
+ .inventory-search-tools{margin:10px 0!important;gap:7px!important}
+ .inventory-faltante-total{padding:8px!important;min-height:0!important}
+ .inventory-search-tools input{padding:9px!important}
+ .inventory-faltante-total-label{font-size:10px!important}
+ .inventory-faltante-total strong{font-size:16px!important}
+ .production-workspace-grid{grid-template-columns:minmax(0,1fr)}
+ .content-section .luro-table-viewport{max-width:100%;min-width:0}
+ .content-section [style*="min-width"]:not(table):not(th):not(td){min-width:0!important}
+ .content-section .production-actions{display:flex!important}
+}
+@media(max-width:600px){
+ .luro-work-dialog{padding:14px}
+ .production-form-dialog .production-builder-row{grid-template-columns:minmax(0,1fr)!important}
+ .production-form-dialog .production-ingredient{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+ .production-ingredient>label:first-child{grid-column:1/-1}
+ .production-actions>.btn{flex:1 1 130px;font-size:12px}
+ .luro-work-head{flex-wrap:wrap}
+ .content-section .inventory-search-tools{display:grid!important;grid-template-columns:minmax(0,1fr)!important}
+ body #mobile-topbar{padding-right:232px}
+}
+
+#luro-control-frame :is(#mobile-nav-toggle,#luro-alert-toggle,#luro-assistant-fab,#luro-tables-toggle){min-height:38px!important;max-height:38px!important;box-sizing:border-box!important}
+.distributor-form-disclosure{border:1px solid #d9e2e8;border-radius:9px;background:#fbfcfd;margin:8px 0 12px;padding:0 10px}
+.distributor-form-disclosure>summary{padding:11px 2px;cursor:pointer;font-size:13px;font-weight:650;color:#375466}
+.distributor-form-disclosure .dist-form-shell{padding:8px!important;margin-bottom:8px!important}
+@media(min-width:1025px){body .main{padding-top:82px!important}}
+
+@media print{body> *{display:none!important}body>#production-sheet-dialog[open]{display:block!important;position:static;width:100%;max-width:100%;max-height:none;overflow:visible;border:none;box-shadow:none}#production-sheet-dialog .luro-work-head{display:none!important}.production-recipe{break-inside:avoid}}
+#production-form-dialog #contenedor-insumos-produccion .production-ingredient{grid-template-areas:none!important;grid-template-columns:repeat(3,minmax(0,1fr))!important}
+#production-form-dialog #contenedor-insumos-produccion .production-ingredient :is(input,select,label,button,div){grid-area:auto!important}
+#production-form-dialog .production-ingredient>label{display:flex!important;flex-direction:column;align-items:stretch;gap:7px;line-height:1.4}
+#production-form-dialog .production-ingredient>label:first-child{grid-column:1/-1}
+#production-form-dialog .prod-restante{display:none}
+#production-form-dialog .production-ingredient .production-actions{flex-wrap:nowrap}
+#production-form-dialog .production-ingredient .production-actions .btn{flex:1 1 0;min-width:32px}
+@media(max-width:600px){#production-form-dialog #contenedor-insumos-produccion .production-ingredient{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+#production-form-dialog #contenedor-insumos-produccion .production-ingredient>label:first-child{grid-column:1/-1!important}

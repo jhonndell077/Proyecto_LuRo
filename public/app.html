@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="assets/css/menu-editor.css?v=20261031-floating-controls">
   <link rel="stylesheet" href="assets/css/responsive.css?v=20261031-member-cards">
   <script defer src="assets/js/responsive.js?v=20261030-responsive-1"></script>
+  <link rel="stylesheet" href="assets/css/operations-workspace.css?v=20261101-operations">
 </head>
 <body onload="cargarDatos()">
 
@@ -469,7 +470,7 @@
           </article>
         </div>
 
-        <div class="inventory-form-shell">
+        <details class="inventory-disclosure"><summary>Registrar entrada de productos</summary><div class="inventory-form-shell">
           <div class="inventory-top-grid">
             <input type="text" id="inv_nombre" placeholder="Nombre del Producto (ej. Yuca)">
             <select id="inv_dist_select">
@@ -504,7 +505,7 @@
 
         <div class="inventory-action-panel">
           <button class="btn btn-save inventory-primary-action" onclick="agregarAlmacen()">REGISTRAR ENTRADA</button>
-          <div class="inventory-provider-row">
+          </div></details><details class="inventory-disclosure"><summary>Proveedores y herramientas de almacén</summary><div class="inventory-action-panel"><div class="inventory-provider-row">
               <div class="inventory-provider-copy">Puede seleccionar el mejor proveedor desde el comparador de distribuidores.</div>
               <button class="btn btn-purple inventory-provider-action" onclick="buscarMejorProveedorEnAlmacen()">🏆 MEJOR PROVEEDOR</button>
           </div>
@@ -523,7 +524,7 @@
           </button>
         </div>
 
-        <div class="inventory-search-tools">
+        </details><div class="inventory-search-tools">
             <div class="inventory-search-input-wrap">
                 <input type="text" id="buscarProductoAlmacen" class="inventory-search-input" placeholder="🔎 Buscar producto en inventario..." onkeyup="resaltarProducto()">
             </div>
@@ -555,7 +556,7 @@
     <div id="distribuidores" class="content-section">
       <div class="card">
         <h2>🚚 Gestión de Distribuidores</h2>
-        <div class="dist-form-shell">
+        <details class="distributor-form-disclosure"><summary>Registrar o editar distribuidor</summary><div class="dist-form-shell">
           <div class="dist-toolbar">
             <div class="dist-toolbar-fields">
               <input type="text" id="dist_nombre" placeholder="Nombre del distribuidor (ej. Pricesmart)">
@@ -577,7 +578,7 @@
             <button class="btn btn-danger" onclick="eliminarDistribuidorSeleccionado()">ELIMINAR</button>
           </div>
         </div>
-        <input type="hidden" id="dist_edit_id">
+        </details><input type="hidden" id="dist_edit_id">
         <table class="luro-table luro-table--distribuidores">
           <thead><tr><th>Distribuidor</th><th>Estado</th><th>Contacto</th><th>Teléfono</th><th>Email</th><th>Alerta Producto</th><th>Productos</th><th>Acción</th></tr></thead>
           <tbody id="tabla-distribuidores"></tbody>
@@ -732,7 +733,7 @@
 
 <div id="disponibilidad" class="content-section">
     <div class="card">
-        <div class="card" style="border-top: 5px solid var(--blue); background: #f1f2f6;">
+        <details class="availability-price-tools"><summary>Ajuste de precios del menú</summary><div class="card" style="border-top: 5px solid var(--blue); background: #f1f2f6;">
             <h3 style="font-size: 14px; color: var(--secondary); margin-bottom: 10px;">💹 AJUSTE MASIVO DE PRECIOS (COSTO DE VENTA)</h3>
             <div class="availability-adjust-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn btn-blue" onclick="validarYEjecutarAjuste(0.05)">+5%</button>
@@ -747,9 +748,9 @@
             </div>
         </div>
 
-        <div class="availability-header-row" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0 10px;">
+        </details><div class="availability-header-row" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0 10px;">
             <h2 style="margin:0;">📋 Disponibilidad del Menú</h2>
-            <button class="btn btn-blue" onclick="abrirModalPlatoDirecto()">Añadir Directamente</button>
+
         </div>
         <table class="luro-table luro-table--disponibilidad">
             <thead id="thead-disponibilidad-full">
@@ -1818,10 +1819,13 @@
     </div>
   </section>
 
-  <script src="assets/js/app.js?v=20261031-member-cards"></script>
+  <script src="assets/js/stock-domain.js?v=20261101-operations"></script>
+  <script src="assets/js/app.js?v=20261101-operations"></script>
   <script src="assets/js/asistencia-module.js?v=20260417-asistencia-sucursal-fix-1"></script>
   <script src="assets/js/cloud-bridge.js?v=20261031-integration2"></script>
-  <script src="assets/js/menu-admin.js?v=20261031-member-cards"></script>
+  <script src="assets/js/operations-workspace.js?v=20261101-operations"></script>
+  <script src="assets/js/production-workspace.js?v=20261101-operations"></script>
+  <script src="assets/js/menu-admin.js?v=20261101-operations"></script>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;

@@ -3698,7 +3698,7 @@ function normalizarDBSyncGlobal() {
     if (!db || typeof db !== 'object') db = {};
     const arrKeys = [
         'usuarios', 'platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones',
-        'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores',
+        'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'distribuidores', 'catalogoDistribuidores',
         'facturasResumen', 'clientesFidelizacion', 'entrenamientos', 'modulosCustom',
         'comandasActivas', 'comandasHistorial', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'
     ];
@@ -3720,7 +3720,7 @@ function baseTieneContenido(dbRef) {
     if (!dbRef || typeof dbRef !== 'object') return false;
     const claves = ['platos', 'almacen', 'ventas', 'clientes', 'distribuidores', 'historial_prod', 'entradas'];
     if (claves.some((k) => Array.isArray(dbRef[k]) && dbRef[k].length > 0)) return true;
-    const extras = ['clientesFidelizacion', 'clientesRNC', 'facturasResumen', 'produccion_stock', 'decomisos', 'autorizaciones', 'catalogoDistribuidores', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones'];
+    const extras = ['productionRecipes', 'productionHolds', 'productionSchedule', 'clientesFidelizacion', 'clientesRNC', 'facturasResumen', 'produccion_stock', 'decomisos', 'autorizaciones', 'catalogoDistribuidores', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones'];
     return extras.some((k) => Array.isArray(dbRef[k]) && dbRef[k].length > 0);
 }
 
@@ -3733,7 +3733,7 @@ window.baseTieneContenido = baseTieneContenido;
         const saveSource = String(opts?.source || '').trim().toLowerCase();
         asegurarCuentaMaestra();
         normalizarDBSyncGlobal();
-        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
+        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
         tablasModulo.forEach(k => {
             if (!Array.isArray(db[k])) return;
             db[k] = db[k].map(item => (item && item.modulo === 'ADMINISTRADOR') ? { ...item, modulo: 'COCINA' } : item);
@@ -6749,8 +6749,7 @@ async function finalizarVenta() {
         if (platoOriginal.receta && platoOriginal.receta.length > 0) {
             platoOriginal.receta.forEach(ing => {
                 // Buscamos el ingrediente en el stock de Producción (Semielaborados) primero, luego en Almacén
-                let stockItem = db.produccion_stock.find(p => p.nombre === ing.nombre && p.modulo === moduloActual) || 
-                                db.almacen.find(a => a.nombre === ing.nombre && a.modulo === moduloActual);
+                let stockItem = LuroStock.source(db, ing.nombre, ownerDatosActivo(), moduloActual, ing.origen);
 
                 let cantidadRequeridaTotal = ing.cantidad * item.cantidad;
                 let stockDisponible = stockItem ? stockItem.actual : 0;
@@ -6821,8 +6820,7 @@ async function finalizarVenta() {
             // Descontar de Producción Interna o Almacén según la receta
             if (p.receta) {
                 p.receta.forEach(ing => {
-                    let stockItem = db.produccion_stock.find(ps => ps.nombre === ing.nombre && ps.modulo === moduloActual) || 
-                                    db.almacen.find(a => a.nombre === ing.nombre && a.modulo === moduloActual);
+                    let stockItem = LuroStock.source(db, ing.nombre, ownerDatosActivo(), moduloActual, ing.origen);
                     if (stockItem) {
                         const requeridoEnUnidadReceta = ing.cantidad * item.cantidad;
                         const requeridoEnUnidadStock = convertirUnidad(requeridoEnUnidadReceta, ing.unidad, stockItem.unidad);
@@ -6906,16 +6904,6 @@ function editarPlatoDesdeDispo(i) {
     if (pass !== sesionUser.pass) {
         alert("❌ Contraseña incorrecta.");
         return;
-    }
-
-    const objetivoModulo = moduloActual;
-    if (!esModuloAdministradorActual()) {
-        seleccionarModulo('ADMINISTRADOR', { skipAdminPassword: true });
-        moduloAdminObjetivo = objetivoModulo;
-        moduloActual = objetivoModulo;
-        const modLbl = document.getElementById('current-module-display');
-        if (modLbl) modLbl.innerText = `ADMINISTRADOR · ${objetivoModulo}`;
-        if (typeof renderAdminModuleLinks === 'function') renderAdminModuleLinks();
     }
 
     showPage('agregar'); // Cambia a la pestaña de agregar
@@ -7020,86 +7008,23 @@ function editarPlatoDesdeDispo(i) {
 
 function procesarNuevaProduccion() {
     if (bloquearAccionAdministrativaColaborador()) return;
-    const nombre = document.getElementById('prod_nombre').value.trim();
-    const cantFinal = parseFloat(document.getElementById('prod_cantidad').value);
-    const unidadFinal = document.getElementById('prod_unidad').value;
-    const idealProd = parseFloat(document.getElementById('prod_ideal')?.value) || 10; 
-    
-    if(!nombre || isNaN(cantFinal)) return alert("Complete el nombre y cantidad producida");
-
-    const ownerActivo = ownerDatosActivo();
-    let costoTotalProduccion = 0;
-    let recetaUsada = [];
-    // Usamos el selector de tu código original para encontrar las filas
-    const filas = document.querySelectorAll('#contenedor-insumos-produccion .ingrediente-row');
-
-    filas.forEach(fila => {
-        const nomInsumo = fila.querySelector('.prod-insumo-nom').value;
-        const cantUsada = parseFloat(fila.querySelector('.prod-insumo-cant').value) || 0;
-        const unidUsada = fila.querySelector('.prod-insumo-unid').value;
-
-        if(nomInsumo) {
-            recetaUsada.push({ nombre: nomInsumo, cantidad: cantUsada, unidad: unidUsada });
-            
-            // Buscar en Almacén (con validación de módulo y usuario)
-            let alm = db.almacen.find(a => a.nombre === nomInsumo && String(a.owner || '').trim().toLowerCase() === ownerActivo && a.modulo === moduloActual);
-            
-            if(alm) {
-                // --- NUEVA LÓGICA DE CONVERSIÓN ---
-                // Reemplazamos los 'if factor' manuales por la función centralizada
-                const cantidadARestar = convertirUnidad(cantUsada, unidUsada, alm.unidad);
-                
-                // DESCUENTO REAL E INMEDIATO DEL ALMACÉN
-                alm.actual -= cantidadARestar; 
-                costoTotalProduccion += (cantidadARestar * (alm.costoUnitario || 0));
-            }
-        }
-    });
-
-    // 1. ACTUALIZAR O CREAR EN STOCK DE PRODUCCIÓN (Semielaborados)
-    let prodExistente = db.produccion_stock.find(p => p.nombre === nombre && String(p.owner || '').trim().toLowerCase() === ownerActivo && p.modulo === moduloActual);
-    const costoUnitarioCalculado = costoTotalProduccion / cantFinal;
-
-    if(prodExistente) {
-        prodExistente.actual += cantFinal;
-        prodExistente.costoUnitario = costoUnitarioCalculado;
-        prodExistente.receta = recetaUsada;
-        prodExistente.ideal = idealProd;
-    } else {
-        db.produccion_stock.push({
-            owner: ownerActivo, 
-            modulo: moduloActual, 
-            nombre, 
-            actual: cantFinal, 
-            unidad: unidadFinal, 
-            costoUnitario: costoUnitarioCalculado, 
-            receta: recetaUsada, 
-            ideal: idealProd
-        });
-    }
-
-    // 2. REGISTRAR EN EL HISTORIAL
-    db.historial_prod.push({
-        owner: ownerActivo, 
-        modulo: moduloActual, 
-        fecha: new Date().toLocaleString(),
-        producto: nombre, 
-        cantidad: cantFinal + " " + unidadFinal, 
-        costoOp: costoTotalProduccion, 
-        operador: typeof operadorActual !== 'undefined' ? operadorActual : 'Admin'
-    });
-
-    // 3. LIMPIEZA DE INTERFAZ
-    alert("Producción registrada y descontada del almacén.");
-    document.getElementById('contenedor-insumos-produccion').innerHTML = "";
-    document.getElementById('prod_nombre').value = "";
-    document.getElementById('prod_cantidad').value = "";
-    if(document.getElementById('prod_ideal')) document.getElementById('prod_ideal').value = "";
-
-    // 4. PERSISTENCIA Y RENDERIZADO
-    guardarDatos(); // Asegúrate que se llame guardarDatos() como en tu original
-    renderStockProduccion();
-    if(typeof renderAlmacen === 'function') renderAlmacen();
+    try {
+        const input = window.LuroProduction?.readForm?.() || {
+            name:document.getElementById('prod_nombre').value,
+            quantity:Number(document.getElementById('prod_cantidad').value),
+            unit:document.getElementById('prod_unidad').value,
+            recipe:[...document.querySelectorAll('#contenedor-insumos-produccion .ingrediente-row')].map(row=>({nombre:row.querySelector('.prod-insumo-nom').value,cantidad:Number(row.querySelector('.prod-insumo-cant').value),unidad:row.querySelector('.prod-insumo-unid').value,origen:'almacen'}))
+        };
+        const owner=ownerDatosActivo(),plan=LuroStock.plan(db,input,owner,moduloActual);
+        LuroStock.commit(db,plan,owner,moduloActual,operadorActual||'Admin',crypto.randomUUID());
+        window.LuroProduction?.finish?.();
+        document.getElementById('contenedor-insumos-produccion').replaceChildren();
+        document.getElementById('prod_nombre').value='';document.getElementById('prod_cantidad').value='';
+        guardarDatos();renderStockProduccion();renderDispoTable();
+        if(typeof renderAlmacen==='function')renderAlmacen();
+        window.LuroProduction?.render?.();
+        alert('Producción registrada y existencias actualizadas.');
+    } catch(error) { alert(error.message); }
 }
 
 function renderStockProduccion() {
@@ -7330,7 +7255,7 @@ function toggleDetallesProduccion(idx) {
         if (!prod) return;
         if (String(prod.owner || '').trim().toLowerCase() !== ownerActivo || prod.modulo !== moduloActual) return;
         document.getElementById('prod_nombre').value = prod.nombre;
-        document.getElementById('prod_cantidad').value = prod.actual;
+        document.getElementById('prod_cantidad').value = prod.recetaRendimiento || prod.actual;
         document.getElementById('prod_unidad').value = prod.unidad;
         const contenedor = document.getElementById('contenedor-insumos-produccion');
         contenedor.innerHTML = "";
@@ -7553,7 +7478,7 @@ function toggleDetallesProduccion(idx) {
             !(m.owner === sesionUser.user && String(m.nombre || '').trim().toUpperCase() === nombre)
         );
 
-        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
+        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
         tablasModulo.forEach(k => {
             if (!Array.isArray(db[k])) return;
             db[k] = db[k].filter(item => !(item && item.owner === sesionUser.user && String(item.modulo || '').trim().toUpperCase() === nombre));
@@ -8114,6 +8039,7 @@ function guardarDistribuidor() {
 }
 
 function editarDistribuidor(id) {
+    const form=document.querySelector('#distribuidores .distributor-form-disclosure');if(form)form.open=true;
     const d = db.distribuidores.find(x => x.id === id && x.owner === sesionUser.user && x.modulo === moduloActual);
     if (!d) return;
     document.getElementById('dist_edit_id').value = d.id;
@@ -9857,10 +9783,11 @@ function renderDispoTable() {
 
         document.getElementById('tabla-disponibilidad-full').innerHTML = platos.map(p => { 
             const i = db.platos.indexOf(p); 
+            const capacidad = LuroStock.capacity(db,p,ownerActivo,moduloActual);
             const claseSinStock = Number(p.stock || 0) <= 0 ? ' class="dispo-sin-stock-parpadeo"' : '';
             return `<tr id="plato-tr-${i}"${claseSinStock}>
                 <td onclick="toggleDetallesPlato(${i})" style="cursor:pointer; color:var(--blue); font-weight:bold;">${p.nombre} ⚠️</td>
-                <td>RD$${p.precio}</td><td>${p.stock}</td><td><input type="number" id="aj-dispo-${i}" style="width:70px"></td>
+                <td>RD$${p.precio}</td><td>${p.stock}</td><td><input type="number" id="aj-dispo-${i}" min="0" max="${capacidad}" step="1" style="width:70px" aria-label="Nueva existencia de ${escapeHtml(p.nombre)}"><small class="stock-capacity">${capacidad ? `Capacidad: ${capacidad} platos` : 'Sin insumos disponibles. Solo puede dejarse en cero.'}</small></td>
                 <td class="luro-action-cell"><div class="luro-action-buttons luro-action-buttons--tight"><button class="btn btn-save" onclick="actStock(${i})">OK</button><button class="btn btn-warning" onclick="editarPlatoDesdeDispo(${i})">✏️ </button><button class="btn btn-danger" onclick="delPlato(${i})">X</button></div></td>
             </tr>`; 
         }).join('');
@@ -9873,11 +9800,12 @@ function renderDispoTable() {
         if (!p) return;
         if (String(p.owner || '').trim().toLowerCase() !== ownerActivo || p.modulo !== moduloActual) return;
         const v = parseFloat(document.getElementById(`aj-dispo-${i}`).value);
-        if (!isNaN(v)) {
-            p.stock = v;
-            guardarDatos();
-            renderDispoTable();
-        }
+        if (!Number.isFinite(v) || v < 0 || !Number.isInteger(v)) return alert('Indica una cantidad entera mayor o igual a cero.');
+        const capacidad = LuroStock.capacity(db,p,ownerActivo,moduloActual);
+        if (v > capacidad) return alert(`No hay insumos suficientes. Capacidad actual: ${capacidad} platos. Revisa Almacén o Producción.`);
+        p.stock = v;
+        guardarDatos();
+        renderDispoTable();
     }
     function delPlato(i) {
         if (bloquearAccionAdministrativaColaborador()) return;
@@ -10389,12 +10317,12 @@ function isD(m){return /^Delivery\s+\d+$/i.test(String(m||''));}
 function allM(){let a=[];for(let i=1;i<=20;i++)a.push('Mesa '+i);for(let i=1;i<=20;i++)a.push('Delivery '+i);return a;}
 window.finalizarComanda=function(id){edb();const i=db.comandasActivas.findIndex(x=>x.id===id);if(i<0)return;const c=db.comandasActivas[i];db.comandasActivas.splice(i,1);db.comandasHistorial.push({...c,doneAt:Date.now()});guardarDatos();renderComandas();};
 window.handleComandaCheck=function(cb,id){const card=cb?.closest('.comanda-card-box');if(card){card.style.transition='all .25s ease';card.style.transform='scale(.96)';card.style.opacity='.35';}setTimeout(()=>finalizarComanda(id),220);};
-window.abrirHistorialComandasModal=function(){const b=document.getElementById('historial-comandas-body');if(!b)return;const h=[...(db.comandasHistorial||[])].reverse();b.innerHTML=h.map(c=>`<div style="border:1px solid #ddd;padding:8px;border-radius:8px;margin-bottom:8px;"><b>${c.mesa}</b><div>${new Date(c.createdAt).toLocaleString()} -> ${new Date(c.doneAt).toLocaleString()}</div><div>${(c.items||[]).map(i=>`${i.cantidad}x ${i.nombre}`).join(' · ')}</div></div>`).join('')||'Sin historial';document.getElementById('modal-historial-comandas').style.display='flex';};
+
 function upCom(m){edb();const c=mesaCanonica(m),it=(carritoPorMesa[c]||[]);if(!it.length)return;const id=`CMD-${sesionUser.user}-${moduloActual}-${c}`;const i=db.comandasActivas.findIndex(x=>x.id===id),r={...(i>=0?db.comandasActivas[i]:{}),id,mesa:c,createdAt:i>=0?db.comandasActivas[i].createdAt:Date.now(),items:it.map(x=>({nombre:x.nombre,cantidad:x.cantidad,notes:x.menuNotes||''})),owner:sesionUser.user,modulo:moduloActual};if(i>=0)db.comandasActivas[i]=r;else db.comandasActivas.push(r);guardarDatos();}
 window.renderComandas=function(){
 const b=document.getElementById('comandas-activas');if(!b)return;
 const a=(db.comandasActivas||[]).filter(x=>(!x.owner||x.owner===sesionUser.user)&&(!x.modulo||x.modulo===moduloActual));
-b.style.display='grid';b.style.gridTemplateColumns='repeat(auto-fill,minmax(230px,1fr))';b.style.gap='10px';
+b.style.display='grid';b.style.gridTemplateColumns='repeat(auto-fit,minmax(min(100%,230px),1fr))';b.style.gap='10px';
 const pal=['#ff4757','#ffa502','#2ed573','#1e90ff','#ff6b81','#2f3542','#e84393','#00a8ff'];
 b.innerHTML=a.map(c=>{
 const ms=(Date.now()-c.createdAt);const min=Math.floor(ms/60000);
@@ -10425,7 +10353,7 @@ window.abrirDetalleFacturaHistorial=function(i){const src=(db.facturasResumen||[
 window.actualizarTablaRNC=function(){const t=document.getElementById('tabla-rnc-dgii');if(!t)return;const q=(document.getElementById('busqueda-rnc-clientes')?.value||'').toLowerCase().trim();const src=(db.facturasResumen||[]).filter(x=>(!x.owner||x.owner===sesionUser.user)&&moduloPerteneceVista(x.modulo));const lst=[...src].reverse().filter(c=>!q||[c.nombre,c.rnc,c.telefono,c.ncf,c.mesa,c.codigo].join(' ').toLowerCase().includes(q));t.innerHTML=lst.map((c,i)=>`<tr onclick="abrirDetalleFacturaHistorial(${i})" style="cursor:pointer;"><td>${c.fecha||'---'}</td><td>${c.operador||'---'}</td><td>${c.mesa||'---'}</td><td>${c.nombre||'---'} ${((c.tipoFactura||'')==='DELIVERY'||isD(c.mesa))?'<span style="color:'+TG+';font-weight:800;">DELIVERY</span>':''}</td><td>${c.ncf||'---'}</td><td>${c.rnc||'---'}</td><td>${c.codigo||'---'}</td><td>RD$${Number(c.total||0).toFixed(2)}</td><td>${c.telefono||'-'}</td></tr>`).join('')||'<tr><td colspan="9" style="text-align:center;color:gray;">Sin facturas</td></tr>';};
 const g0=window.registrarFacturaEnResumen;window.registrarFacturaEnResumen=function(p){g0(p);const l=db.facturasResumen[db.facturasResumen.length-1];if(l)l.tipoFactura=isD(l.mesa)?'DELIVERY':'FISICA';guardarDatos();};
 const sh0=window.showPage;window.showPage=function(id){sh0(id);if(id==='comandas')renderComandas();if(id==='rnc-dgii')actualizarTablaRNC();};
-document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.createElement('style');st.textContent='.delivery-tag{color:'+TG+';font-weight:800;}';document.head.appendChild(st);const refs=[...document.querySelectorAll('.folder-content a')],h=refs.find(a=>(a.textContent||'').includes('Resumen de facturas'));if(h&&!refs.some(a=>(a.getAttribute('onclick')||'').includes("showPage('comandas')"))){const a=document.createElement('a');a.setAttribute('onclick',"showPage('comandas')");a.textContent='🧾 Comandas';h.parentElement.insertBefore(a,h.nextSibling);}const main=document.getElementById('main-content');if(main&&!document.getElementById('comandas')){const s=document.createElement('div');s.id='comandas';s.className='content-section';s.innerHTML='<div class="card"><h2>🧾 Hoja de Comandas <button class="btn btn-blue" onclick="abrirHistorialComandasModal()">VER HISTORIAL</button></h2><div id="comandas-activas"></div></div>';main.appendChild(s);}if(!document.getElementById('modal-historial-comandas')){const m=document.createElement('div');m.id='modal-historial-comandas';m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:var(--z-modal-history);align-items:center;justify-content:center;padding:16px;';m.innerHTML='<div style="width:min(900px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border-top:6px solid var(--blue);"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #eee;"><strong>Historial de Comandas</strong><button class="btn btn-danger" onclick="document.getElementById(\'modal-historial-comandas\').style.display=\'none\'">X</button></div><div id="historial-comandas-body" style="padding:14px;"></div></div>';document.body.appendChild(m);}if(!document.getElementById('modal-detalle-factura')){const m=document.createElement('div');m.id='modal-detalle-factura';m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:calc(var(--z-modal-history) + 10);align-items:center;justify-content:center;padding:16px;';m.innerHTML='<div style="width:min(980px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border-top:6px solid var(--accent);"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #eee;"><strong>Detalle Cliente / Factura</strong><button class="btn btn-danger" onclick="document.getElementById(\'modal-detalle-factura\').style.display=\'none\'">X</button></div><div id="detalle-factura-body" style="padding:14px;"></div></div>';document.body.appendChild(m);}const sc=document.querySelector('#salida .card[style*="border-left"]');if(sc&&!document.getElementById('btn-orden-entregada')){const b=document.createElement('button');b.id='btn-orden-entregada';b.className='btn btn-blue';b.textContent='ORDEN ENTREGADA';b.style.display='none';b.style.marginTop='8px';b.onclick=marcarOrdenEntregada;const p=sc.querySelector('button[onclick="finalizarVenta()"]')?.parentElement;if(p)p.appendChild(b);}});
+document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.createElement('style');st.textContent='.delivery-tag{color:'+TG+';font-weight:800;}';document.head.appendChild(st);const refs=[...document.querySelectorAll('.folder-content a')],h=refs.find(a=>(a.textContent||'').includes('Resumen de facturas'));if(h&&!refs.some(a=>(a.getAttribute('onclick')||'').includes("showPage('comandas')"))){const a=document.createElement('a');a.setAttribute('onclick',"showPage('comandas')");a.textContent='🧾 Comandas';h.parentElement.insertBefore(a,h.nextSibling);}const main=document.getElementById('main-content');if(main&&!document.getElementById('comandas')){const s=document.createElement('div');s.id='comandas';s.className='content-section';s.innerHTML='<div class="card"><h2>🧾 Comandas actuales</h2><div id="comandas-activas"></div></div>';main.appendChild(s);}if(!document.getElementById('modal-detalle-factura')){const m=document.createElement('div');m.id='modal-detalle-factura';m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:calc(var(--z-modal-history) + 10);align-items:center;justify-content:center;padding:16px;';m.innerHTML='<div style="width:min(980px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border-top:6px solid var(--accent);"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #eee;"><strong>Detalle Cliente / Factura</strong><button class="btn btn-danger" onclick="document.getElementById(\'modal-detalle-factura\').style.display=\'none\'">X</button></div><div id="detalle-factura-body" style="padding:14px;"></div></div>';document.body.appendChild(m);}const sc=document.querySelector('#salida .card[style*="border-left"]');if(sc&&!document.getElementById('btn-orden-entregada')){const b=document.createElement('button');b.id='btn-orden-entregada';b.className='btn btn-blue';b.textContent='ORDEN ENTREGADA';b.style.display='none';b.style.marginTop='8px';b.onclick=marcarOrdenEntregada;const p=sc.querySelector('button[onclick="finalizarVenta()"]')?.parentElement;if(p)p.appendChild(b);}});
 })();
 
 // Ajuste Delivery: botón "INGRESE DATOS DE ENVIO" en Detalle de Venta

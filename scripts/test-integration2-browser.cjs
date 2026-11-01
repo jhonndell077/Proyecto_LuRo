@@ -15,7 +15,7 @@ test('mobile membership and Lafo work in Chrome with local fixtures and no exter
   page.on('request',async r=>{
    if(r.url().includes('cloudfunctions.net')){
     const name=r.url().split('/').pop();
-    const results={menuGetCatalog:{business:'The Proyect',heroPhrase:'Pendiente por incluir',brand:{},items:[{id:'dish-fixture',name:'Mangú',price:250,basePrice:250,stock:3,category:'Desayuno',image:'',description:'Preparado aquí',ingredients:['Plátano','Cebolla'],soldQuantity:5,nutrition:{},allergens:''}]},menuGetOrders:{orders:[]},menuRegisterMember:{accessToken:'c'.repeat(64)},menuGetProfile:{name:'Ana',points:0,premiumActive:false,history:[],verificationPending:true}};
+    const results={menuGetCatalog:{business:'The Proyect',heroPhrase:'Pendiente por incluir',brand:{},items:[{id:'dish-fixture',name:'Mangú',price:250,basePrice:250,stock:3,category:'Desayuno',image:'',description:'Preparado aquí',ingredients:['Plátano','Cebolla'],soldQuantity:5,nutrition:{},allergens:''}]},menuGetOrders:{orders:[]},menuRegisterMember:{accessToken:'c'.repeat(64),code:'LURO-'+'C'.repeat(24),name:'Ana',phone:'8095551234'},menuGetProfile:{code:'LURO-'+'C'.repeat(24),name:'Ana',points:0,premiumActive:false,history:[],verificationPending:true}};
     return r.respond({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type'},body:JSON.stringify({result:results[name]})});
    }
    return r.url().startsWith('file:')||r.url().startsWith('data:')?r.continue():r.abort();
@@ -38,7 +38,8 @@ test('mobile membership and Lafo work in Chrome with local fixtures and no exter
   fs.mkdirSync(path.resolve(__dirname,'../tmp/integration2'),{recursive:true});
   await page.screenshot({path:path.resolve(__dirname,'../tmp/integration2/membership-mobile.png')});
   await page.click('#luro-member-form [type="submit"]');
-  await page.waitForSelector('input[aria-label="Enlace privado de miembro"]');
+  await page.waitForSelector('.luro-member-card');
+  assert.match(await page.$eval('#utility-dialog',x=>x.textContent),/LURO-C{24}/);
   assert.match(await page.$eval('#secondary',x=>x.textContent),/Perfil creado/);
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}
