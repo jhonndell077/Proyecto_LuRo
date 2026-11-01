@@ -19,3 +19,11 @@ El enlace del PDF no pudo leerse en esta sesión. No se precargaron sus producto
 ## Verificación local
 
 Pruebas con datos locales: Excel comprimido y sharedStrings, CSV, costo vacío, productos con acentos, suma y costo ponderado, aislamiento de cuentas/módulos, rechazo de unidades incompatibles sin cambios parciales, costo manual, navegación y ventanas entre 320 y 1440 px. Regresiones de inventario, producción, pedidos y administración de menú. Auditoría de estructura, sintaxis JavaScript y revisión del diff. El proyecto no define scripts de build, tipos o lint frontend; no se instalaron herramientas ni dependencias.
+
+## Corrección de lectura de inventarios compartidos
+
+- Si Google rechaza la exportación CSV, se intenta leer la tabla pública del editor. No se envían credenciales del usuario ni se modifica la hoja.
+- Detección automática y selección manual de la fila de encabezados. Reconoce PRODUCTOS, MEDIDA, ALMACEN y Stock ideal (provisional). Vista previa antes de confirmar; los nombres repetidos con unidades incompatibles reciben la unidad como sufijo visible.
+- El selector deja visibles todos los archivos y explica cómo convertir PDF y formatos no compatibles. No se añadió un lector PDF al navegador ni se instalaron dependencias.
+- Se comprobó la lectura del enlace aportado desde un navegador con la app local interceptada: 92 productos y encabezados en fila 3. Los datos del PDF se convirtieron a CSV para entregar por separado; no se incluyen en los archivos públicos ni se importan automáticamente en ninguna cuenta.
+- Pruebas locales de lectura CSV/Excel, respuestas 400 y errores de red, tabla HTML pública, encabezados desplazados, duplicados con distintas unidades, vista previa y explicación de PDF. Regresiones del menú y dominio de stock, auditoría de estructura y sintaxis JavaScript.

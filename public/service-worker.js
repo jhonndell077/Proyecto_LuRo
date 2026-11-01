@@ -1,6 +1,6 @@
-const SW_VERSION = 'luro-pwa-33-20261101';
+const SW_VERSION = 'luro-pwa-33-import-fix-20261101';
 const CORE_ASSETS = [
-  '/assets/js/inventory-import.js?v=20261101-luro33',
+  '/assets/js/inventory-import.js?v=20261101-luro33-import-fix',
   '/',
   '/index.html',
   '/acceder.html',

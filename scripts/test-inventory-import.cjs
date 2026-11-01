@@ -25,3 +25,28 @@ test('Luro 3.3 imports Excel/CSV atomically, scopes stock, calculates costs and 
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });
+
+test('shared Office fallback, offset headers, PDF explanation and previews work without changing remote data',async()=>{
+ const browser=await puppeteer.launch({channel:'chrome',headless:true});
+ try{
+  const page=await browser.newPage();await page.setRequestInterception(true);page.on('request',r=>/^(file:|data:)/.test(r.url())?r.continue():r.abort());await page.goto(pathToFileURL(path.resolve(__dirname,'../public/app.html')).href,{waitUntil:'load'});
+  await page.evaluate(()=>{window.alert=()=>{};sesionUser={user:'fixture',activo:true,role:'admin'};esColaboradorSesion=false;moduloActual='COCINA';guardarDatos=()=>{};db.almacen=[];db.entradas=[];});
+  const html='<table class="waffle"><tr><th>1</th><td>Total semanal</td></tr><tr><th>2</th><td></td></tr><tr><th>3</th><td>Stock ideal (provisional)</td><td>PRODUCTOS</td><td>MEDIDA</td><td>ALMACEN</td><td>PRECIO</td></tr><tr><th>4</th><td>2,328</td><td>AIOLI</td><td>ONZA</td><td>0,</td><td></td></tr><tr><th>5</th><td>1,808</td><td>ACEITE</td><td>LIBRA</td><td>0,</td><td></td></tr><tr><th>6</th><td>30,</td><td>ACEITE</td><td>UNIDAD</td><td>0,</td><td></td></tr></table>';
+  const result=await page.evaluate(async html=>{
+   window.fetchCalls=[];window.fetch=async(url,options)=>{fetchCalls.push({url,credentials:options.credentials});return url.includes('/export?')?new Response('error',{status:400}):new Response(html,{headers:{'Content-Type':'text/html'}});};
+   const data=await LuroInventoryImport.readLink('https://docs.google.com/spreadsheets/d/example/edit?rtpof=true');LuroInventoryImport.stage(data);const planned=LuroInventoryImport.plan();LuroInventoryImport.commit();return {header:document.getElementById('inventory-import-header').value,planned,calls:fetchCalls,stock:db.almacen};
+  },html);
+  assert.equal(result.header,'3');assert.equal(result.planned.length,3);assert.equal(result.planned[0].ideal,2.328);assert.equal(result.planned[0].actual,0);assert.equal(result.planned[0].costoUnitario,0);assert.equal(result.planned[1].nombre,'aceite (Lb)');assert.equal(result.planned[2].nombre,'aceite (Unidad)');assert.equal(result.calls.length,2);assert.ok(result.calls.every(c=>c.credentials==='omit'));assert.equal(result.stock.length,3);
+  await page.evaluate(()=>{window.fetch=async()=>new Response('Producto,Cantidad,Unidad\nArroz,4,Lb');});
+  assert.equal(await page.evaluate(async()=>{const data=await LuroInventoryImport.readLink('https://docs.google.com/spreadsheets/d/example/edit');LuroInventoryImport.stage(data);return LuroInventoryImport.plan()[0].actual;}),4);
+  await page.evaluate(()=>{LuroInventoryImport.stage([['Resumen'],[],['PRODUCTOS','MEDIDA','ALMACEN'],['Sal','LIBRA','0,']]);});
+  assert.equal(await page.$eval('#inventory-import-header',e=>e.value),'3');
+  await page.$eval('#inventory-import-header',e=>{e.value='1';e.dispatchEvent(new Event('change'));});assert.equal(await page.$eval('#inventory-import-commit',e=>e.disabled),true);
+  await page.$eval('#inventory-import-header',e=>{e.value='3';e.dispatchEvent(new Event('change'));});assert.equal(await page.$eval('#inventory-import-commit',e=>e.disabled),false);
+  await page.$eval('#inventory-import-file',e=>{const dt=new DataTransfer();dt.items.add(new File(['%PDF-1.7'],'Inventario.pdf',{type:'application/pdf'}));e.files=dt.files;e.dispatchEvent(new Event('change'));});await page.waitForFunction(()=>document.getElementById('inventory-import-status').textContent.includes('Este archivo es un PDF'));
+  assert.equal(await page.$eval('#inventory-import-file',e=>e.hasAttribute('accept')),false);
+  if(process.env.LURO_IMPORT_HTML){const source=fs.readFileSync(process.env.LURO_IMPORT_HTML,'utf8');const actual=await page.evaluate(source=>{LuroInventoryImport.stage(LuroInventoryImport.htmlRows(source));const products=LuroInventoryImport.plan();db.almacen=[];LuroInventoryImport.commit();return {products,stock:db.almacen.length};},source);assert.equal(actual.products.length,92);assert.equal(actual.stock,92);assert.ok(actual.products.every(p=>p.actual===0&&p.costoUnitario===0));}
+  if(process.env.LURO_IMPORT_CSV){const source=fs.readFileSync(process.env.LURO_IMPORT_CSV,'utf8');assert.equal(await page.evaluate(source=>{LuroInventoryImport.stage(LuroInventoryImport.csv(source));return LuroInventoryImport.plan().length;},source),92);}
+  await page.evaluate(()=>{window.fetch=async()=>{throw new TypeError('Failed to fetch');};});assert.match(await page.evaluate(async()=>{try{await LuroInventoryImport.readLink('https://docs.google.com/spreadsheets/d/example/edit');return '';}catch(e){return e.message;}}),/descarga el archivo/);
+ }finally{await browser.close();}
+});
