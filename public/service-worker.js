@@ -1,5 +1,6 @@
-const SW_VERSION = 'luro-pwa-25-20261101';
+const SW_VERSION = 'luro-pwa-33-20261101';
 const CORE_ASSETS = [
+  '/assets/js/inventory-import.js?v=20261101-luro33',
   '/',
   '/index.html',
   '/acceder.html',
@@ -17,9 +18,9 @@ const CORE_ASSETS = [
   '/assets/saas/css/access.css?v=20260625-clean-login-1',
   '/assets/saas/js/access.js?v=20260625-clean-login-1',
   '/assets/css/styles.css?v=20261030-mobile-startup-1',
-  '/assets/js/app.js?v=20261101-operations',
+  '/assets/js/app.js?v=20261101-luro33',
   '/assets/js/cloud-bridge.js?v=20261029-menu-admin-1',
-  '/assets/js/menu-admin.js?v=20261101-operations',
+  '/assets/js/menu-admin.js?v=20261101-luro33',
   '/assets/css/menu-editor.css?v=20261030-visual-editor-1',
   '/assets/brand/logo-luro.png',
   '/assets/icons/icon-192.png',

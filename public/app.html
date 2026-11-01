@@ -256,7 +256,7 @@
     </div>
     
     <a onclick="showPage('home')" style="border-left: 15px solid var(--warning);" class="active">🏠 Inicio</a>
-    <a id="nav-item-plato" onclick="showPage('agregar')" style="border-left: 15px solid var(--warning);">🧪 Agregar Plato</a>
+
 
     <div class="folder-container">
         <a class="menu-folder" onclick="toggleFolder(this)">
@@ -273,6 +273,7 @@
             <a onclick="showPage('entrenamientos')">🎓 Entrenamientos</a>
             <a onclick="showPage('procedimientos')">📘 Procedimientos</a>
             <a onclick="showPage('clientes-puntos')">👥 Clientes y Puntos</a>
+            <a id="nav-item-plato" onclick="showPage('agregar')" style="border-left: 15px solid var(--warning);">🧪 Agregar Plato</a>
         </div>
     </div>
 
@@ -497,7 +498,8 @@
                <input type="number" id="inv_ideal" placeholder="0.00">
             </div>
             <div class="inventory-metric-card" title="Precio total pagado por esta entrada">
-               <label class="inventory-metric-label">COSTO TOTAL (RD$)</label>
+               <label class="inventory-metric-label" for="inv_costo_unitario">COSTO UNITARIO (RD$)</label><input type="number" id="inv_costo_unitario" min="0" step="0.01" placeholder="0.00">
+               <label class="inventory-metric-label" for="inv_costo_total">COSTO TOTAL (RD$)</label>
                <input type="number" id="inv_costo_total" placeholder="0.00">
             </div>
           </div>
@@ -1820,12 +1822,13 @@
   </section>
 
   <script src="assets/js/stock-domain.js?v=20261101-operations"></script>
-  <script src="assets/js/app.js?v=20261101-operations"></script>
+  <script src="assets/js/app.js?v=20261101-luro33"></script>
   <script src="assets/js/asistencia-module.js?v=20260417-asistencia-sucursal-fix-1"></script>
   <script src="assets/js/cloud-bridge.js?v=20261031-integration2"></script>
+  <script src="assets/js/inventory-import.js?v=20261101-luro33"></script>
   <script src="assets/js/operations-workspace.js?v=20261101-operations"></script>
   <script src="assets/js/production-workspace.js?v=20261101-operations"></script>
-  <script src="assets/js/menu-admin.js?v=20261101-operations"></script>
+  <script src="assets/js/menu-admin.js?v=20261101-luro33"></script>
   <script>
     (function () {
       if (!('serviceWorker' in navigator)) return;

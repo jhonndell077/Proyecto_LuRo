@@ -8530,6 +8530,7 @@ function seleccionarProveedorParaAlmacen(distribuidor, producto, unidadCatalogo,
 }
 
 function autocompletarCostoPorCatalogo(precioDirecto = null, unidadPrecioDirecto = '') {
+    if (document.getElementById('inv_costo_unitario')?.dataset.manual === 'true') return;
     const nom = normalizarNombreProducto(document.getElementById('inv_nombre')?.value || '');
     const dist = document.getElementById('inv_dist_select')?.value || '';
     const unidad = document.getElementById('inv_unidad')?.value || '';
@@ -8552,6 +8553,8 @@ function autocompletarCostoPorCatalogo(precioDirecto = null, unidadPrecioDirecto
     }
     if (precioUnit !== null) {
         costoInput.value = (precioUnit * cant).toFixed(2);
+        const unitInput = document.getElementById("inv_costo_unitario");
+        if (unitInput) unitInput.value = precioUnit.toFixed(2);
     }
 }
 
@@ -9394,6 +9397,7 @@ function agregarAlmacen() {
     const unidEntrada = inputUnid.value; 
     let dist = inputDist.value;
 
+    if (![cantEntradaOriginal, costoCompraHoy, ideal].every(Number.isFinite) || costoCompraHoy < 0 || ideal < 0) return alert("Cantidad y costos deben ser valores válidos y no negativos.");
     if(!nom || isNaN(cantEntradaOriginal) || cantEntradaOriginal <= 0) {
         return alert("Debe ingresar el nombre y la cantidad de la nueva entrada."); 
     }
@@ -9464,6 +9468,8 @@ function agregarAlmacen() {
     inputCant.value = ""; 
     inputIdeal.value = ""; 
     inputCosto.value = ""; 
+    const unitCostInput = document.getElementById("inv_costo_unitario");
+    if (unitCostInput) { unitCostInput.value = ""; delete unitCostInput.dataset.manual; }
     if(inputNom.dataset) delete inputNom.dataset.ultimoCosto;
     
     alert("Existencia actualizada. Se ha recalculado el costo unitario promedio y registrado la entrada.");
@@ -9640,6 +9646,8 @@ document.getElementById('inv_actual').addEventListener('input', function() {
     const nombreInput = document.getElementById('inv_nombre');
     
     const nuevaCantidad = parseFloat(cantInput.value) || 0;
+    const explicitUnitCost = document.getElementById("inv_costo_unitario");
+    if (explicitUnitCost?.dataset.manual === "true") { costoTotalInput.value = (nuevaCantidad * Number(explicitUnitCost.value || 0)).toFixed(2); return; }
     const costoUnitarioHistorico = parseFloat(nombreInput.dataset.ultimoCosto) || 0;
 
     if (nuevaCantidad >= 0 && costoUnitarioHistorico > 0) {

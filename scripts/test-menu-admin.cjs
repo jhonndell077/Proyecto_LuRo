@@ -7,6 +7,7 @@ const {JSDOM}=require('jsdom');
 async function app(collaborator=false){
   const html=fs.readFileSync(path.resolve(__dirname,'../public/app.html'),'utf8');
   const dom=new JSDOM(html,{url:'http://fixture.local/app.html',runScripts:'outside-only'}),w=dom.window,calls=[];
+  const commands=w.document.createElement('div');commands.id='comandas';w.document.getElementById('main-content').append(commands);
   w.setInterval=fn=>(calls.push(fn),calls.length);w.alert=()=>{};w.HTMLElement.prototype.scrollIntoView=function(){};
   vm.runInContext(`let db={platos:[{owner:'owner',modulo:'COCINA',nombre:'Mangú',precio:250,stock:2}],clientesFidelizacion:[]};let sesionUser={user:'owner'};let moduloActual='COCINA';let esColaboradorSesion=${collaborator};let permisosSesion=['salida'];function guardarDatos(){}function obtenerNombreNegocioActual(){return 'El Patio'}function showPage(){};window.obtenerOwnerSesionActual=()=> 'owner';window.subirBaseActualAlCloud=async()=>true;window.descargarBaseDesdeCloud=async()=>true;window.__apiCalls=[];window.luroMenuAdminCall=async(name,data)=>{window.__apiCalls.push({name,data});return {orders:[]}};`,dom.getInternalVMContext());
   vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../public/assets/js/menu-admin.js'),'utf8'),dom.getInternalVMContext());
@@ -42,4 +43,14 @@ test('pending requests remain visible across modules in the floating notificatio
  a.w.luroMenuAdminCall=async(name)=>name==='menuListTasks'?{tasks:[{id:'hero-phrase',title:'Incluir frase',status:'pending'}]}:{orders:[{id:'WEB-1',status:'pending',total:250,items:[]}]};
  await a.calls[1]();const notice=a.w.document.getElementById('menu-floating-notice');assert.equal(notice.hidden,false);assert.match(notice.textContent,/1 pedido/);assert.match(notice.textContent,/1 tarea/);
  a.w.showPage('home');assert.equal(notice.hidden,false);assert.match(a.w.document.getElementById('menu-task-list').textContent,/Incluir frase/);
+}finally{a.w.close();}});
+
+test('accepted requests leave cashier queue and retain kitchen/delivery controls',async()=>{const a=await app();try{
+ let orders=[{id:'WEB-fixture',status:'pending',customer:{name:'Ana'},total:20,payment:{status:'pending'},items:[{name:'Pan',quantity:1}]}];
+ a.w.luroMenuAdminCall=async(name,data)=>{if(name==='menuUpdateOrder')orders=orders.map(o=>({...o,status:data.status}));return {orders};};
+ await a.calls[1]();assert.equal(a.w.document.querySelectorAll('#menu-orders-list [data-order]').length,2);
+ a.w.document.querySelector('#menu-orders-list [data-next="accepted"]').click();await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
+ assert.equal(a.w.document.querySelectorAll('#menu-orders-list [data-order]').length,0);
+ assert.ok(a.w.document.querySelector('#menu-kitchen-list [data-next="preparing"]'));
+ orders[0].status='ready';await a.calls[1]();assert.ok(a.w.document.querySelector('#menu-kitchen-list [data-next="delivered"]'));
 }finally{a.w.close();}});
