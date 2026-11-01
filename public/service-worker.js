@@ -1,4 +1,4 @@
-const SW_VERSION = 'luro-pwa-operations-20261101';
+const SW_VERSION = 'luro-pwa-25-20261101';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -9,8 +9,8 @@ const CORE_ASSETS = [
   '/assets/js/operations-workspace.js?v=20261101-operations',
   '/assets/js/production-workspace.js?v=20261101-operations',
   '/assets/css/operations-workspace.css?v=20261101-operations',
-  '/assets/css/responsive.css?v=20261031-member-cards',
-  '/assets/js/responsive.js?v=20261030-responsive-1',
+  '/assets/css/responsive.css?v=20261101-luro25',
+  '/assets/js/responsive.js?v=20261101-luro25',
   '/manifest.webmanifest',
   '/assets/saas/css/landing.css?v=20260414-landing-ecosistema-2',
   '/assets/saas/js/landing.js?v=20260412-1200',
