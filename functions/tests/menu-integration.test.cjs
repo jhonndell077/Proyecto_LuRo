@@ -66,3 +66,26 @@ test('membership rejects invalid fields and limits new registrations per busines
  for(let i=0;i<10;i++)await a.call('menuRegisterMember',{...memberData,customerToken:i.toString(16).padStart(64,'0')});
  await assert.rejects(()=>a.call('menuRegisterMember',memberData),/muchas solicitudes/);
 });
+
+test('member codes identify orders, preserve verification status, and isolate restaurants',async()=>{
+ const a=app(),r=await a.call('menuRegisterMember',memberData);
+ assert.match(r.code,/^LURO-[A-F0-9]{24}$/);
+ assert.equal((await a.call('menuRegisterMember',memberData)).code,r.code);
+ const o=await request(a,{memberCode:r.code});
+ let rows=await a.call('menuListOrders',{staff:true});assert.equal(rows.orders[0].customer.membership.code,r.code);assert.equal(rows.orders[0].customer.membership.active,false);assert.equal(rows.orders[0].customer.membership.verified,false);
+ await assert.rejects(()=>request(a,{requestId:'other-request-123456789',memberCode:'LURO-'+'0'.repeat(24)}),/no encontrado/);
+ await assert.rejects(()=>a.call('menuListMembers'),/Login/);
+ assert.equal((await a.call('menuListMembers',{staff:true})).members.length,1);
+ assert.equal((await a.call('menuListMembers',{staff:true,module:'BAR'})).members.length,0);
+ await a.call('menuUpdateOrder',{staff:true,id:o.id,status:'accepted'});
+ const p=a.db.values.get('datos_del_propietario/owner').db;assert.equal(p.mesasEstado.carritoPorMesa['Mesa 1'][0].memberCode,r.code);
+});
+test('packages require staff and verified identity, then appear in the member profile',async()=>{
+ const a=app(),r=await a.call('menuRegisterMember',memberData),data={code:r.code,package:'Almuerzos de noviembre'};
+ await assert.rejects(()=>a.call('menuAssignMemberPackage',data),/Login/);
+ await assert.rejects(()=>a.call('menuAssignMemberPackage',{...data,staff:true}),/Verifica/);
+ const p=a.db.values.get('datos_del_propietario/owner').db;p.clientesFidelizacion=[{id:'client',owner:'owner',cedula:memberData.cedula,premiumActivo:true}];
+ const tasks=await a.call('menuListTasks',{staff:true});await a.call('menuResolveTask',{staff:true,id:tasks.tasks[0].id,customerId:'client'});
+ await a.call('menuAssignMemberPackage',{...data,staff:true});assert.equal((await a.call('menuGetProfile',{accessToken:r.accessToken})).package,data.package);
+ await request(a,{memberCode:r.code});assert.equal((await a.call('menuListOrders',{staff:true})).orders[0].customer.membership.active,true);
+});

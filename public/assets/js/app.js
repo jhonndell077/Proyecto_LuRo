@@ -7364,16 +7364,7 @@ function toggleDetallesProduccion(idx) {
 
     // --- FUNCIONES CORE ---
 
-    const ADMIN_ONLY_PAGES = new Set([
-        'configuracion',
-        'entrenamientos',
-        'agregar',
-        'clientes-puntos',
-        'rnc-dgii',
-        'reporte-compras-distribuidor',
-        'ventas',
-        'autorizaciones'
-    ]);
+    const ADMIN_ONLY_PAGES = new Set(['configuracion', 'autorizaciones']);
     const RESERVED_MODULES = new Set(['COCINA', 'ADMINISTRADOR']);
 
     function esModuloAdministradorActual() {
@@ -7398,7 +7389,7 @@ function toggleDetallesProduccion(idx) {
     }
 
     function estilosModulo(nombre) {
-        if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️', titulo: 'ADMINISTRADOR', descripcion: 'Configuración, usuarios y gestión global del sistema' };
+        if (nombre === 'ADMINISTRADOR') return { color: 'var(--purple)', icono: '🛡️', titulo: 'ADMINISTRACIÓN DE APP', descripcion: 'Configuración, usuarios y gestión global del sistema' };
         if (nombre === 'COCINA') return { color: 'var(--accent)', icono: '👨‍🍳', titulo: 'COCINA', descripcion: 'Platos, almacén, ventas, producción y asistencia' };
         return { color: 'var(--blue)', icono: '🧩', titulo: nombre, descripcion: 'Módulo personalizado' };
     }
@@ -7582,15 +7573,6 @@ function toggleDetallesProduccion(idx) {
             alert("🚫 Los colaboradores no pueden entrar al módulo ADMINISTRADOR.");
             return;
         }
-        if (esAdminModulo && opts.skipAdminPassword !== true) {
-            const passAdmin = prompt("🔐 Ingrese la contraseña del administrador para abrir este módulo:");
-            if (passAdmin === null) return;
-            const accesoAutorizado = passAdmin === (sesionUser && sesionUser.pass ? sesionUser.pass : "") || passwordMatchesMaster(passAdmin) || passAdmin === loginClave;
-            if (!accesoAutorizado) {
-                alert("❌ Contraseña incorrecta.");
-                return;
-            }
-        }
         moduloVistaActual = mod;
         moduloActual = esAdminModulo ? 'COCINA' : mod;
         if (esAdminModulo) moduloAdminObjetivo = 'COCINA';
@@ -7598,7 +7580,7 @@ function toggleDetallesProduccion(idx) {
         document.getElementById('sidebar').style.display = 'block';
         document.getElementById('main-content').style.display = 'block';
         const colorModulo = esAdminModulo ? 'var(--purple)' : (mod === 'COCINA' ? 'var(--accent)' : 'var(--blue)');
-        document.getElementById('sidebar-title').innerText = mod;
+        document.getElementById('sidebar-title').innerText = esAdminModulo ? 'Administración de app' : mod;
         document.getElementById('sidebar-title').style.color = colorModulo;
         document.getElementById('current-module-display').innerText = esAdminModulo ? `${mod} · ${moduloAdminObjetivo}` : mod;
         document.getElementById('current-module-display').style.color = colorModulo;
@@ -13261,7 +13243,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
   function resolverModuloBaseParaPaginaAsistente(page) {
     const pageId = String(page || '').trim();
     if (!pageId) return '';
-    if (['configuracion', 'autorizaciones', 'asistencia'].includes(pageId)) return 'ADMINISTRADOR';
+    if (ADMIN_ONLY_PAGES.has(pageId)) return 'ADMINISTRADOR';
+    if (esModuloAdministradorActual()) return 'COCINA';
     return String(moduloVistaActual || moduloActual || 'COCINA').trim() || 'COCINA';
   }
 

@@ -28,6 +28,7 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
   const reserveRef = ctx => db.collection('menu_reservations').doc(ctx.scope);
   const tasksRef = ctx => db.collection('menu_tasks').doc(ctx.scope).collection('tasks');
   const membersRef = ctx => db.collection('menu_members').doc(ctx.scope).collection('members');
+  const memberCode = id => 'LURO-' + id.slice(0,24).toUpperCase();
   const ordersRef = ctx => db.collection('menu_orders').doc(ctx.scope).collection('orders');
   function publicOrder(o) { return {id:o.id,date:new Date(o.createdAt).toISOString(),status:o.status,items:o.items,subtotal:o.subtotal,delivery:o.delivery,total:o.total,mesa:o.mesa || null,payment:o.payment,acceptedAt:o.acceptedAt || null,preparingAt:o.preparingAt || null,readyAt:o.readyAt || null,deliveredAt:o.deliveredAt || null,rejectionReason:o.rejectionReason || '',updatedAt:o.updatedAt}; }
   return {
@@ -54,12 +55,30 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
           const now=Date.now(),state=rs.data()||{},minute=Math.floor(now/60000),count=state.memberMinute===minute?Number(state.memberCount)||0:0;
           if(count>=10)throw new HttpsError('resource-exhausted','Hay muchas solicitudes de membresía. Intenta en un minuto.');
           tx.set(rr,{...state,memberMinute:minute,memberCount:count+1});
-          tx.set(memberRef,{name,cedula,phone,createdAt:now,customerId:null});
+          tx.set(memberRef,{name,cedula,phone,code:memberCode(customerHash),createdAt:now,customerId:null});
+          tx.set(db.collection('menu_member_codes').doc(ctx.scope+'-'+memberCode(customerHash)),{memberId:customerHash});
           tx.set(tasksRef(ctx).doc('member-'+customerHash),{id:'member-'+customerHash,type:'membership',title:'Verificar nuevo miembro',memberId:customerHash,status:'pending',createdAt:now});
         }
+        if(existing.exists&&!existing.data().code){tx.set(memberRef,{...existing.data(),code:memberCode(customerHash)});tx.set(db.collection('menu_member_codes').doc(ctx.scope+'-'+memberCode(customerHash)),{memberId:customerHash});}
         tx.set(db.collection('menu_customer_access').doc(D.hash(accessToken)),{owner:ctx.owner,module:ctx.module,memberId:customerHash,expiresAt:Date.now()+30*86400000});
-        return {accessToken,expiresInDays:30};
+        return {accessToken,expiresInDays:30,code:memberCode(customerHash),name:existing.exists?existing.data().name:name,phone:existing.exists?existing.data().phone:phone};
       });
+    }),
+    menuAssignMemberPackage: call(async r=>{
+      const c=await staff(r,true),ctx=context({...r.data,owner:c.owner}),code=D.text(r.data.code,40).toUpperCase(),label=D.text(r.data.package,120);
+      if(!/^LURO-[A-F0-9]{24}$/.test(code)||!label)throw new HttpsError('invalid-argument','Indica código y paquete.');
+      return db.runTransaction(async tx=>{
+        const cs=await tx.get(db.collection('menu_member_codes').doc(ctx.scope+'-'+code));
+        if(!cs.exists)throw new HttpsError('not-found','Miembro no encontrado.');
+        const ref=membersRef(ctx).doc(cs.data().memberId),ms=await tx.get(ref);
+        if(!ms.exists||!ms.data().customerId)throw new HttpsError('failed-precondition','Verifica primero la identidad del miembro.');
+        tx.set(ref,{...ms.data(),package:label,packageAssignedAt:Date.now()});return {ok:true};
+      });
+    }),
+    menuListMembers: call(async r => {
+      const c=await staff(r,true),ctx=context({...r.data,owner:c.owner});
+      const snap=await membersRef(ctx).orderBy('createdAt','desc').limit(200).get();
+      return {members:snap.docs.map(d=>{const m=d.data();return {name:m.name,cedula:m.cedula,phone:m.phone,code:m.code||'',package:m.package||'',verified:!!m.customerId,createdAt:m.createdAt};})};
     }),
     menuListTasks: call(async r => {
       const c=await staff(r,true),ctx=context({...r.data,owner:c.owner});
@@ -93,6 +112,17 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
       return db.runTransaction(async tx => {
         const [prev,snap,res] = await Promise.all([tx.get(orderRef),tx.get(ctx.ref),tx.get(resRef)]);
         if (prev.exists) return publicOrder(prev.data());
+        let membership=null;
+        const code=D.text(r.data.memberCode,40).toUpperCase();
+        if(code){
+          if(!/^LURO-[A-F0-9]{24}$/.test(code))throw new HttpsError('invalid-argument','Código de miembro inválido.');
+          const cs=await tx.get(db.collection('menu_member_codes').doc(ctx.scope+'-'+code));
+          if(!cs.exists)throw new HttpsError('not-found','Código de miembro no encontrado en este restaurante.');
+          const ms=await tx.get(membersRef(ctx).doc(cs.data().memberId)),m=ms.data();
+          if(!m)throw new HttpsError('not-found','Miembro no disponible.');
+          const customer=(unpack(snap).clientesFidelizacion||[]).find(c=>String(c.id)===m.customerId&&D.key(c.owner||ctx.owner)===ctx.owner);
+          membership={code,verified:!!customer,active:customer?.premiumActivo===true,customerId:customer?String(customer.id):null};
+        }
         const state = res.data() || {}, quantities = state.quantities || {};
         const minute = Math.floor(Date.now()/60000);
         const count = state.minute === minute ? Number(state.count || 0) : 0;
@@ -101,7 +131,7 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
         const menu = D.catalog(unpack(snap),ctx.owner,ctx.module,quantities), q = D.quote(menu,r.data.items);
         for (const i of q.items) quantities[i.id] = (Number(quantities[i.id]) || 0) + i.quantity;
         const pending = state.pending || {}; pending[customerHash] = (Number(pending[customerHash]) || 0) + 1;
-        const now = Date.now(), order = {id,...q,owner:ctx.owner,module:ctx.module,customerHash,customer:{name},notes,status:'pending',payment:{status:'pending',method:'Caja'},createdAt:now,updatedAt:now};
+        const now = Date.now(), order = {id,...q,owner:ctx.owner,module:ctx.module,customerHash,customer:{name,membership},notes,status:'pending',payment:{status:'pending',method:'Caja'},createdAt:now,updatedAt:now};
         tx.set(orderRef,order); tx.set(resRef,{quantities,pending,minute,count:count+1}); return publicOrder(order);
       });
     }),
@@ -133,7 +163,7 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
           const mesa=Array.from({length:20},(_,i)=>`Mesa ${i+1}`).find(m=>!(tables[m]||[]).length&&!meta[m]?.reservaNombre&&!unions[m]&&!(payload.comandasActivas||[]).some(x=>x.mesa===m));
           if(!mesa)throw new HttpsError('resource-exhausted','No hay mesas libres. Libera una mesa antes de aceptar.');
           const personaId=`web-${id}`;
-          tables[mesa]=order.items.map(i=>({nombre:i.name,precio:i.unitPrice,cantidad:i.quantity,originalIndex:(payload.platos||[]).findIndex(p=>D.dishId(p)===i.id),personaId,personaNombre:order.customer.name,menuOrderId:id,menuItemId:i.id,menuNotes:i.notes}));
+          tables[mesa]=order.items.map(i=>({nombre:i.name,precio:i.unitPrice,cantidad:i.quantity,originalIndex:(payload.platos||[]).findIndex(p=>D.dishId(p)===i.id),personaId,personaNombre:order.customer.name,memberCode:order.customer.membership?.code||'',menuOrderId:id,menuItemId:i.id,menuNotes:i.notes}));
           meta[mesa]={inicioUso:now,reservaNombre:'',reservaHora:'',menuOrderId:id};
           payload.mesaCuentas ||= {};payload.mesaCuentas[mesa]={personas:[{id:personaId,nombre:order.customer.name,pagada:false,metodoPago:''}]};
           payload.menuOrderReceipts ||= {};payload.menuOrderReceipts[id]={mesa,module:ctx.module,acceptedAt:now};
@@ -169,20 +199,20 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
       const access=await db.collection('menu_customer_access').doc(D.hash(r.data.accessToken)).get(),a=access.data();
       if(!a||a.owner!==ctx.owner||a.expiresAt<Date.now())throw new HttpsError('permission-denied','Enlace vencido o inválido. Solicita otro en caja.');
       await assertOwnerActive(ctx.owner);const payload=unpack(await ctx.ref.get());
-      let customerId=a.customerId;
+      let customerId=a.customerId,card={};
       if(a.memberId){
         if(a.module!==ctx.module)throw new HttpsError('permission-denied','Enlace de otro módulo.');
         const ms=await membersRef(ctx).doc(a.memberId).get(),member=ms.data();
         if(!member)throw new HttpsError('not-found','Perfil no disponible.');
-        if(!member.customerId)return {name:member.name,points:0,premiumActive:false,history:[],verificationPending:true};
-        customerId=member.customerId;
+        if(!member.customerId)return {code:member.code||'',package:member.package||'',phone:member.phone,name:member.name,points:0,premiumActive:false,history:[],verificationPending:true};
+        customerId=member.customerId;card={code:member.code||'',package:member.package||'',phone:member.phone};
       }
       const customer=(payload.clientesFidelizacion||[]).find(x=>String(x.id)===customerId && D.key(x.owner||ctx.owner)===ctx.owner);
       if(!customer)throw new HttpsError('not-found','Cliente no disponible.');
       // Only the linked customer's fields. No identity documents, phone, credentials or bank information.
       const identity = String(customer.cedula || '').replace(/\D/g,'');
       const history = (payload.facturasResumen||[]).filter(x => D.key(x.owner)===ctx.owner && x.modulo===ctx.module && identity.length >= 9 && String(x.rnc).replace(/\D/g,'')===identity).slice(-30).map(x=>({date:D.text(x.fecha,80),detail:'Compra registrada',total:Number(x.total)||0}));
-      return {name:D.text(customer.nombre),points:Number(customer.puntos)||0,premiumActive:customer.premiumActivo===true,history};
+      return {...card,name:D.text(customer.nombre),points:Number(customer.puntos)||0,premiumActive:customer.premiumActivo===true,history};
     })
   };
 };

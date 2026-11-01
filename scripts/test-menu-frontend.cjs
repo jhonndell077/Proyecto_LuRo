@@ -17,8 +17,8 @@ async function app(options={}){
       const name=url.split('/').pop(),data=JSON.parse(init.body).data;calls.push({name,data});
       if(options.offline)throw Error('Sin conexión de prueba');
       let result;
-      if(name==='menuRegisterMember')result={accessToken:'c'.repeat(64)};
-      if(name==='menuGetProfile')result={name:'Ana',points:0,premiumActive:false,history:[],verificationPending:true};
+      if(name==='menuRegisterMember')result={accessToken:'c'.repeat(64),code:'LURO-'+ 'C'.repeat(24),name:'Ana',phone:'8095551234'};
+      if(name==='menuGetProfile')result={code:'LURO-'+'C'.repeat(24),name:'Ana',points:0,premiumActive:false,history:[],verificationPending:true};
       if(name==='menuGetCatalog')result={business:'El Patio · fixture',items:options.empty?[]:[dish],brand:{}};
       if(name==='menuGetOrders')result={orders:remote};
       if(name==='menuSubmitOrder'){if(options.submitError)return {ok:false,json:async()=>({error:{message:'Cambió el precio de un plato.'}})};const order={id:'WEB-'+'1'.repeat(28),date:new Date().toISOString(),status:'pending',items:data.items.map(i=>({...i,name:dish.name})),total:250,subtotal:250,delivery:0,payment:{status:'pending'}};remote.push(order);result=order;}
@@ -39,7 +39,7 @@ test('Lafo answers from sales and ingredient names in Edgar context',async()=>{c
  a.w.eval("openLafo();answerLafo('Qué es lo más vendido')");assert.match(a.w.document.getElementById('chat-messages').textContent,/4 porciones vendidas/);
  a.w.eval("answerLafo('De qué se compone Mangú con cebollita')");assert.match(a.w.document.getElementById('chat-messages').textContent,/Plátano, Cebolla/);assert.match(a.w.document.getElementById('chat-messages').textContent,/No comparto cantidades/);
 }finally{a.w.close();}});
-test('membership form sends fields and displays a private profile link',async()=>{const a=await app();try{
+test('membership form displays a screenshot-ready card and fills order identification',async()=>{const a=await app();try{
  a.w.eval("setView('profile')");a.w.document.getElementById('luro-join').click();const f=a.w.document.getElementById('luro-member-form');f.elements.name.value='Ana';f.elements.cedula.value='00112345678';f.elements.phone.value='8095551234';f.dispatchEvent(new a.w.Event('submit',{bubbles:true,cancelable:true}));await tick();await tick();
- assert.ok(a.calls.some(x=>x.name==='menuRegisterMember'&&x.data.cedula==='00112345678'));assert.ok(a.w.document.querySelector('input[aria-label="Enlace privado de miembro"]'));assert.match(a.w.document.getElementById('secondary').textContent,/Perfil creado/);assert.deepEqual(a.errors,[]);
+ assert.ok(a.calls.some(x=>x.name==='menuRegisterMember'&&x.data.cedula==='00112345678'));assert.match(a.w.document.querySelector('.luro-member-card').textContent,/LURO-C{24}/);assert.equal(a.w.document.getElementById('luro-member-code').value,'LURO-'+'C'.repeat(24));assert.match(a.w.document.getElementById('secondary').textContent,/Perfil creado/);assert.deepEqual(a.errors,[]);
 }finally{a.w.close();}});
