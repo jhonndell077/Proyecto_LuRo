@@ -1,6 +1,8 @@
 # Entrada rápida al almacén
 
-En Almacén, «Registrar entrada» abre un formulario de producto existente y cantidad recibida, tomando como referencia la captura facilitada del Gestor. Las opciones pertenecen únicamente al propietario y módulo activos de LuRo. La cantidad se expresa en la unidad del producto y se suma a su existencia; se conservan costo unitario, proveedor y metas. Las compras con precios nuevos y el alta de productos siguen disponibles en «Entrada avanzada / Nuevo producto».
+En Almacén, «Registrar entrada» abre un formulario de producto existente y cantidad recibida, tomando como referencia la captura facilitada del Gestor. Las opciones pertenecen únicamente al propietario y módulo activos de LuRo. La unidad de entrada es seleccionable entre las compatibles con el producto (peso, volumen o unidades). La cantidad se convierte a la unidad del almacén y se suma a su existencia; se conservan costo unitario, proveedor y metas. Las compras con precios nuevos y el alta de productos siguen disponibles en «Entrada avanzada / Nuevo producto».
+
+El historial conserva la cantidad y unidad recibidas junto con la cantidad convertida y unidad del almacén. Por ejemplo, 500 g suman 0.5 Kg a un producto almacenado en Kg. Se rechazan unidades incompatibles antes de cambiar existencias.
 
 Cada entrada pasa por guardarDatos y su sincronización habitual, incorpora registro en db.entradas con operador, saldo anterior y posterior, y activa el observador existente de notificaciones. Si falla la persistencia local se revierten saldo e historial. Se conservan las restricciones actuales: colaboradores solo lectura y asignación manual obligatoria.
 

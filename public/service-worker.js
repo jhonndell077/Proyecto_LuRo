@@ -1,6 +1,6 @@
-const SW_VERSION = 'luro-pwa-entry-20261101';
+const SW_VERSION = 'luro-pwa-entry-units-20261101';
 const CORE_ASSETS = [
-  '/assets/js/warehouse-entry.js?v=20261101-entry',
+  '/assets/js/warehouse-entry.js?v=20261101-entry-units',
   '/assets/js/inventory-notifications-domain.js?v=20261101-notices',
   '/assets/js/inventory-notifications.js?v=20261101-notices',
   '/assets/js/inventory-readers.js?v=20261101-readers',
