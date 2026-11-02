@@ -6847,6 +6847,7 @@ async function finalizarVenta() {
             // Registrar en historial
             db.ventas.push({
                 menuOrderId: item.menuOrderId || '',
+                metodoPago: db.mesaCuentas?.[mesaCanonica(mesaActiva)]?.personas?.find(person=>person.id===item.personaId)?.metodoPago || '',
                 fecha: new Date().toLocaleString(),
                 ts: Date.now(),
                 mesa: obtenerNombreMesa(mesaActiva),
@@ -10342,7 +10343,7 @@ function allM(){let a=[];for(let i=1;i<=20;i++)a.push('Mesa '+i);for(let i=1;i<=
 window.finalizarComanda=function(id){edb();const i=db.comandasActivas.findIndex(x=>x.id===id);if(i<0)return;const c=db.comandasActivas[i];db.comandasActivas.splice(i,1);db.comandasHistorial.push({...c,doneAt:Date.now()});guardarDatos();renderComandas();};
 window.handleComandaCheck=function(cb,id){const card=cb?.closest('.comanda-card-box');if(card){card.style.transition='all .25s ease';card.style.transform='scale(.96)';card.style.opacity='.35';}setTimeout(()=>finalizarComanda(id),220);};
 
-function upCom(m){edb();const c=mesaCanonica(m),it=(carritoPorMesa[c]||[]);if(!it.length)return;const id=`CMD-${sesionUser.user}-${moduloActual}-${c}`;const i=db.comandasActivas.findIndex(x=>x.id===id),r={...(i>=0?db.comandasActivas[i]:{}),id,mesa:c,createdAt:i>=0?db.comandasActivas[i].createdAt:Date.now(),items:it.map(x=>({nombre:x.nombre,cantidad:x.cantidad,notes:x.menuNotes||''})),owner:sesionUser.user,modulo:moduloActual};if(i>=0)db.comandasActivas[i]=r;else db.comandasActivas.push(r);guardarDatos();}
+function upCom(m){edb();if((carritoPorMesa[mesaCanonica(m)]||[]).some(x=>x.menuOrderId&&db.menuOrderReceipts?.[x.menuOrderId]?.flow==='pay-first'))return;const c=mesaCanonica(m),it=(carritoPorMesa[c]||[]);if(!it.length)return;const id=`CMD-${sesionUser.user}-${moduloActual}-${c}`;const i=db.comandasActivas.findIndex(x=>x.id===id),r={...(i>=0?db.comandasActivas[i]:{}),id,mesa:c,createdAt:i>=0?db.comandasActivas[i].createdAt:Date.now(),items:it.map(x=>({nombre:x.nombre,cantidad:x.cantidad,notes:x.menuNotes||''})),owner:sesionUser.user,modulo:moduloActual};if(i>=0)db.comandasActivas[i]=r;else db.comandasActivas.push(r);guardarDatos();}
 window.renderComandas=function(){
 const b=document.getElementById('comandas-activas');if(!b)return;
 const a=(db.comandasActivas||[]).filter(x=>(!x.owner||x.owner===sesionUser.user)&&(!x.modulo||x.modulo===moduloActual));
@@ -10860,6 +10861,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     const monto = pendientes.reduce((a, p) => a + Number(p.montoObjetivo || 0), 0);
     asegurarModalesCuentasMesa();
     pagoCuentaMesaCtx = { tipo: 'todos', monto, metodo: '' };
+    const webPayFirst=Object.values(db.menuOrderReceipts||{}).some(r=>r.mesa===mesa&&r.flow==='pay-first'&&!r.paidAt);
+    document.querySelector('#modal-pago-cuentas-mesa button[onclick="confirmarPagoCuentaMesa()"]').textContent=webPayFirst?'CONFIRMAR PAGO Y CERRAR CUENTA':'CONFIRMAR PAGO';
     const t = document.getElementById('pago-cuentas-mesa-titulo');
     const m = document.getElementById('pago-cuentas-mesa-monto');
     const s = document.getElementById('pago-cuentas-mesa-metodo');
@@ -10930,6 +10933,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
       refrescarPanelCuentasMesa();
       return;
     }
+    const anteriores=structuredClone(cfg.personas);
     const montos = calcularMontosPersonas(mesa);
     cfg.personas.forEach(p => {
       const m = montos.find(x => String(x.id) === String(p.id));
@@ -10940,6 +10944,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
     guardarDatos();
     cerrarModalPagoCuentaMesa();
     refrescarPanelCuentasMesa();
+    const webId=Object.keys(db.menuOrderReceipts||{}).find(id=>db.menuOrderReceipts[id].mesa===mesa&&db.menuOrderReceipts[id].flow==='pay-first'&&!db.menuOrderReceipts[id].paidAt);
+    if(webId){await window.finalizarVenta();if(!(db.ventas||[]).some(v=>v.menuOrderId===webId)){cfg.personas=anteriores;guardarDatos();refrescarPanelCuentasMesa();alert('El cobro no se completó. Revisa la cuenta y vuelve a confirmar.');}return;}
     if (confirm('Pago total registrado. ¿Desea registrar la salida y cerrar la mesa ahora?')) {
       await window.finalizarVenta();
     }

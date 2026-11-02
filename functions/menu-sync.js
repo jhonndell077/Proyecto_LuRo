@@ -18,7 +18,7 @@ module.exports = async function syncMenuPayments(db, tx, payload, owner) {
     if(!matches)continue; // partial payments keep the reservation until the full order is recorded.
     const scope=D.hash(`${owner}\0${order.module}`);D.release(states[scope].quantities,order);
     receipts[order.id].paidAt = Date.now();
-    tx.update(snap.ref,{payment:{status:'paid',method:'Caja LuRo',paidAt:Date.now()},updatedAt:Date.now()});
+    tx.update(snap.ref,{payment:{status:'paid',method:sales.find(v=>v.menuOrderId===order.id)?.metodoPago||'Caja LuRo',paidAt:Date.now()},updatedAt:Date.now()});
   }
   for(const scope of scopes)tx.set(db.collection('menu_reservations').doc(scope),states[scope]);
 };

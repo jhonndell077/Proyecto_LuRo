@@ -49,7 +49,7 @@ function quote(menu, lines) {
   });
   return {items, subtotal: money(items.reduce((s, x) => s + x.unitPrice * x.quantity, 0)), delivery: 0, total: money(items.reduce((s, x) => s + x.unitPrice * x.quantity, 0))};
 }
-const transitions = {pending: ['accepted','rejected'], accepted: ['preparing'], preparing: ['ready'], ready: ['delivered']};
+const transitions = {pending: ['reviewed','rejected'], reviewed: ['accepted','rejected'], accepted: ['preparing'], preparing: ['ready'], ready: ['delivered']};
 function canTransition(from, to) { return from === to || (transitions[from] || []).includes(to); }
 function release(reserved, order) { for (const i of order.items) reserved[i.id] = Math.max(0, (Number(reserved[i.id]) || 0) - i.quantity); }
 // Server-created mesas survive a stale whole-database upload until the client acknowledges them.

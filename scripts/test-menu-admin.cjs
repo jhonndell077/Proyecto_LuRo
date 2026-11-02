@@ -9,7 +9,7 @@ async function app(collaborator=false){
   const dom=new JSDOM(html,{url:'http://fixture.local/app.html',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window,calls=[];
   const commands=w.document.createElement('div');commands.id='comandas';w.document.getElementById('main-content').append(commands);
   w.setInterval=fn=>(calls.push(fn),calls.length);w.alert=()=>{};w.HTMLElement.prototype.scrollIntoView=function(){};
-  vm.runInContext(`let db={platos:[{owner:'owner',modulo:'COCINA',nombre:'Mangú',precio:250,stock:2}],clientesFidelizacion:[]};let sesionUser={user:'owner'};let moduloActual='COCINA';let esColaboradorSesion=${collaborator};let permisosSesion=['salida'];function guardarDatos(){}function obtenerNombreNegocioActual(){return 'El Patio'}function showPage(){};window.obtenerOwnerSesionActual=()=> 'owner';window.subirBaseActualAlCloud=async()=>true;window.descargarBaseDesdeCloud=async()=>true;window.__apiCalls=[];window.luroMenuAdminCall=async(name,data)=>{window.__apiCalls.push({name,data});return {orders:[]}};`,dom.getInternalVMContext());
+  vm.runInContext(`let db={platos:[{owner:'owner',modulo:'COCINA',nombre:'Mangú',precio:250,stock:2}],clientesFidelizacion:[]};let sesionUser={user:'owner'};let moduloActual='COCINA';let esColaboradorSesion=${collaborator};let permisosSesion=['salida'];function guardarDatos(){}function obtenerNombreNegocioActual(){return 'El Patio'}function showPage(){};function seleccionarMesaSalida(){};window.obtenerOwnerSesionActual=()=> 'owner';window.subirBaseActualAlCloud=async()=>true;window.descargarBaseDesdeCloud=async()=>true;window.__apiCalls=[];window.luroMenuAdminCall=async(name,data)=>{window.__apiCalls.push({name,data});return {orders:[]}};`,dom.getInternalVMContext());
   vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../public/assets/js/menu-admin.js'),'utf8'),dom.getInternalVMContext());
   await new Promise(r=>w.document.addEventListener('DOMContentLoaded',r,{once:true}));
   calls[0]();await new Promise(r=>setImmediate(r));return {w,calls};
@@ -49,8 +49,8 @@ test('accepted requests leave cashier queue and retain kitchen/delivery controls
  let orders=[{id:'WEB-fixture',status:'pending',customer:{name:'Ana'},total:20,payment:{status:'pending'},items:[{name:'Pan',quantity:1}]}];
  a.w.luroMenuAdminCall=async(name,data)=>{if(name==='menuUpdateOrder')orders=orders.map(o=>({...o,status:data.status}));return {orders};};
  await a.calls[1]();assert.equal(a.w.document.querySelectorAll('#menu-orders-list [data-order]').length,2);
- a.w.document.querySelector('#menu-orders-list [data-next="accepted"]').click();await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
- assert.equal(a.w.document.querySelectorAll('#menu-orders-list [data-order]').length,0);
- assert.ok(a.w.document.querySelector('#menu-kitchen-list [data-next="preparing"]'));
+ a.w.document.querySelector('#menu-orders-list [data-next="reviewed"]').click();await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));
+ assert.ok(a.w.document.querySelector('[data-menu-pay]'));assert.equal(a.w.document.querySelector('#menu-kitchen-list [data-next="preparing"]'),null);
+ orders[0].payment={status:'paid'};await a.calls[1]();assert.ok(a.w.document.querySelector('#menu-orders-list [data-next="accepted"]'));a.w.document.querySelector('#menu-orders-list [data-next="accepted"]').click();await new Promise(r=>setImmediate(r));await new Promise(r=>setImmediate(r));assert.ok(a.w.document.querySelector('#menu-kitchen-list [data-next="preparing"]'));
  orders[0].status='ready';await a.calls[1]();assert.ok(a.w.document.querySelector('#menu-kitchen-list [data-next="delivered"]'));
 }finally{a.w.close();}});

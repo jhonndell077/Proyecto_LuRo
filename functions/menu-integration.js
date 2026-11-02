@@ -20,7 +20,7 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
     if (c.collaborator) {
       const snap = await db.collection('autorizaciones').doc(`${c.owner}__${c.username}`).get();
       const person = snap.data() || {}, perms = person.permisos || [];
-      const needed = ['accepted','rejected'].includes(request.data?.status) ? ['salida'] : ['salida','comandas'];
+      const needed = ['reviewed','accepted','rejected'].includes(request.data?.status) ? ['salida'] : ['salida','comandas'];
       if (!snap.exists || person.activo === false || !needed.some(p=>perms.includes(p))) throw new HttpsError('permission-denied','No tienes permisos de caja o cocina.');
     }
     return c;
@@ -30,7 +30,7 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
   const membersRef = ctx => db.collection('menu_members').doc(ctx.scope).collection('members');
   const memberCode = id => 'LURO-' + id.slice(0,24).toUpperCase();
   const ordersRef = ctx => db.collection('menu_orders').doc(ctx.scope).collection('orders');
-  function publicOrder(o) { return {id:o.id,date:new Date(o.createdAt).toISOString(),status:o.status,items:o.items,subtotal:o.subtotal,delivery:o.delivery,total:o.total,mesa:o.mesa || null,payment:o.payment,acceptedAt:o.acceptedAt || null,preparingAt:o.preparingAt || null,readyAt:o.readyAt || null,deliveredAt:o.deliveredAt || null,rejectionReason:o.rejectionReason || '',updatedAt:o.updatedAt}; }
+  function publicOrder(o) { return {id:o.id,date:new Date(o.createdAt).toISOString(),status:o.status,items:o.items,subtotal:o.subtotal,delivery:o.delivery,total:o.total,mesa:o.mesa || null,payment:o.payment,reviewedAt:o.reviewedAt || null,acceptedAt:o.acceptedAt || null,preparingAt:o.preparingAt || null,readyAt:o.readyAt || null,deliveredAt:o.deliveredAt || null,rejectionReason:o.rejectionReason || '',updatedAt:o.updatedAt}; }
   return {
     menuGetCatalog: call(async r => {
       const ctx = context(r.data); await assertOwnerActive(ctx.owner);
@@ -156,7 +156,7 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
         const order=os.data(),payload=unpack(bs),state=rs.data()||{},quantities=state.quantities||{},pending=state.pending||{},now=Date.now();
         if(order.status===next)return publicOrder(order);
         if(!D.canTransition(order.status,next))throw new HttpsError('failed-precondition','Transición de pedido inválida.');
-        if(next==='accepted'){
+        if(next==='reviewed'){
           const menu=D.catalog(payload,ctx.owner,ctx.module,{});
           if(order.items.some(i=>!menu.items.some(p=>p.id===i.id && p.stock>=Math.max(i.quantity,Number(quantities[i.id])||0))))throw new HttpsError('failed-precondition','Revisa las existencias antes de aceptar.');
           payload.mesasEstado ||= {}; const tables=payload.mesasEstado.carritoPorMesa ||= {},meta=payload.mesasEstado.mesaMeta ||= {},unions=payload.mesasEstado.mesaUniones||{};
@@ -165,16 +165,29 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
           const personaId=`web-${id}`;
           tables[mesa]=order.items.map(i=>({nombre:i.name,precio:i.unitPrice,cantidad:i.quantity,originalIndex:(payload.platos||[]).findIndex(p=>D.dishId(p)===i.id),personaId,personaNombre:order.customer.name,memberCode:order.customer.membership?.code||'',menuOrderId:id,menuItemId:i.id,menuNotes:i.notes}));
           meta[mesa]={inicioUso:now,reservaNombre:'',reservaHora:'',menuOrderId:id};
+          payload.mesaClienteVenta ||= {};payload.mesaClienteVenta[mesa]={nombre:order.customer.name,rnc:'',telefono:''};
           payload.mesaCuentas ||= {};payload.mesaCuentas[mesa]={personas:[{id:personaId,nombre:order.customer.name,pagada:false,metodoPago:''}]};
-          payload.menuOrderReceipts ||= {};payload.menuOrderReceipts[id]={mesa,module:ctx.module,acceptedAt:now};
-          payload.comandasActivas ||= [];payload.comandasActivas.push({id:`CMD-${ctx.owner}-${ctx.module}-${mesa}`,menuOrderId:id,mesa,owner:ctx.owner,modulo:ctx.module,createdAt:now,items:order.items.map(i=>({nombre:i.name,cantidad:i.quantity,notes:i.notes})),notes:order.notes});
-          order.mesa=mesa;order.acceptedAt=now;
+          payload.menuOrderReceipts ||= {};payload.menuOrderReceipts[id]={mesa,module:ctx.module,stagedAt:now,flow:'pay-first'};
+          order.mesa=mesa;order.reviewedAt=now;
           tx.set(ctx.ref,{db:payload,'base de datos':payload,updatedAtClient:now,syncKey:`menu-${id}-${now}`,updatedFrom:'menu-order'},{merge:true});
         }
+        if(next==='accepted'){
+          if(order.payment?.status!=='paid')throw new HttpsError('failed-precondition','Confirma el pago y registra la venta antes de enviar a cocina.');
+          payload.comandasActivas ||= [];
+          if(!payload.comandasActivas.some(x=>x.menuOrderId===id))payload.comandasActivas.push({id:`CMD-${id}`,menuOrderId:id,mesa:order.mesa||`Pedido ${id.slice(-6)}`,owner:ctx.owner,modulo:ctx.module,createdAt:now,items:order.items.map(i=>({nombre:i.name,cantidad:i.quantity,notes:i.notes})),notes:order.notes});
+          order.acceptedAt=now;
+          tx.set(ctx.ref,{db:payload,'base de datos':payload,updatedAtClient:now,syncKey:`menu-send-${id}-${now}`,updatedFrom:'menu-order'},{merge:true});
+        }
         if(next==='rejected'){
+          if(order.payment?.status==='paid')throw new HttpsError('failed-precondition','El pedido ya fue cobrado. Gestiona su devolución antes de cancelarlo.');
+          if(order.status==='reviewed'){
+            const mesa=payload.menuOrderReceipts?.[id]?.mesa;
+            if(mesa){const lines=payload.mesasEstado?.carritoPorMesa?.[mesa]||[];if(lines.some(x=>x.menuOrderId!==id))throw new HttpsError('failed-precondition','La cuenta contiene otros consumos; revísala antes de rechazar.');payload.mesasEstado.carritoPorMesa[mesa]=[];if(payload.mesasEstado.mesaMeta)delete payload.mesasEstado.mesaMeta[mesa];if(payload.mesaCuentas)delete payload.mesaCuentas[mesa];if(payload.mesaClienteVenta)delete payload.mesaClienteVenta[mesa];delete payload.menuOrderReceipts[id];}
+            tx.set(ctx.ref,{db:payload,'base de datos':payload,updatedAtClient:now,syncKey:`menu-reject-${id}-${now}`,updatedFrom:'menu-order'},{merge:true});
+          }
           order.rejectionReason=D.text(r.data.reason || 'Caja no pudo aceptar el pedido.',240);D.release(quantities,order);
         }
-        if(order.status==='pending')pending[order.customerHash]=Math.max(0,(Number(pending[order.customerHash])||0)-1);
+        if(['pending','reviewed'].includes(order.status)&&['accepted','rejected'].includes(next))pending[order.customerHash]=Math.max(0,(Number(pending[order.customerHash])||0)-1);
         if(next==='preparing')order.preparingAt=now;
         if(next==='ready'){
           order.readyAt=now;payload.comandasActivas ||= [];payload.comandasHistorial ||= [];
