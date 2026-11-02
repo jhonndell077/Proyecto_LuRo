@@ -4127,6 +4127,7 @@ function etiquetaPermisoRenglon(p) {
         configuracion: 'Configuración',
         agregar: 'Agregar Plato',
         inventario: 'Almacén',
+        'entrada-mercancia': 'Entrada de mercancía',
         distribuidores: 'Distribuidores',
         'produccion-interna': 'Producción Interna',
         disponibilidad: 'Disponibilidad',
@@ -4338,6 +4339,7 @@ function bloquearAccionAdministrativaColaborador(mensaje = "🚫 Esta acción no
 }
 
 function tienePermisoPagina(pageId) {
+    if (pageId === 'entrada-mercancia') return tienePermisoPagina('inventario');
     if (pageId === 'tareas-pendientes') return !esColaboradorSesion;
     if (pageId === 'diagnostico') return true;
     if (pageId === 'comandos') return true;
@@ -7724,7 +7726,7 @@ function toggleDetallesProduccion(idx) {
             if (!el) return;
             el.disabled = esBasico;
         });
-        document.querySelectorAll('#inventario button[onclick*="agregarAlmacen"], #inventario button[onclick*="entradaAutomaticaMasiva"], #inventario button[onclick*="enviarPedidoWhatsapp"], #inventario button[onclick*="borrarTodoElAlmacen"]').forEach(btn => {
+        document.querySelectorAll('#entrada-mercancia button[onclick*="agregarAlmacen"], #inventario button[onclick*="agregarAlmacen"], #inventario button[onclick*="entradaAutomaticaMasiva"], #inventario button[onclick*="enviarPedidoWhatsapp"], #inventario button[onclick*="borrarTodoElAlmacen"]').forEach(btn => {
             btn.style.display = esBasico ? 'none' : '';
         });
 
@@ -8530,7 +8532,8 @@ function seleccionarProveedorComparador(catId, unidadObjetivo = '') {
 }
 
 function seleccionarProveedorParaAlmacen(distribuidor, producto, unidadCatalogo, precioCatalogo) {
-    showPage('inventario');
+    showPage('entrada-mercancia');
+    document.getElementById('inv_nombre')?.closest('details')?.setAttribute('open', '');
     const inputNom = document.getElementById('inv_nombre');
     const selectDist = document.getElementById('inv_dist_select');
     const selectUnid = document.getElementById('inv_unidad');
@@ -12995,7 +12998,7 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
   function inferirTipoEntidadPorPaginaActivaAsistente() {
     const page = obtenerPaginaActivaAsistente();
-    if (page === 'inventario' || page === 'entradas-almacen') return 'almacen';
+    if (page === 'inventario' || page === 'entrada-mercancia' || page === 'entradas-almacen') return 'almacen';
     if (page === 'disponibilidad') return 'plato';
     if (page === 'produccion-interna' || page === 'historial-produccion') return 'produccion';
     if (page === 'distribuidores') return 'distribuidor';
@@ -15038,7 +15041,8 @@ document.addEventListener('DOMContentLoaded',()=>{edb();const st=document.create
 
   function prepararFormularioAlmacenAsistente(datos) {
     if (typeof window.showPage === 'function') {
-      window.showPage('inventario');
+      window.showPage('entrada-mercancia');
+      document.getElementById('inv_nombre')?.closest('details')?.setAttribute('open', '');
     }
     if (typeof actualizarSelectDistribuidores === 'function') {
       actualizarSelectDistribuidores();

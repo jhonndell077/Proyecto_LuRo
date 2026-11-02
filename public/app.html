@@ -265,6 +265,7 @@
         </a>
         <div class="folder-content">
             <a onclick="showPage('inventario')">📦 Almacén</a>
+            <a onclick="showPage('entrada-mercancia')">📥 Entrada de mercancía</a>
             <a onclick="showPage('distribuidores')">🚚 Distribuidores</a>
             <a onclick="showPage('produccion-interna')">🏭 Producción Interna</a>
             <a onclick="showPage('disponibilidad')">👁️ Disponibilidad</a>
@@ -433,7 +434,8 @@
       </div>
     </div>
 
-<div id="inventario" class="content-section">
+<div id="entrada-mercancia" class="content-section"><div class="card" id="warehouse-entry-surface"><h2>📥 Entrada de mercancía</h2><p>Registra mercancía recibida en el almacén del módulo activo.</p><button type="button" class="btn" onclick="showPage('inventario')">Ver almacén</button></div></div>
+    <div id="inventario" class="content-section">
       <div class="card inventory-card-shell">
         <div class="inventory-hero">
           <div>
@@ -1824,14 +1826,14 @@
 
   <script src="assets/js/stock-domain.js?v=20261101-operations"></script>
   <script src="assets/js/inventory-notifications-domain.js?v=20261101-notices"></script>
-  <script src="assets/js/app.js?v=20261101-notices"></script>
+  <script src="assets/js/app.js?v=20261101-entry-module"></script>
   <script src="assets/js/asistencia-module.js?v=20260417-asistencia-sucursal-fix-1"></script>
   <script src="assets/js/cloud-bridge.js?v=20261101-readers"></script>
   <script src="assets/js/inventory-domain.js?v=20261101-advanced"></script>
   <script src="assets/js/inventory-readers.js?v=20261101-readers"></script>
   <script src="assets/js/inventory-import.js?v=20261101-readers"></script>
   <script src="assets/js/inventory-workspace.js?v=20261101-readable"></script>
-  <script src="assets/js/warehouse-entry.js?v=20261101-entry-units"></script>
+  <script src="assets/js/warehouse-entry.js?v=20261101-entry-module"></script>
   <script src="assets/js/operations-workspace.js?v=20261101-operations"></script>
   <script src="assets/js/production-workspace.js?v=20261101-operations"></script>
   <script src="assets/js/menu-admin.js?v=20261101-luro33"></script>

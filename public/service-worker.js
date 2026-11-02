@@ -1,6 +1,6 @@
-const SW_VERSION = 'luro-pwa-entry-units-20261101';
+const SW_VERSION = 'luro-pwa-entry-module-20261101';
 const CORE_ASSETS = [
-  '/assets/js/warehouse-entry.js?v=20261101-entry-units',
+  '/assets/js/warehouse-entry.js?v=20261101-entry-module',
   '/assets/js/inventory-notifications-domain.js?v=20261101-notices',
   '/assets/js/inventory-notifications.js?v=20261101-notices',
   '/assets/js/inventory-readers.js?v=20261101-readers',
@@ -27,7 +27,7 @@ const CORE_ASSETS = [
   '/assets/saas/css/access.css?v=20260625-clean-login-1',
   '/assets/saas/js/access.js?v=20260625-clean-login-1',
   '/assets/css/styles.css?v=20261030-mobile-startup-1',
-  '/assets/js/app.js?v=20261101-notices',
+  '/assets/js/app.js?v=20261101-entry-module',
   '/assets/js/cloud-bridge.js?v=20261101-readers',
   '/assets/js/menu-admin.js?v=20261101-luro33',
   '/assets/css/menu-editor.css?v=20261030-visual-editor-1',

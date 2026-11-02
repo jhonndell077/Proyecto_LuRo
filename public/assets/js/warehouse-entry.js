@@ -49,11 +49,10 @@
   const host=document.querySelector('#inventario .inventory-disclosure');if(!host)return;
   const section=document.createElement('section');section.id='warehouse-entry';section.className='warehouse-entry';
   section.innerHTML='<h3>📥 Formulario de entrada</h3><p id="warehouse-entry-module"></p><p>Selecciona un producto existente y suma la cantidad recibida a su almacén.</p><form id="warehouse-entry-form"><label for="warehouse-entry-product">Producto</label><select id="warehouse-entry-product" required></select><label for="warehouse-entry-quantity">Cantidad recibida</label><input id="warehouse-entry-quantity" type="number" min="0" step="any" placeholder="0.00" required><label for="warehouse-entry-unit">Unidad de medida de entrada</label><select id="warehouse-entry-unit" required></select><p>La cantidad se convierte automáticamente a la unidad del almacén. Se conservan las metas, el proveedor y el costo unitario del producto. Para registrar compras con otro costo o crear productos usa el formulario avanzado.</p><div class="warehouse-entry-actions"><button type="submit" class="btn btn-save">Guardar entrada</button><button type="reset" class="btn">Limpiar</button></div></form><p id="warehouse-entry-status" role="status" aria-live="polite"></p>';
-  host.before(section);host.querySelector('summary').textContent='Entrada avanzada / Nuevo producto';
+  $('warehouse-entry-surface').append(section);host.querySelector('summary').textContent='Entrada avanzada / Nuevo producto';$('warehouse-entry-surface').append(host);
   $('warehouse-entry-product').addEventListener('change',()=>{$('warehouse-entry-unit').replaceChildren();updateUnits();});$('warehouse-entry-form').addEventListener('submit',save);$('warehouse-entry-form').addEventListener('reset',()=>$('warehouse-entry-status').textContent='');
-  const nav=document.createElement('button');nav.type='button';nav.className='btn btn-save';nav.textContent='Registrar entrada';nav.id='warehouse-entry-open';nav.onclick=()=>{$('inventory-tab-stock').click();section.scrollIntoView({behavior:'smooth',block:'start'});$('warehouse-entry-product').focus({preventScroll:true});};document.querySelector('.inventory-tabs').prepend(nav);
   const original=window.renderAlmacen;window.renderAlmacen=function(){const result=original.apply(this,arguments);render();return result;};
-  const navigate=window.showPage;window.showPage=function(id){const result=navigate.apply(this,arguments);render();return result;};
+  const navigate=window.showPage;window.showPage=function(id){const result=navigate.apply(this,arguments);if(id==='entrada-mercancia'&&$('entrada-mercancia').classList.contains('active'))renderAlmacen();render();return result;};
   render();setInterval(render,1500);
  });
 })();
