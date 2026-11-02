@@ -3698,7 +3698,7 @@ function normalizarDBSyncGlobal() {
     if (!db || typeof db !== 'object') db = {};
     const arrKeys = [
         'usuarios', 'platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones',
-        'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'distribuidores', 'catalogoDistribuidores',
+        'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'inventoryNotifications', 'distribuidores', 'catalogoDistribuidores',
         'facturasResumen', 'clientesFidelizacion', 'entrenamientos', 'modulosCustom',
         'comandasActivas', 'comandasHistorial', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'
     ];
@@ -3706,7 +3706,7 @@ function normalizarDBSyncGlobal() {
 
     const objKeys = [
         'codigosClienteRNC', 'registroInicialUsuarios', 'qrClienteLinks',
-        'deliveryMeta', 'mesaCuentas', 'mesaEstadoVenta', 'mesaClienteVenta'
+        'inventoryNotificationState', 'deliveryMeta', 'mesaCuentas', 'mesaEstadoVenta', 'mesaClienteVenta'
     ];
     objKeys.forEach((k) => { if (!db[k] || typeof db[k] !== 'object') db[k] = {}; });
 
@@ -3733,7 +3733,7 @@ window.baseTieneContenido = baseTieneContenido;
         const saveSource = String(opts?.source || '').trim().toLowerCase();
         asegurarCuentaMaestra();
         normalizarDBSyncGlobal();
-        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
+        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'inventoryNotifications', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
         tablasModulo.forEach(k => {
             if (!Array.isArray(db[k])) return;
             db[k] = db[k].map(item => (item && item.modulo === 'ADMINISTRADOR') ? { ...item, modulo: 'COCINA' } : item);
@@ -3744,6 +3744,8 @@ window.baseTieneContenido = baseTieneContenido;
             mesaMeta: (typeof mesaMeta !== 'undefined') ? mesaMeta : {},
             mesaUniones: (typeof mesaUniones !== 'undefined') ? mesaUniones : {}
         };
+        const inventoryNoticeBackup = window.LuroInventoryNotices ? { records: structuredClone(db.inventoryNotifications), state: structuredClone(db.inventoryNotificationState) } : null;
+        if (window.LuroInventoryNotices) { window.LuroInventoryNotices.observe(db); Promise.resolve().then(() => window.dispatchEvent(new Event('luro-inventory-notices'))); }
         const serializedCurrent = JSON.stringify(db);
         if (serializedCurrent === String(window.__luroLastSavedSnapshot || '')) {
             return;
@@ -3776,7 +3778,11 @@ window.baseTieneContenido = baseTieneContenido;
         if (!window.__cloudApplyingRemote && Number(saveMeta.updatedAtClient || 0) > 0) {
             window.__cloudLocalChangeAt = Number(saveMeta.updatedAtClient || now);
         }
-        localStorage.setItem('LURO_CONTROL_DB', serializedDb);
+        try { localStorage.setItem('LURO_CONTROL_DB', serializedDb); } catch (error) {
+            if (inventoryNoticeBackup) { db.inventoryNotifications = inventoryNoticeBackup.records; db.inventoryNotificationState = inventoryNoticeBackup.state; }
+            throw error;
+        }
+        window.__inventoryNoticesPending = false;
         window.__luroLastSavedSnapshot = serializedDb;
         guardarMetaDbLocal(saveMeta);
         if (!skipCloudUpload && typeof window.autoSubirCloudDebounced === 'function') window.autoSubirCloudDebounced();
@@ -3802,6 +3808,7 @@ function cargarDatos() {
         if(d) { 
           db = d; 
           normalizarDBSyncGlobal();
+          if (window.LuroInventoryNotices?.observe(db)) window.__inventoryNoticesPending = true;
           if(!db.usuarios) db.usuarios = [];
           if(!db.autorizaciones) db.autorizaciones = [];
           if(!db.produccion_stock) db.produccion_stock = [];
@@ -5460,6 +5467,8 @@ window.importarDBDesdeCloud = function (remoteDb, opts = {}) {
     if (!force && remoteUpdatedAt <= 0 && remoteHasContent && localHasContent && serializedRemote !== localSnapshot) {
         console.warn('Conflicto sin versión remota válida: se aplicará nube por seguridad de sincronización.');
     }
+    const inventoryNoticeSnapshot = JSON.stringify([remoteDb.inventoryNotifications || [], remoteDb.inventoryNotificationState || {}]);
+    if (window.LuroInventoryNotices) window.LuroInventoryNotices.merge(remoteDb, db);
     db = remoteDb;
     asegurarCuentaMaestra();
     if (typeof normalizarDBSyncGlobal === 'function') normalizarDBSyncGlobal();
@@ -5482,6 +5491,10 @@ window.importarDBDesdeCloud = function (remoteDb, opts = {}) {
     } finally {
         window.__cloudImportMeta = null;
         window.__cloudApplyingRemote = false;
+    }
+    if (window.LuroInventoryNotices && (db.inventoryNotifications?.length || Object.keys(db.inventoryNotificationState || {}).length) && inventoryNoticeSnapshot !== JSON.stringify([db.inventoryNotifications || [], db.inventoryNotificationState || {}])) {
+        window.__cloudLastUploadedSnapshot = serializedRemote;
+        guardarDatos({ source: 'inventory-notifications' });
     }
     rehidratarLogoPerfilActivo().then((restored) => {
         if (restored && typeof window.refrescarUITrasSyncCloud === 'function') {
@@ -7478,7 +7491,7 @@ function toggleDetallesProduccion(idx) {
             !(m.owner === sesionUser.user && String(m.nombre || '').trim().toUpperCase() === nombre)
         );
 
-        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
+        const tablasModulo = ['platos', 'almacen', 'entradas', 'ventas', 'decomisos', 'autorizaciones', 'produccion_stock', 'historial_prod', 'productionRecipes', 'productionHolds', 'productionSchedule', 'inventoryRecounts', 'inventoryNotifications', 'distribuidores', 'catalogoDistribuidores', 'facturasResumen', 'entrenamientos', 'asistenciaRegistros', 'asistenciaAutorizaciones', 'asistenciaConfig'];
         tablasModulo.forEach(k => {
             if (!Array.isArray(db[k])) return;
             db[k] = db[k].filter(item => !(item && item.owner === sesionUser.user && String(item.modulo || '').trim().toUpperCase() === nombre));

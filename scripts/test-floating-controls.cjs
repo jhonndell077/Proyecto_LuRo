@@ -13,6 +13,7 @@ test('notifications stay separate from LuRo and microphone activation stays insi
   assert.equal(await page.$('#luro-activar-mic-btn'),null);
   assert.ok(await page.$('#luro-mic-btn-pub'));
   await page.evaluate(()=>{document.querySelector('#login-overlay').style.display='none';document.querySelector('#module-selector').style.display='none';document.querySelector('#main-content').style.display='block';});
+  await page.evaluate(()=>{window.autoSubirCloudDebounced=()=>{};sesionUser={user:'fixture',activo:true,role:'admin'};esColaboradorSesion=false;moduloActual='COCINA';LuroInventoryNotificationPanel.sync();});await page.click('#luro-alert-toggle');await page.click('#inventory-notification-other-tab');
   for(const width of [320,390,768,1440]){
    await page.setViewport({width,height:844});
    const bounds=await page.evaluate(()=>{

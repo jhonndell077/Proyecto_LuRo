@@ -1,5 +1,7 @@
-const SW_VERSION = 'luro-pwa-readable-20261101';
+const SW_VERSION = 'luro-pwa-notices-20261101';
 const CORE_ASSETS = [
+  '/assets/js/inventory-notifications-domain.js?v=20261101-notices',
+  '/assets/js/inventory-notifications.js?v=20261101-notices',
   '/assets/js/inventory-readers.js?v=20261101-readers',
   '/assets/vendor/sheetjs/xlsx.full.min.js',
   '/assets/vendor/pdfjs/pdf.mjs',
@@ -15,7 +17,7 @@ const CORE_ASSETS = [
   '/assets/js/stock-domain.js?v=20261101-operations',
   '/assets/js/operations-workspace.js?v=20261101-operations',
   '/assets/js/production-workspace.js?v=20261101-operations',
-  '/assets/css/operations-workspace.css?v=20261101-readable',
+  '/assets/css/operations-workspace.css?v=20261101-notices',
   '/assets/css/responsive.css?v=20261101-luro25',
   '/assets/js/responsive.js?v=20261101-luro25',
   '/manifest.webmanifest',
@@ -24,7 +26,7 @@ const CORE_ASSETS = [
   '/assets/saas/css/access.css?v=20260625-clean-login-1',
   '/assets/saas/js/access.js?v=20260625-clean-login-1',
   '/assets/css/styles.css?v=20261030-mobile-startup-1',
-  '/assets/js/app.js?v=20261101-advanced',
+  '/assets/js/app.js?v=20261101-notices',
   '/assets/js/cloud-bridge.js?v=20261101-readers',
   '/assets/js/menu-admin.js?v=20261101-luro33',
   '/assets/css/menu-editor.css?v=20261030-visual-editor-1',
