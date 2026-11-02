@@ -93,7 +93,7 @@
   document.querySelectorAll('[data-open-brand],#brand-settings,#edit-brand').forEach(x=>x.remove());
   document.addEventListener('click',e=>{if(e.target.closest('#luro-join'))join();if(e.target.closest('#luro-refresh-menu'))refresh();});
   const retry=document.createElement('button');retry.type='button';retry.id='luro-refresh-menu';retry.className='secondary-button';retry.textContent='Actualizar menú y pedidos';statusBar.after(retry);
-  window.addEventListener('online',refresh);window.addEventListener('focus',refresh);setInterval(()=>{if(!document.hidden)refresh();},12000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});window.addEventListener('online',refresh);window.addEventListener('focus',refresh);setInterval(()=>{if(!document.hidden)refresh();},2000);
   setInterval(()=>{if(view==='orders')for(const o of orders){const t=document.querySelector(`[data-real-clock="${o.id}"]`);if(t&&o.preparingAt)t.textContent='Tiempo en cocina: '+clockText(Math.max(0,Math.floor(((o.readyAt||Date.now())-o.preparingAt)/1000)));}},1000);
   refresh();
 })();

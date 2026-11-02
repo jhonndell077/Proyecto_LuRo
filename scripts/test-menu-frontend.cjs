@@ -19,7 +19,7 @@ async function app(options={}){
       let result;
       if(name==='menuRegisterMember')result={accessToken:'c'.repeat(64),code:'LURO-'+ 'C'.repeat(24),name:'Ana',phone:'8095551234'};
       if(name==='menuGetProfile')result={code:'LURO-'+'C'.repeat(24),name:'Ana',points:0,premiumActive:false,history:[],verificationPending:true};
-      if(name==='menuGetCatalog')result={business:'El Patio · fixture',items:options.empty?[]:[dish],brand:{}};
+      if(name==='menuGetCatalog')result={business:'El Patio · fixture',items:options.empty?[]:(options.items||[dish]),brand:{}};
       if(name==='menuGetOrders')result={orders:remote};
       if(name==='menuSubmitOrder'){if(options.submitError)return {ok:false,json:async()=>({error:{message:'Cambió el precio de un plato.'}})};const order={id:'WEB-'+'1'.repeat(28),date:new Date().toISOString(),status:'pending',items:data.items.map(i=>({...i,name:dish.name})),total:250,subtotal:250,delivery:0,payment:{status:'pending'}};remote.push(order);result=order;}
       return {ok:true,json:async()=>({result})};
@@ -43,3 +43,5 @@ test('membership form displays a screenshot-ready card and fills order identific
  a.w.eval("setView('profile')");a.w.document.getElementById('luro-join').click();const f=a.w.document.getElementById('luro-member-form');f.elements.name.value='Ana';f.elements.cedula.value='00112345678';f.elements.phone.value='8095551234';f.dispatchEvent(new a.w.Event('submit',{bubbles:true,cancelable:true}));await tick();await tick();
  assert.ok(a.calls.some(x=>x.name==='menuRegisterMember'&&x.data.cedula==='00112345678'));assert.match(a.w.document.querySelector('.luro-member-card').textContent,/LURO-C{24}/);assert.equal(a.w.document.getElementById('luro-member-code').value,'LURO-'+'C'.repeat(24));assert.match(a.w.document.getElementById('secondary').textContent,/Perfil creado/);assert.deepEqual(a.errors,[]);
 }finally{a.w.close();}});
+
+ test('one remaining portion appears after catalog refresh and remains orderable',async()=>{const items=[{...dish,stock:25}];const a=await app({items});try{items.push({...dish,id:'marco',name:'Marcopolo',price:350,basePrice:350,stock:1});a.w.document.getElementById('luro-refresh-menu').click();await tick();await tick();const card=a.w.document.querySelector('[data-item="marco"]');assert.ok(card);assert.match(card.textContent,/Marcopolo/);assert.match(card.textContent,/Quedan pocas/);assert.equal(card.querySelector('.order-button').disabled,false);assert.equal(a.w.document.querySelectorAll('#menu [data-item]').length,2);assert.deepEqual(a.errors,[]);}finally{a.w.close();}});

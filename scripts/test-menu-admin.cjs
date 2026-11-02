@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const {JSDOM}=require('jsdom');
 async function app(collaborator=false){
   const html=fs.readFileSync(path.resolve(__dirname,'../public/app.html'),'utf8');
-  const dom=new JSDOM(html,{url:'http://fixture.local/app.html',runScripts:'outside-only'}),w=dom.window,calls=[];
+  const dom=new JSDOM(html,{url:'http://fixture.local/app.html',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window,calls=[];
   const commands=w.document.createElement('div');commands.id='comandas';w.document.getElementById('main-content').append(commands);
   w.setInterval=fn=>(calls.push(fn),calls.length);w.alert=()=>{};w.HTMLElement.prototype.scrollIntoView=function(){};
   vm.runInContext(`let db={platos:[{owner:'owner',modulo:'COCINA',nombre:'Mangú',precio:250,stock:2}],clientesFidelizacion:[]};let sesionUser={user:'owner'};let moduloActual='COCINA';let esColaboradorSesion=${collaborator};let permisosSesion=['salida'];function guardarDatos(){}function obtenerNombreNegocioActual(){return 'El Patio'}function showPage(){};window.obtenerOwnerSesionActual=()=> 'owner';window.subirBaseActualAlCloud=async()=>true;window.descargarBaseDesdeCloud=async()=>true;window.__apiCalls=[];window.luroMenuAdminCall=async(name,data)=>{window.__apiCalls.push({name,data});return {orders:[]}};`,dom.getInternalVMContext());

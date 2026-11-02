@@ -155,6 +155,6 @@
     const finish=window.finalizarComanda;
     window.finalizarComanda=async function(id){const c=(db.comandasActivas||[]).find(x=>x.id===id);if(!c?.menuOrderId)return finish?.(id);let o=list.find(x=>x.id===c.menuOrderId);if(!o){await refresh(true);o=list.find(x=>x.id===c.menuOrderId);}if(o?.status==='accepted'){await transition(o.id,'preparing');o=list.find(x=>x.id===c.menuOrderId);}if(o?.status==='preparing')await transition(o.id,'ready');};
     setInterval(()=>{if(!el('luro-menu-admin'))return;el('luro-menu-admin').hidden=!authorized();if(!authorized()){members=[];el('menu-member-bank').replaceChildren();}if(!operator()){list=[];tasks=[];renderOrders();if(el('menu-task-list'))el('menu-task-list').replaceChildren();notifications();}const taskNav=document.querySelector('[data-tasks-nav]');if(taskNav)taskNav.hidden=!authorized();if(el('menu-operations'))el('menu-operations').hidden=!operator();const scope=owner()+'|'+moduleName();if(operator()&&scope!==previousScope){previousScope=scope;selectedDish=null;dirty=false;el('menu-dish-form').hidden=true;el('menu-preview-panel').hidden=true;el('menu-dish-search').value='';seen=new Set();list=[];tasks=[];if(el('menu-task-list'))el('menu-task-list').replaceChildren();notifications();members=[];el('menu-member-bank').replaceChildren();loadSettings();refresh();refreshMembers().catch(e=>status(e.message,true));}},1500);
-    setInterval(()=>refresh(),12000);
+    setInterval(()=>document.hidden?undefined:refresh(),2000);
   });
 })();
