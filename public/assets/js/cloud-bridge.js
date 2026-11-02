@@ -125,6 +125,8 @@
         }, opts);
       }
 
+      window.luroInventoryReadSheet = url => postCallableWithSession('inventoryReadSheet', { url }, { timeoutMs: 55000 });
+
       // Restricted to the menu's administrative API; credentials stay inside this bridge.
       window.luroMenuAdminCall = (name, data = {}) => {
         if (!['menuListOrders', 'menuUpdateOrder', 'menuCreateCustomerLink', 'menuListTasks', 'menuResolveTask'].includes(name)) {

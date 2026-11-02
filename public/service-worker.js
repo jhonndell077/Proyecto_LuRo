@@ -1,8 +1,12 @@
-const SW_VERSION = 'luro-pwa-advanced-20261101';
+const SW_VERSION = 'luro-pwa-readers-20261101';
 const CORE_ASSETS = [
+  '/assets/js/inventory-readers.js?v=20261101-readers',
+  '/assets/vendor/sheetjs/xlsx.full.min.js',
+  '/assets/vendor/pdfjs/pdf.mjs',
+  '/assets/vendor/pdfjs/pdf.worker.mjs',
   '/assets/js/inventory-domain.js?v=20261101-advanced',
   '/assets/js/inventory-workspace.js?v=20261101-advanced',
-  '/assets/js/inventory-import.js?v=20261101-advanced',
+  '/assets/js/inventory-import.js?v=20261101-readers',
   '/',
   '/index.html',
   '/acceder.html',
@@ -21,7 +25,7 @@ const CORE_ASSETS = [
   '/assets/saas/js/access.js?v=20260625-clean-login-1',
   '/assets/css/styles.css?v=20261030-mobile-startup-1',
   '/assets/js/app.js?v=20261101-advanced',
-  '/assets/js/cloud-bridge.js?v=20261029-menu-admin-1',
+  '/assets/js/cloud-bridge.js?v=20261101-readers',
   '/assets/js/menu-admin.js?v=20261101-luro33',
   '/assets/css/menu-editor.css?v=20261030-visual-editor-1',
   '/assets/brand/logo-luro.png',

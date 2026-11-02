@@ -2718,6 +2718,7 @@ const whatsappNotifications = registerWhatsAppNotifications({
 });
 
 Object.assign(exports, require('./menu-integration')({ db, resolveSession, assertOwnerActive }));
+Object.assign(exports, require('./inventory-import')({ resolveSession, assertOwnerActive }));
 
 exports.notifyWhatsAppOnOwnerDataUpdate = whatsappNotifications.notifyWhatsAppOnOwnerDataUpdate;
 exports.notifyWhatsAppOnMasterNotificationCreate = whatsappNotifications.notifyWhatsAppOnMasterNotificationCreate;

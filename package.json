@@ -20,7 +20,8 @@
   "author": "jhonndell077",
   "license": "MIT",
   "devDependencies": {
-    "jsdom": "^29.1.1"
+    "jsdom": "^29.1.1",
+    "pdfjs-dist": "6.5.438"
   },
   "dependencies": {
     "puppeteer": "^25.2.1"
