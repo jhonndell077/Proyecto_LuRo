@@ -1,5 +1,6 @@
-const SW_VERSION = 'luro-pwa-notices-20261101';
+const SW_VERSION = 'luro-pwa-entry-20261101';
 const CORE_ASSETS = [
+  '/assets/js/warehouse-entry.js?v=20261101-entry',
   '/assets/js/inventory-notifications-domain.js?v=20261101-notices',
   '/assets/js/inventory-notifications.js?v=20261101-notices',
   '/assets/js/inventory-readers.js?v=20261101-readers',
@@ -17,7 +18,7 @@ const CORE_ASSETS = [
   '/assets/js/stock-domain.js?v=20261101-operations',
   '/assets/js/operations-workspace.js?v=20261101-operations',
   '/assets/js/production-workspace.js?v=20261101-operations',
-  '/assets/css/operations-workspace.css?v=20261101-notices',
+  '/assets/css/operations-workspace.css?v=20261101-entry',
   '/assets/css/responsive.css?v=20261101-luro25',
   '/assets/js/responsive.js?v=20261101-luro25',
   '/manifest.webmanifest',
