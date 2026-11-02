@@ -27,3 +27,9 @@ Adaptación de los flujos de Inventario y Listado de Compra de https://gestor-js
 ## Verificación
 
 Pruebas con fixtures locales: metas por período, unidades y cobertura preparada, aislamiento de cuentas/módulos, códigos duplicados, recuentos, migración repetida, Excel con varias hojas, formatos de referencia, importación, producción, disponibilidad, pedidos y menú. Se revisaron sintaxis, diff, estructura y vistas entre 320 y 1440 píxeles. No hay scripts de build o tipos en este proyecto.
+
+## Ajuste de legibilidad y período de stock
+
+La tabla muestra primero Producto, Existencia y Faltante, con unidades y texto legible. Código, categoría, proveedor, meta, costo y acciones están en Detalles por producto. Las tres columnas caben sin desplazamiento horizontal entre 320 y 1440 px.
+
+El período se elige con dos botones visibles (lunes-jueves y viernes-domingo), con indicación del seleccionado. La preferencia se conserva localmente por propietario y módulo. Cambiar de período actualiza los faltantes y regenera una lista de compra que ya estuviera generada, sin modificar existencias ni metas. Pruebas de edición/recuento, navegación, persistencia del período, importación y operaciones completadas, más auditoría de estructura y sintaxis.

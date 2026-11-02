@@ -1,11 +1,11 @@
-const SW_VERSION = 'luro-pwa-readers-20261101';
+const SW_VERSION = 'luro-pwa-readable-20261101';
 const CORE_ASSETS = [
   '/assets/js/inventory-readers.js?v=20261101-readers',
   '/assets/vendor/sheetjs/xlsx.full.min.js',
   '/assets/vendor/pdfjs/pdf.mjs',
   '/assets/vendor/pdfjs/pdf.worker.mjs',
   '/assets/js/inventory-domain.js?v=20261101-advanced',
-  '/assets/js/inventory-workspace.js?v=20261101-advanced',
+  '/assets/js/inventory-workspace.js?v=20261101-readable',
   '/assets/js/inventory-import.js?v=20261101-readers',
   '/',
   '/index.html',
@@ -15,7 +15,7 @@ const CORE_ASSETS = [
   '/assets/js/stock-domain.js?v=20261101-operations',
   '/assets/js/operations-workspace.js?v=20261101-operations',
   '/assets/js/production-workspace.js?v=20261101-operations',
-  '/assets/css/operations-workspace.css?v=20261101-advanced',
+  '/assets/css/operations-workspace.css?v=20261101-readable',
   '/assets/css/responsive.css?v=20261101-luro25',
   '/assets/js/responsive.js?v=20261101-luro25',
   '/manifest.webmanifest',
