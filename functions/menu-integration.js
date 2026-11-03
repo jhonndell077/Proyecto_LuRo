@@ -2,9 +2,9 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { randomBytes } = require('node:crypto');
 const D = require('./menu-domain');
-module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) {
+module.exports = function registerMenu({db, resolveSession, assertOwnerActive, posExecuteFor}) {
   const call = fn => onCall({cors: true}, async request => {
-    try { return await fn(request); } catch (e) { if (e instanceof HttpsError) throw e; if (e instanceof D.MenuError) throw new HttpsError('failed-precondition', e.message); throw new HttpsError('internal', 'No se pudo completar la operación. Intenta de nuevo.'); }
+    try { return await fn(request); } catch (e) { if (e instanceof HttpsError) throw e; if (e instanceof D.MenuError) throw new HttpsError('failed-precondition', e.message); if(e instanceof require('./pos-domain').PosError)throw new HttpsError(e.code,e.message); throw new HttpsError('internal', 'No se pudo completar la operación. Intenta de nuevo.'); }
   });
   function context(data) {
     const owner = D.key(data?.owner), module = D.text(data?.module, 80);
@@ -30,7 +30,7 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
   const membersRef = ctx => db.collection('menu_members').doc(ctx.scope).collection('members');
   const memberCode = id => 'LURO-' + id.slice(0,24).toUpperCase();
   const ordersRef = ctx => db.collection('menu_orders').doc(ctx.scope).collection('orders');
-  function publicOrder(o) { return {id:o.id,date:new Date(o.createdAt).toISOString(),status:o.status,items:o.items,subtotal:o.subtotal,delivery:o.delivery,total:o.total,mesa:o.mesa || null,payment:o.payment,reviewedAt:o.reviewedAt || null,acceptedAt:o.acceptedAt || null,preparingAt:o.preparingAt || null,readyAt:o.readyAt || null,deliveredAt:o.deliveredAt || null,rejectionReason:o.rejectionReason || '',updatedAt:o.updatedAt}; }
+  function publicOrder(o) { return {id:o.id,date:new Date(o.createdAt).toISOString(),status:o.status,items:(o.items||[]).map(({id,lineId,name,quantity,unitPrice,notes,deliveredQuantity})=>({id,name,quantity,unitPrice,...(lineId?{lineId}:{}),...(notes?{notes}:{}),...(deliveredQuantity!=null?{deliveredQuantity}:{})})),subtotal:o.subtotal,delivery:o.delivery,total:o.total,mesa:o.mesa || null,payment:o.payment,engineVersion:o.engineVersion||1,deliveredQuantity:(o.items||[]).reduce((n,i)=>n+Number(i.deliveredQuantity||0),0),reviewedAt:o.reviewedAt || null,acceptedAt:o.acceptedAt || null,preparingAt:o.preparingAt || null,readyAt:o.readyAt || null,deliveredAt:o.deliveredAt || null,rejectionReason:o.rejectionReason || '',updatedAt:o.updatedAt}; }
   return {
     menuGetCatalog: call(async r => {
       const ctx = context(r.data); await assertOwnerActive(ctx.owner);
@@ -109,9 +109,18 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
       const name = D.text(r.data.name,80), notes = D.text(r.data.notes,400);
       if (!name) throw new HttpsError('invalid-argument','Indica tu nombre.');
       const id = `WEB-${D.hash(`${customerHash}:${r.data.requestId}`).slice(0,28)}`, orderRef = ordersRef(ctx).doc(id), resRef = reserveRef(ctx);
+      const currentOwner=await ctx.ref.get();
+      if(unpack(currentOwner).posModules?.[ctx.module]?.managed){
+        if(!posExecuteFor)throw new HttpsError('unavailable','Actualiza el motor de pedidos.');
+        let membership=null;const code=D.text(r.data.memberCode,40).toUpperCase();
+        if(code){if(!/^LURO-[A-F0-9]{24}$/.test(code))throw new HttpsError('invalid-argument','Código de miembro inválido.');const cs=await db.collection('menu_member_codes').doc(ctx.scope+'-'+code).get();if(!cs.exists)throw new HttpsError('not-found','Código de miembro no encontrado.');const ms=await membersRef(ctx).doc(cs.data().memberId).get(),member=ms.data();if(!member)throw new HttpsError('not-found','Miembro no disponible.');const customer=(unpack(currentOwner).clientesFidelizacion||[]).find(c=>String(c.id)===member.customerId&&D.key(c.owner||ctx.owner)===ctx.owner);membership={code,verified:!!customer,active:customer?.premiumActivo===true,customerId:customer?String(customer.id):null};}
+        const result=await posExecuteFor({owner:ctx.owner,username:'customer:'+customerHash,role:'customer',customerHash,membership},{module:ctx.module,operationId:r.data.requestId,type:'createOrder',input:{customerName:name,notes,items:r.data.items,channel:'web'}});
+        return publicOrder(result.order);
+      }
       return db.runTransaction(async tx => {
         const [prev,snap,res] = await Promise.all([tx.get(orderRef),tx.get(ctx.ref),tx.get(resRef)]);
         if (prev.exists) return publicOrder(prev.data());
+        if(unpack(snap).posModules?.[ctx.module]?.managed)throw new HttpsError('aborted','El motor cambió. Vuelve a enviar la misma solicitud.');
         let membership=null;
         const code=D.text(r.data.memberCode,40).toUpperCase();
         if(code){
@@ -138,17 +147,25 @@ module.exports = function registerMenu({db, resolveSession, assertOwnerActive}) 
     menuGetOrders: call(async r => {
       const ctx = context(r.data), customerHash = token(r.data); await assertOwnerActive(ctx.owner);
       // Equality-only query avoids requiring a composite Firestore index.
-      const snap = await ordersRef(ctx).where('customerHash','==',customerHash).limit(100).get();
-      return {orders:snap.docs.map(d=>publicOrder(d.data())).sort((a,b)=>b.updatedAt-a.updatedAt)};
+      const snap = await ordersRef(ctx).where('customerHash','==',customerHash).get();
+      return {orders:snap.docs.map(d=>publicOrder(d.data())).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,100)};
     }),
     menuListOrders: call(async r => {
       const c = await staff(r),ctx=context({...r.data,owner:c.owner});
-      const snap=await ordersRef(ctx).orderBy('createdAt','desc').limit(100).get();
-      return {orders:snap.docs.map(d=>({...publicOrder(d.data()),customer:d.data().customer,notes:d.data().notes}))};
+      const snapshots=await Promise.all([ordersRef(ctx).orderBy('createdAt','desc').limit(100).get(),...['pending','reviewed','accepted','preparing','ready','partially_delivered'].map(status=>ordersRef(ctx).where('status','==',status).get())]);
+      const docs=new Map();for(const snap of snapshots)for(const doc of snap.docs)docs.set(doc.data().id,doc.data());
+      return {orders:[...docs.values()].sort((a,b)=>b.createdAt-a.createdAt).map(o=>({...publicOrder(o),customer:o.customer,notes:o.notes}))};
     }),
     menuUpdateOrder: call(async r => {
       const c=await staff(r),ctx=context({...r.data,owner:c.owner}),id=D.text(r.data.id,80),next=D.text(r.data.status,30);
       if (!/^WEB-[a-f0-9]{28}$/.test(id)) throw new HttpsError('invalid-argument','Pedido inválido.');
+      const existingOrder=await ordersRef(ctx).doc(id).get();
+      if(existingOrder.exists&&existingOrder.data().engineVersion===3){
+        if(!posExecuteFor)throw new HttpsError('unavailable','Motor POS no disponible.');
+        const type={reviewed:'review',accepted:'dispatch',preparing:'startPreparation',ready:'ready',rejected:'cancel',delivered:'deliver'}[next];if(!type)throw new HttpsError('invalid-argument','Estado inválido.');
+        if(next==='delivered')throw new HttpsError('failed-precondition','Registra las cantidades entregadas desde Operación POS.');
+        const result=await posExecuteFor(c,{module:ctx.module,operationId:'menu-'+id+'-'+next,type,input:{orderId:id,...(next==='rejected'?{reason:D.text(r.data.reason,300)}:{})}});return publicOrder(result.order);
+      }
       return db.runTransaction(async tx=>{
         const orderRef=ordersRef(ctx).doc(id),rr=reserveRef(ctx);
         const [os,bs,rs]=await Promise.all([tx.get(orderRef),tx.get(ctx.ref),tx.get(rr)]);

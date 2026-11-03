@@ -1,0 +1,7 @@
+// LOCAL EMULATOR ONLY. This file does not replace the repository's rules.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} { allow read, write: if false; }
+  }
+}

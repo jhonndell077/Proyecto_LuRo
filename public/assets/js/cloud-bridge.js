@@ -102,9 +102,9 @@
           const json = await resp.json().catch(() => ({}));
           if (!resp.ok) {
             const msg = normalizeCloudError(json?.error || json || { message: `HTTP ${resp.status}` });
-            throw new Error(msg);
+            const error=new Error(msg);error.code=String(json?.error?.status||'').toLowerCase().replaceAll('_','-');throw error;
           }
-          if (json?.error) throw new Error(normalizeCloudError(json.error));
+          if (json?.error) {const error=new Error(normalizeCloudError(json.error));error.code=String(json.error.status||'').toLowerCase().replaceAll('_','-');throw error;}
           return json?.result ?? null;
         } catch (e) {
           if (String(e?.name || '').toLowerCase() === 'aborterror') throw new Error('Tiempo de espera agotado al conectar con el backend.');
@@ -124,6 +124,8 @@
           authOwner: String(s.owner || '').trim().toLowerCase()
         }, opts);
       }
+
+      window.luroPosCall=(name,data={})=>{if(!['posExecute','posGetState'].includes(name))return Promise.reject(new Error('Operación POS no permitida.'));if(navigator.onLine===false)return Promise.reject(new Error('Conecta a internet para confirmar operaciones POS.'));return postCallableWithSession(name,data,{timeoutMs:25000});};
 
       window.luroInventoryReadSheet = url => postCallableWithSession('inventoryReadSheet', { url }, { timeoutMs: 55000 });
 

@@ -1,5 +1,8 @@
-const SW_VERSION = 'luro-pwa-pay-first-20261102';
+const SW_VERSION = 'luro-pwa-pos3-20261103';
 const CORE_ASSETS = [
+  '/assets/css/pos-workspace.css?v=20261103-pos3',
+  '/assets/js/pos-workspace.js?v=20261103-pos3',
+  '/assets/js/pos-compatibility.js?v=20261103-pos3',
   '/assets/js/menu-publication.js?v=20261101-menu-sync',
   '/assets/js/warehouse-entry.js?v=20261101-entry-module',
   '/assets/js/inventory-notifications-domain.js?v=20261101-notices',
@@ -29,8 +32,8 @@ const CORE_ASSETS = [
   '/assets/saas/js/access.js?v=20260625-clean-login-1',
   '/assets/css/styles.css?v=20261030-mobile-startup-1',
   '/assets/js/app.js?v=20261102-pay-first',
-  '/assets/js/cloud-bridge.js?v=20261101-menu-sync',
-  '/assets/js/menu-admin.js?v=20261102-pay-first',
+  '/assets/js/cloud-bridge.js?v=20261103-pos3',
+  '/assets/js/menu-admin.js?v=20261103-pos3',
   '/assets/css/menu-editor.css?v=20261030-visual-editor-1',
   '/assets/brand/logo-luro.png',
   '/assets/icons/icon-192.png',

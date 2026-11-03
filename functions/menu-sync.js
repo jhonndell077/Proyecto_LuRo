@@ -8,7 +8,7 @@ module.exports = async function syncMenuPayments(db, tx, payload, owner) {
   const refs = ids.map(id => ({id,scope:D.hash(`${owner}\0${receipts[id].module}`)}));
   const snapshots = await Promise.all(refs.map(x=>tx.get(db.collection('menu_orders').doc(x.scope).collection('orders').doc(x.id))));
   for (const snap of snapshots) if (snap.exists && snap.data().payment?.status === 'paid') receipts[snap.data().id].paidAt = snap.data().payment.paidAt || Date.now();
-  const payable = snapshots.filter(s=>s.exists && s.data().payment?.status!=='paid' && !['pending','rejected'].includes(s.data().status));
+  const payable = snapshots.filter(s=>s.exists && s.data().engineVersion!==3 && s.data().payment?.status!=='paid' && !['pending','rejected'].includes(s.data().status));
   const scopes = [...new Set(payable.map(s=>D.hash(`${owner}\0${s.data().module}`)))];
   const reserves = await Promise.all(scopes.map(scope=>tx.get(db.collection('menu_reservations').doc(scope))));
   const states = Object.fromEntries(scopes.map((scope,i)=>[scope,reserves[i].data() || {quantities:{},pending:{}}]));

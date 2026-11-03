@@ -2616,6 +2616,7 @@ exports.upsertOwnerData = onCall(async (request) => {
     const snap = await tx.get(docRef);
     const current = snap.data() || {};
     const currentDb = current.db || current["base de datos"] || {};
+    try { require('./pos-legacy-guard').protectManaged(payload,currentDb,{catalogAdmin:c.collaborator!==true}); } catch(error) { throw new HttpsError('failed-precondition',error.message); }
     if (c.collaborator === true) {
       // Public storefront configuration is owned by the administrator.
       if (currentDb.menuIntegration) payload.menuIntegration = currentDb.menuIntegration;
@@ -2717,7 +2718,10 @@ const whatsappNotifications = registerWhatsAppNotifications({
   getOwnerDoc
 });
 
-Object.assign(exports, require('./menu-integration')({ db, resolveSession, assertOwnerActive }));
+const posOperations = require('./pos-operations')({db,resolveSession,assertOwnerActive});
+exports.posExecute=posOperations.posExecute;
+exports.posGetState=posOperations.posGetState;
+Object.assign(exports, require('./menu-integration')({ db, resolveSession, assertOwnerActive, posExecuteFor:posOperations.executeFor }));
 Object.assign(exports, require('./inventory-import')({ resolveSession, assertOwnerActive }));
 
 exports.notifyWhatsAppOnOwnerDataUpdate = whatsappNotifications.notifyWhatsAppOnOwnerDataUpdate;
